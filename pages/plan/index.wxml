@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="summary-card">
+    <view>
+      <text class="summary-title">今日管理方案</text>
+      <text class="summary-desc">控糖稳定期 · 重点关注夜间低氧与晨起血糖</text>
+    </view>
+    <view class="score-ring">
+      <text>78</text>
+      <text>执行分</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>今日任务</text>
+    <text class="section-extra">3/5 已完成</text>
+  </view>
+  <view class="task-list">
+    <view wx:for="{{tasks}}" wx:key="title" class="task-card {{item.done ? 'done' : ''}}">
+      <view class="task-check">{{item.done ? '✓' : item.index}}</view>
+      <view class="task-body">
+        <text class="task-title">{{item.title}}</text>
+        <text class="task-desc">{{item.desc}}</text>
+      </view>
+      <text class="task-action">{{item.action}}</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>管理重点</text>
+  </view>
+  <view class="focus-grid">
+    <view wx:for="{{focusItems}}" wx:key="label" class="focus-card">
+      <text class="focus-label">{{item.label}}</text>
+      <text class="focus-value">{{item.value}}</text>
+      <text class="focus-desc">{{item.desc}}</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>医生建议</text>
+  </view>
+  <view class="advice-card">
+    <text class="advice-title">本周建议</text>
+    <text class="advice-desc">继续保持每日血糖记录。若夜间最低血氧连续低于 90%，建议复测睡眠呼吸监测并联系医生评估。</text>
+  </view>
+</view>

@@ -1,0 +1,268 @@
+<view class="page">
+  <view class="top-area">
+    <view class="custom-nav" style="height: {{nav.totalHeight}}px; padding-top: {{nav.statusBarHeight}}px;">
+      <view class="custom-nav-title" style="height: {{nav.navBarHeight}}px; line-height: {{nav.navBarHeight}}px;">慢病管家</view>
+    </view>
+
+    <view class="stage-switch">
+      <button class="{{userStage === 'new' ? 'active' : ''}}" data-stage="new" bindtap="switchStage">新用户</button>
+      <button class="{{userStage === 'assessed' ? 'active' : ''}}" data-stage="assessed" bindtap="switchStage">已筛查</button>
+      <button class="{{userStage === 'managed' ? 'active' : ''}}" data-stage="managed" bindtap="switchStage">管理中</button>
+    </view>
+
+  <view wx:if="{{userStage === 'new'}}" class="hero hero-new">
+    <view class="hero-top">
+      <view class="greeting">
+        <text class="hero-title">先完成健康筛查</text>
+        <text class="hero-desc">采集病史、症状、用药和生活方式，生成你的慢病风险画像。</text>
+      </view>
+      <view class="risk-badge">
+        <view class="risk-inner">
+          <text class="risk-title">待评估</text>
+          <text class="risk-label">当前状态</text>
+        </view>
+      </view>
+    </view>
+    <view class="hero-note">约 3 分钟完成，重点判断糖尿病、慢阻肺、睡眠呼吸障碍相关风险。</view>
+    <view class="screening-grid">
+      <view><text>病史</text><text>确诊/家族史</text></view>
+      <view><text>症状</text><text>血糖/咳喘/睡眠</text></view>
+      <view><text>方案</text><text>任务/用药/随访</text></view>
+    </view>
+    <button class="primary-btn" bindtap="handlePrimaryAction">开始健康筛查</button>
+  </view>
+
+  <view wx:elif="{{userStage === 'assessed'}}" class="hero">
+    <view class="hero-top">
+      <view class="greeting">
+        <text class="hero-title">{{assessmentResult.homeTitle}}</text>
+        <text class="hero-desc">{{assessmentResult.primaryAdvice}}</text>
+      </view>
+      <view class="risk-badge">
+        <view class="risk-inner">
+          <text class="risk-title">{{assessmentResult.riskName}}</text>
+          <text class="risk-label">{{assessmentResult.score}}健康分</text>
+        </view>
+      </view>
+    </view>
+    <view class="hero-note">健康状况评估已完成，可基于本次结果建立 7 天初始管理计划。</view>
+    <view class="hero-metrics">
+      <view wx:for="{{assessmentMetrics}}" wx:key="label" class="metric"><text>{{item.label}}</text><text class="value">{{item.value}}</text></view>
+    </view>
+    <view class="assessed-actions">
+      <button class="secondary-btn" bindtap="restartAssessment">重新测评</button>
+      <button class="primary-btn inline" bindtap="handlePrimaryAction">生成管理方案</button>
+    </view>
+  </view>
+
+  <view wx:else class="hero">
+    <view class="hero-top">
+      <view class="greeting">
+        <text class="hero-title">陈女士，需关注</text>
+        <text class="hero-desc">夜间低氧叠加晨起血糖偏高，建议先完成复测和用药确认。</text>
+      </view>
+      <view class="risk-badge">
+        <view class="risk-inner">
+          <text class="risk-title">中风险</text>
+          <text class="risk-label">今日状态</text>
+        </view>
+      </view>
+    </view>
+    <view class="hero-note">医生方案第 3 周：控糖稳定期，重点观察睡眠低氧对晨起血糖的影响。</view>
+    <view class="hero-metrics">
+      <view class="metric"><text>空腹血糖</text><text class="value">7.2<text class="warn">偏高</text></text></view>
+      <view class="metric"><text>最低血氧</text><text class="value">88%<text class="warn">预警</text></text></view>
+      <view class="metric"><text>咳喘评分</text><text class="value">3分<text class="warn">轻度</text></text></view>
+    </view>
+  </view>
+  </view>
+
+  <view class="section-head">
+    <text>快速记录</text>
+    <button>添加指标</button>
+  </view>
+  <view class="quick-grid">
+    <view wx:for="{{quickRecords}}" wx:key="label" class="quick">
+      <view class="quick-icon">
+        <view wx:if="{{item.type === 'glucose'}}" class="css-icon glucose-icon"></view>
+        <view wx:elif="{{item.type === 'oxygen'}}" class="css-icon heart-icon">
+          <view class="pulse-line"></view>
+        </view>
+        <view wx:elif="{{item.type === 'pressure'}}" class="css-icon heart-icon">
+          <view class="pulse-line"></view>
+          <view class="pressure-dot"></view>
+        </view>
+        <view wx:elif="{{item.type === 'sleep'}}" class="css-icon moon-icon"></view>
+        <view wx:else class="css-icon pill-icon">
+          <view></view>
+        </view>
+      </view>
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <view class="module-card risk-module">
+    <view class="module-title">
+      <view class="title-left">
+        <view class="title-symbol alert-symbol">!</view>
+        <text>风险预警</text>
+      </view>
+    </view>
+    <view class="risk-item high-risk">
+      <view class="risk-level">高</view>
+      <view class="risk-body">
+        <text class="risk-title">连续3天空腹血糖偏高</text>
+        <text class="risk-desc">近三日空腹血糖分别为7.8、8.0、8.2mmol/L，持续高于正常范围</text>
+        <button>立即复测血糖</button>
+      </view>
+    </view>
+    <view class="risk-item medium-risk">
+      <view class="risk-level">中</view>
+      <view class="risk-body">
+        <text class="risk-title">夜间血氧低于90%累计12分钟</text>
+        <text class="risk-desc">昨晚睡眠期间出现低氧情况，建议关注呼吸状态</text>
+        <button>查看睡眠报告</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="module-card todo-module">
+    <view class="module-title">
+      <view class="title-left">
+        <view class="title-symbol calendar-symbol"></view>
+        <text>今日待办</text>
+      </view>
+      <text class="module-extra">已完成 2/5</text>
+    </view>
+    <view class="todo-item done">
+      <view class="todo-status">✓</view>
+      <view class="todo-info">
+        <text class="todo-title">晨起血糖测量</text>
+        <text class="todo-desc">已完成 07:30</text>
+      </view>
+      <text class="todo-value">8.2mmol/L</text>
+    </view>
+    <view class="todo-item done">
+      <view class="todo-status">✓</view>
+      <view class="todo-info">
+        <text class="todo-title">血压测量</text>
+        <text class="todo-desc">已完成 07:40</text>
+      </view>
+      <text class="todo-value">132/84mmHg</text>
+    </view>
+    <view class="todo-item pending">
+      <view class="todo-status">待</view>
+      <view class="todo-info">
+        <text class="todo-title">餐后血糖测量</text>
+        <text class="todo-desc">建议 12:30 完成</text>
+      </view>
+      <button>去记录</button>
+    </view>
+    <view class="todo-item pending">
+      <view class="todo-status">待</view>
+      <view class="todo-info">
+        <text class="todo-title">用药打卡</text>
+        <text class="todo-desc">还有2种药物未服用</text>
+      </view>
+      <button>去打卡</button>
+    </view>
+    <view class="todo-item pending">
+      <view class="todo-status">待</view>
+      <view class="todo-info">
+        <text class="todo-title">症状评估</text>
+        <text class="todo-desc">每日症状记录，帮助医生了解病情</text>
+      </view>
+      <button>去评估</button>
+    </view>
+  </view>
+
+  <view class="module-card medicine-module">
+    <view class="module-title">
+      <view class="title-left">
+        <text>今日用药建议</text>
+      </view>
+    </view>
+    <view class="medicine-item">
+      <view class="medicine-icon active">
+        <view class="capsule-symbol"></view>
+      </view>
+      <view class="medicine-info">
+        <text class="medicine-name">二甲双胍缓释片</text>
+        <text class="medicine-desc">0.5g / 次，每日2次，餐中服用</text>
+        <text class="medicine-note success">今日已服用 07:35</text>
+      </view>
+      <text class="medicine-tag taken">已服用</text>
+    </view>
+    <view class="medicine-item">
+      <view class="medicine-icon">
+        <view class="capsule-symbol muted"></view>
+      </view>
+      <view class="medicine-info">
+        <text class="medicine-name">格列美脲片</text>
+        <text class="medicine-desc">2mg / 次，每日1次，早餐前服用</text>
+        <text class="medicine-note warning">建议今日 08:00 前服用</text>
+      </view>
+      <text class="medicine-tag waiting">待服用</text>
+    </view>
+    <view class="doctor-advice">
+      <view class="doctor-icon">医</view>
+      <view>
+        <text class="advice-title">王医生 今日调整建议</text>
+        <text class="advice-desc">近期血糖波动较大，建议增加血糖监测频率，每日测量4次（空腹、三餐后2小时）</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="module-card follow-module">
+    <view class="module-title">
+      <view class="title-left">
+        <view class="title-symbol calendar-symbol"></view>
+        <text>随访计划</text>
+      </view>
+      <button>查看详情</button>
+    </view>
+    <view class="follow-next">
+      <view class="date-box">
+        <text>6月</text>
+        <text>15</text>
+      </view>
+      <view>
+        <text class="follow-title">下次随访：内分泌科 王主任</text>
+        <text class="follow-desc">距离现在还有26天</text>
+      </view>
+    </view>
+    <view class="prepare-title">随访需准备：</view>
+    <view class="prepare-list">
+      <view><text class="check-mark">✓</text><text>近期1个月血糖、血压监测记录</text></view>
+      <view><text class="check-mark">✓</text><text>近期用药情况记录</text></view>
+      <view><text class="check-mark">✓</text><text>糖化血红蛋白复查报告</text></view>
+    </view>
+    <view class="goal-box">
+      <text class="goal-title">近期管理目标</text>
+      <view><text class="goal-dot"></text><text>空腹血糖控制在4.4-7.0mmol/L</text></view>
+      <view><text class="goal-dot"></text><text>餐后2小时血糖控制在10.0mmol/L以下</text></view>
+      <view><text class="goal-dot"></text><text>每周至少进行150分钟中等强度运动</text></view>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>健康档案</text>
+    <button>管理</button>
+  </view>
+  <view class="profile-card">
+    <text wx:for="{{healthTags}}" wx:key="*this">{{item}}</text>
+  </view>
+
+  <view class="section-head">
+    <text>健康服务</text>
+    <button>更多</button>
+  </view>
+  <view class="service-row">
+    <view wx:for="{{services}}" wx:key="label" class="service">
+      <view style="background-color: {{item.color}};">
+        <text class="service-mark">{{item.mark}}</text>
+      </view>
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+</view>

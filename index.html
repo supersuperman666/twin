@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多病种慢病管理小程序首页</title>
+  <style>
+    :root {
+      --bg: #eef5f3;
+      --surface: #ffffff;
+      --ink: #14211f;
+      --muted: #6f7f7a;
+      --line: #dfe9e6;
+      --primary: #16a37b;
+      --primary-dark: #06745b;
+      --blue: #2876d1;
+      --amber: #de8f16;
+      --rose: #d94f5c;
+      --violet: #6662d9;
+      --shadow: 0 16px 36px rgba(32, 71, 61, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 16% 10%, rgba(40, 118, 209, 0.14), transparent 28%),
+        linear-gradient(145deg, #f7fbfa 0%, #dfeee9 100%);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      position: relative;
+      background: var(--bg);
+      border: 12px solid #17231f;
+      border-radius: 42px;
+      box-shadow: 0 26px 70px rgba(15, 37, 30, 0.3);
+    }
+
+    .app {
+      height: 100%;
+      overflow-y: auto;
+      padding: 0 18px 94px;
+      scrollbar-width: none;
+    }
+
+    .app::-webkit-scrollbar {
+      display: none;
+    }
+
+    .status {
+      height: 42px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      padding: 0 10px 7px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .signal {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .battery {
+      width: 25px;
+      height: 12px;
+      border: 1.8px solid currentColor;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .battery::before {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 3px;
+      width: 2px;
+      height: 5px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 15px;
+      height: 6px;
+      border-radius: 2px;
+      background: currentColor;
+    }
+
+    .nav {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .capsule {
+      width: 87px;
+      height: 32px;
+      border: 1px solid rgba(16, 32, 27, 0.14);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      color: #22302c;
+    }
+
+    .dot-menu {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dot-menu span {
+      width: 3px;
+      height: 3px;
+      margin: 0 2px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .mini-circle {
+      width: 18px;
+      height: 18px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+    }
+
+    .hero {
+      margin-top: 8px;
+      padding: 18px;
+      border-radius: 8px;
+      color: #fff;
+      background:
+        linear-gradient(135deg, rgba(7, 116, 91, 0.98), rgba(21, 156, 121, 0.94)),
+        url("data:image/svg+xml,%3Csvg width='390' height='230' viewBox='0 0 390 230' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 178C62 130 110 180 151 126C194 69 244 116 291 61C324 22 352 36 377 10' stroke='white' stroke-opacity='.2' stroke-width='14' stroke-linecap='round'/%3E%3Cpath d='M23 54C66 82 95 48 129 78C163 109 191 92 224 118C262 148 301 128 357 171' stroke='white' stroke-opacity='.13' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='315' cy='153' r='76' fill='white' fill-opacity='.08'/%3E%3C/svg%3E");
+      box-shadow: var(--shadow);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .greeting {
+      min-width: 0;
+    }
+
+    .greeting strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 21px;
+      line-height: 1.2;
+    }
+
+    .greeting span {
+      display: block;
+      max-width: 210px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .risk-badge {
+      width: 86px;
+      height: 86px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(#fff2ca 0 68%, rgba(255, 255, 255, 0.22) 68% 100%);
+    }
+
+    .risk-inner {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      background: #0b7b60;
+      text-align: center;
+      line-height: 1.05;
+    }
+
+    .risk-inner b {
+      font-size: 17px;
+    }
+
+    .risk-inner small {
+      margin-top: 4px;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 10px;
+    }
+
+    .hero-note {
+      margin-top: 14px;
+      padding: 11px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.13);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .metric span {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.76);
+      white-space: nowrap;
+    }
+
+    .metric b {
+      font-size: 17px;
+    }
+
+    .metric em {
+      margin-left: 3px;
+      color: #ffe6a2;
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 2px 10px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .section-head button {
+      border: 0;
+      background: transparent;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 0;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .quick {
+      height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(44, 81, 68, 0.05);
+    }
+
+    .quick i,
+    .service i {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-style: normal;
+      font-size: 14px;
+    }
+
+    .alert-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .alert {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 11px;
+      align-items: start;
+      padding: 13px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 20px rgba(44, 81, 68, 0.05);
+    }
+
+    .alert.high {
+      border-color: rgba(217, 79, 92, 0.24);
+      background: #fff6f6;
+    }
+
+    .alert.medium {
+      border-color: rgba(222, 143, 22, 0.25);
+      background: #fff9ef;
+    }
+
+    .alert-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .alert.high .alert-mark {
+      background: var(--rose);
+    }
+
+    .alert.medium .alert-mark {
+      background: var(--amber);
+    }
+
+    .alert b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .alert span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .alert button {
+      height: 28px;
+      border: 0;
+      border-radius: 14px;
+      background: #eaf6f2;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+      padding: 0 10px;
+    }
+
+    .task-panel,
+    .plan-card,
+    .drug-card,
+    .profile-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 8px 20px rgba(44, 81, 68, 0.05);
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 54px;
+      border-bottom: 1px solid #edf2ef;
+    }
+
+    .task:last-child {
+      border-bottom: 0;
+    }
+
+    .task-check {
+      width: 26px;
+      height: 26px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--primary);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .task-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-info b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .task-info span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .task-action {
+      min-width: 58px;
+      height: 30px;
+      border: 0;
+      border-radius: 15px;
+      background: #e9f7f2;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .drug-top,
+    .plan-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .drug-top b,
+    .plan-top b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 15px;
+    }
+
+    .drug-top span,
+    .plan-top span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .pill {
+      flex: 0 0 auto;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #edf7f4;
+      color: var(--primary-dark);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .drug-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .drug-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #f5faf8;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .drug-item b {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .plan-progress {
+      height: 8px;
+      margin: 13px 0 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e4eeea;
+    }
+
+    .plan-progress span {
+      display: block;
+      width: 62%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), var(--blue));
+    }
+
+    .plan-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .plan-meta div {
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #f5faf8;
+    }
+
+    .plan-meta span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .plan-meta b {
+      font-size: 13px;
+    }
+
+    .profile-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .profile-tags span {
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: #f2f7f5;
+      color: #52645f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .service-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .service {
+      height: 76px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 7px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tabbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 78px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: start;
+      padding: 8px 16px 0;
+      border-top: 1px solid rgba(20, 37, 32, 0.08);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(18px);
+    }
+
+    .tab {
+      display: grid;
+      place-items: center;
+      gap: 4px;
+      color: #7a8883;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .tab svg {
+      width: 23px;
+      height: 23px;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tab.active {
+      color: var(--primary-dark);
+    }
+
+    @media (max-width: 520px) {
+      body {
+        display: block;
+        background: var(--bg);
+      }
+
+      .phone {
+        width: 100vw;
+        height: 100vh;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" aria-label="多病种慢病管理微信小程序首页效果稿">
+    <div class="app">
+      <div class="status">
+        <span>09:41</span>
+        <div class="signal">
+          <span>5G</span>
+          <span class="battery"></span>
+        </div>
+      </div>
+
+      <header class="nav">
+        <div class="nav-title">慢病管家</div>
+        <div class="capsule" aria-hidden="true">
+          <span class="dot-menu"><span></span><span></span><span></span></span>
+          <span class="mini-circle"></span>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="hero-top">
+          <div class="greeting">
+            <strong>陈女士，需关注</strong>
+            <span>夜间低氧叠加晨起血糖偏高，建议先完成复测和用药确认。</span>
+          </div>
+          <div class="risk-badge" aria-label="今日风险等级中风险">
+            <div class="risk-inner">
+              <b>中风险</b>
+              <small>今日状态</small>
+            </div>
+          </div>
+        </div>
+        <div class="hero-note">医生方案第 3 周：控糖稳定期，重点观察睡眠低氧对晨起血糖的影响。</div>
+        <div class="hero-metrics">
+          <div class="metric">
+            <span>空腹血糖</span>
+            <b>7.2</b><em>偏高</em>
+          </div>
+          <div class="metric">
+            <span>最低血氧</span>
+            <b>88%</b><em>预警</em>
+          </div>
+          <div class="metric">
+            <span>咳喘评分</span>
+            <b>3分</b><em>轻度</em>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <h2>快速记录</h2>
+        <button type="button">添加指标</button>
+      </div>
+
+      <section class="quick-grid" aria-label="常用指标快速记录">
+        <div class="quick"><i style="background:var(--primary);">糖</i>血糖</div>
+        <div class="quick"><i style="background:var(--blue);">氧</i>血氧</div>
+        <div class="quick"><i style="background:var(--amber);">症</i>症状</div>
+        <div class="quick"><i style="background:var(--violet);">眠</i>睡眠</div>
+      </section>
+
+      <div class="section-head">
+        <h2>风险预警</h2>
+        <button type="button">查看依据</button>
+      </div>
+
+      <section class="alert-stack">
+        <article class="alert high">
+          <div class="alert-mark">!</div>
+          <div>
+            <b>夜间血氧低于90%累计12分钟</b>
+            <span>建议今晚继续佩戴监测设备，若伴随胸闷、晨起头痛，请联系医生。</span>
+          </div>
+          <button type="button">处理</button>
+        </article>
+        <article class="alert medium">
+          <div class="alert-mark">i</div>
+          <div>
+            <b>空腹血糖连续2天高于目标</b>
+            <span>今日早餐后2小时需复测，并记录饮食与用药情况。</span>
+          </div>
+          <button type="button">复测</button>
+        </article>
+      </section>
+
+      <div class="section-head">
+        <h2>今日任务</h2>
+        <button type="button">全部</button>
+      </div>
+
+      <section class="task-panel">
+        <div class="task">
+          <div class="task-check">1</div>
+          <div class="task-info">
+            <b>早餐后2小时血糖</b>
+            <span>建议 10:30 前完成</span>
+          </div>
+          <button class="task-action" type="button">记录</button>
+        </div>
+        <div class="task">
+          <div class="task-check" style="background:#d8e3de;color:#78908a;">2</div>
+          <div class="task-info">
+            <b>吸入剂用药打卡</b>
+            <span>布地奈德福莫特罗 1吸</span>
+          </div>
+          <button class="task-action" type="button">打卡</button>
+        </div>
+        <div class="task">
+          <div class="task-check" style="background:#d8e3de;color:#78908a;">3</div>
+          <div class="task-info">
+            <b>睡眠报告确认</b>
+            <span>昨夜低氧事件已生成</span>
+          </div>
+          <button class="task-action" type="button">查看</button>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <h2>用药建议</h2>
+        <button type="button">用药计划</button>
+      </div>
+
+      <section class="drug-card">
+        <div class="drug-top">
+          <div>
+            <b>今日用药按原方案执行</b>
+            <span>若餐后血糖仍偏高，先补充饮食记录，暂不自行调整剂量。</span>
+          </div>
+          <span class="pill">医生确认</span>
+        </div>
+        <div class="drug-list">
+          <div class="drug-item"><b>二甲双胍</b><span>早餐后 1片，已服</span></div>
+          <div class="drug-item"><b>吸入剂</b><span>早晚各 1吸，待打卡</span></div>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <h2>随访诊疗方案</h2>
+        <button type="button">进入方案</button>
+      </div>
+
+      <section class="plan-card">
+        <div class="plan-top">
+          <div>
+            <b>本阶段目标：稳定控糖 + 改善夜间低氧</b>
+            <span>需连续上传 7 天血糖、睡眠血氧和咳喘评分，医生将在周五复评。</span>
+          </div>
+          <span class="pill">第3周</span>
+        </div>
+        <div class="plan-progress"><span></span></div>
+        <div class="plan-meta">
+          <div><span>下次随访</span><b>5月22日 15:00</b></div>
+          <div><span>待上传</span><b>睡眠血氧报告</b></div>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <h2>健康档案</h2>
+        <button type="button">管理</button>
+      </div>
+
+      <section class="profile-card">
+        <div class="profile-tags" aria-label="用户健康标签">
+          <span>2型糖尿病</span>
+          <span>慢阻肺稳定期</span>
+          <span>睡眠呼吸障碍风险</span>
+          <span>绑定血氧仪</span>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <h2>健康服务</h2>
+        <button type="button">更多</button>
+      </div>
+
+      <section class="service-row" aria-label="健康服务入口">
+        <div class="service"><i style="background:var(--primary);">问</i>医生咨询</div>
+        <div class="service"><i style="background:var(--blue);">报</i>报告解读</div>
+        <div class="service"><i style="background:var(--amber);">药</i>续方购药</div>
+        <div class="service"><i style="background:var(--violet);">设</i>设备绑定</div>
+      </section>
+    </div>
+
+    <nav class="tabbar" aria-label="底部导航">
+      <div class="tab active">
+        <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>
+        首页
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/><path d="M4 19.5h16"/></svg>
+        记录
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6"/><path d="M9 13h5"/></svg>
+        方案
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        我的
+      </div>
+    </nav>
+  </main>
+</body>
+</html>

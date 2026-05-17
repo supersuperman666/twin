@@ -1,0 +1,1572 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>记录模块视觉设计稿</title>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --page: #f6f8fb;
+      --card: #ffffff;
+      --text: #16202d;
+      --muted: #8d99a8;
+      --line: #e7ecf2;
+      --blue: #1f82ff;
+      --blue-soft: #e9f3ff;
+      --green: #10b981;
+      --green-soft: #e8f8f1;
+      --orange: #f59e0b;
+      --orange-soft: #fff4db;
+      --red: #ef4444;
+      --red-soft: #feecec;
+      --purple: #7c6df0;
+      --purple-soft: #f0efff;
+      --radius: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 28px;
+    }
+
+    .board-title {
+      max-width: 1440px;
+      margin: 0 auto 20px;
+    }
+
+    .board-title h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .board-title p {
+      margin: 0;
+      color: #5d6a7a;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .canvas {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(8, 390px);
+      gap: 24px;
+      align-items: start;
+      overflow-x: auto;
+      padding-bottom: 16px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      border-radius: 34px;
+      background: #101923;
+      padding: 12px;
+      box-shadow: 0 18px 50px rgba(20, 36, 54, .22);
+      flex: none;
+    }
+
+    .screen {
+      height: 100%;
+      border-radius: 26px;
+      background: var(--page);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .status {
+      height: 34px;
+      background: var(--page);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-icons {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .dot { width: 4px; height: 4px; border-radius: 50%; background: #202b38; }
+    .battery { width: 22px; height: 10px; border: 1.5px solid #202b38; border-radius: 3px; position: relative; }
+    .battery::after { content: ""; position: absolute; right: -4px; top: 2px; width: 2px; height: 4px; background: #202b38; border-radius: 2px; }
+
+    .content {
+      height: calc(100% - 34px);
+      overflow: hidden;
+      padding: 12px 16px 86px;
+    }
+
+    .content.scroll { overflow-y: auto; }
+    .content::-webkit-scrollbar { width: 0; }
+
+    .mini-page-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0 14px;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .date-bar {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 0 rgba(20, 36, 54, .02);
+    }
+
+    .date-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .calendar-icon {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--blue);
+      border-radius: 5px;
+      position: relative;
+    }
+    .calendar-icon::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      right: 3px;
+      top: 5px;
+      height: 2px;
+      background: var(--blue);
+    }
+
+    .week {
+      padding: 2px 6px;
+      color: #627084;
+      background: #edf2f8;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .date-actions { display: flex; gap: 8px; }
+    .round-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 0;
+      background: #f2f5f9;
+      color: #566477;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .anchors {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      padding: 2px 0 12px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: var(--page);
+    }
+
+    .pill {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 18px;
+      background: #edf1f5;
+      color: #657385;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .pill.active {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 5px 14px rgba(31, 130, 255, .26);
+    }
+
+    .section-title {
+      margin: 14px 0 10px;
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 1px 0 rgba(20, 36, 54, .02);
+    }
+
+    .wide { grid-column: 1 / -1; }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .metric-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 18px;
+      font-weight: 850;
+      min-width: 0;
+    }
+
+    .metric-title.compact { font-size: 17px; }
+    .metric-title.compact {
+      white-space: nowrap;
+      min-width: max-content;
+      flex-shrink: 0;
+    }
+    .value-inline { font-size: 23px; font-weight: 780; }
+
+    .tag {
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 18px;
+      white-space: nowrap;
+    }
+    .tag.normal { color: var(--blue); background: var(--blue-soft); }
+    .tag.good { color: var(--green); background: var(--green-soft); }
+    .tag.warn { color: var(--orange); background: var(--orange-soft); }
+    .tag.danger { color: var(--red); background: var(--red-soft); }
+    .tag.purple { color: var(--purple); background: var(--purple-soft); }
+
+    .add {
+      width: 32px;
+      height: 32px;
+      border: 2px solid #d5dde8;
+      border-radius: 50%;
+      color: #758397;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      line-height: 1;
+      flex: none;
+    }
+
+    .time {
+      color: #a0acba;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 13px;
+    }
+
+    .metric-value {
+      font-size: 34px;
+      font-weight: 780;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .metric-value.small { font-size: 30px; }
+    .unit {
+      color: #98a5b6;
+      font-size: 14px;
+      font-weight: 700;
+      margin-left: 3px;
+    }
+
+    .value-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 44px;
+    }
+
+    .fasting {
+      align-self: flex-end;
+      color: #5f6c7d;
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 18px;
+    }
+
+    .field-label {
+      color: #7f8b9c;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .field-value {
+      font-size: 25px;
+      font-weight: 760;
+    }
+
+    .sleep-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 100%);
+      border: 1px solid #e7f0ff;
+    }
+
+    .sleep-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .summary-cell {
+      background: rgba(255,255,255,.74);
+      border: 1px solid #ebf1f8;
+      border-radius: 10px;
+      padding: 9px;
+    }
+
+    .summary-cell b {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .summary-cell span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .note {
+      color: #637084;
+      background: #f4f7fb;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .record-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 10px;
+    }
+    .record-head .section-title { margin: 0; }
+    .link-add {
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .device-link {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 15px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .device-link::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border: 2px solid currentColor;
+      border-radius: 3px;
+      box-shadow: inset 0 -3px 0 rgba(31,130,255,.16);
+    }
+
+    .list-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .list-top {
+      display: flex;
+      justify-content: space-between;
+      color: #6a7584;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .list-title {
+      font-size: 16px;
+      font-weight: 850;
+      margin-bottom: 4px;
+    }
+
+    .list-desc {
+      color: #95a1b0;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .tabbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 72px;
+      background: rgba(255,255,255,.96);
+      border-top: 1px solid #edf1f5;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 7px 12px 10px;
+    }
+
+    .tab {
+      color: #8390a0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .tab.active { color: var(--blue); }
+    .tab-icon {
+      width: 22px;
+      height: 22px;
+      border: 2px solid currentColor;
+      border-radius: 6px;
+      position: relative;
+    }
+    .tab-icon.home { transform: rotate(45deg); border-radius: 4px; }
+    .tab-icon.home::after { content: ""; position: absolute; width: 11px; height: 11px; background: #fff; left: 4px; top: 8px; transform: rotate(-45deg); }
+    .tab-icon.user { border-radius: 50%; }
+    .tab-icon.user::after { content: ""; position: absolute; left: -5px; right: -5px; bottom: -12px; height: 12px; border: 2px solid currentColor; border-top-left-radius: 16px; border-top-right-radius: 16px; border-bottom: 0; }
+
+    .form-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 2px 0 14px;
+    }
+    .back {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .nav-title {
+      font-size: 18px;
+      font-weight: 850;
+    }
+    .ghost { width: 30px; }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: #ebf0f6;
+      border-radius: 12px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+    .seg { height: 34px; display: grid; place-items: center; border-radius: 9px; color: #687789; font-size: 13px; font-weight: 800; }
+    .seg.active { background: #fff; color: var(--blue); box-shadow: 0 2px 8px rgba(20,36,54,.08); }
+
+    .input-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .input-label {
+      color: #5f6d7e;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .big-input {
+      display: flex;
+      align-items: baseline;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+    .big-input .num {
+      font-size: 48px;
+      font-weight: 780;
+      line-height: 1;
+    }
+
+    .picker-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid #e9f1fb;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .picker-value {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin: 6px 0 14px;
+    }
+    .picker-value b {
+      font-size: 52px;
+      line-height: 1;
+      font-weight: 780;
+    }
+    .ruler {
+      position: relative;
+      height: 78px;
+      overflow: hidden;
+      border-radius: 14px;
+      background:
+        linear-gradient(to right, transparent 0, transparent 49%, rgba(31,130,255,.14) 49%, rgba(31,130,255,.14) 51%, transparent 51%),
+        #f1f6fc;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 0 16px 12px;
+    }
+    .ruler::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 2px;
+      height: 54px;
+      background: var(--blue);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      box-shadow: 0 0 0 5px rgba(31,130,255,.08);
+    }
+    .tick {
+      width: 2px;
+      background: #b9c6d6;
+      border-radius: 2px;
+      position: relative;
+    }
+    .tick.s { height: 18px; opacity: .65; }
+    .tick.m { height: 28px; }
+    .tick.l { height: 42px; background: #8fa2b8; }
+    .tick span {
+      position: absolute;
+      left: 50%;
+      bottom: -22px;
+      transform: translateX(-50%);
+      color: #7b8797;
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .picker-hint {
+      display: flex;
+      justify-content: space-between;
+      color: #95a1b0;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      padding: 8px 12px;
+      background: #f1f4f8;
+      border-radius: 15px;
+      color: #647386;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .chip.active { background: var(--blue-soft); color: var(--blue); }
+
+    .bottom-action {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      height: 48px;
+      border-radius: 15px;
+      background: var(--blue);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      font-weight: 850;
+      box-shadow: 0 10px 24px rgba(31, 130, 255, .28);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1f82ff, #52a5ff);
+      color: #fff;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .hero .label { opacity: .82; font-size: 13px; font-weight: 700; }
+    .hero-main {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin: 12px 0 4px;
+    }
+    .hero-value {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 780;
+    }
+    .hero-unit {
+      font-size: 15px;
+      opacity: .9;
+      margin-left: 4px;
+    }
+    .hero-status {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 850;
+      margin-bottom: 12px;
+    }
+    .range { color: var(--blue); font-size: 13px; font-weight: 850; }
+
+    .chart-summary {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .mini-stat {
+      flex: 1;
+      background: #f5f8fc;
+      border-radius: 11px;
+      padding: 8px 9px;
+    }
+    .mini-stat span {
+      display: block;
+      color: #8b98a8;
+      font-size: 11px;
+      font-weight: 750;
+      margin-bottom: 3px;
+    }
+    .mini-stat b {
+      font-size: 17px;
+      font-weight: 780;
+    }
+    .line-chart {
+      height: 138px;
+      position: relative;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(to bottom, rgba(234,240,247,.8) 1px, transparent 1px),
+        linear-gradient(to right, rgba(234,240,247,.65) 1px, transparent 1px);
+      background-size: 100% 34px, 44px 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      padding: 8px 0 0 0;
+    }
+    .poly {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+    }
+    .chart-tip {
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      background: rgba(22,32,45,.88);
+      color: #fff;
+      border-radius: 9px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 8px 18px rgba(22,32,45,.18);
+    }
+    .chart-x {
+      display: flex;
+      justify-content: space-between;
+      color: #a2adba;
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 7px;
+      padding: 0 2px;
+    }
+    .bar-chart {
+      height: 110px;
+      display: flex;
+      align-items: flex-end;
+      gap: 9px;
+      padding-top: 12px;
+    }
+    .bar {
+      flex: 1;
+      background: #dbeafe;
+      border-radius: 7px 7px 0 0;
+      position: relative;
+    }
+    .bar.deep { background: #93c5fd; }
+    .bar.warn { background: #fed7aa; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .kv-item {
+      background: #f5f8fb;
+      border-radius: 11px;
+      padding: 10px;
+    }
+    .kv-item span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      font-weight: 750;
+      margin-bottom: 5px;
+    }
+    .kv-item b {
+      font-size: 20px;
+      font-weight: 780;
+    }
+
+    .sleep-hero {
+      background: linear-gradient(135deg, #202b58 0%, #3068bf 58%, #62a9ff 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sleep-hero::after {
+      content: "";
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      right: -36px;
+      top: -36px;
+      background: rgba(255,255,255,.1);
+    }
+    .sleep-hero h3 {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+    .sleep-time {
+      font-size: 13px;
+      color: rgba(255,255,255,.78);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .sleep-score {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: relative;
+      z-index: 1;
+    }
+    .score-num {
+      font-size: 52px;
+      line-height: .9;
+      font-weight: 800;
+    }
+    .risk-badge {
+      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 13px;
+      padding: 9px 11px;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .timeline {
+      height: 26px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 8px;
+      margin: 10px 0 7px;
+    }
+    .stage-awake { background: #fbbf24; }
+    .stage-light { background: #60a5fa; }
+    .stage-deep { background: #2563eb; }
+    .stage-rem { background: #a78bfa; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      color: #687789;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .legend i {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .position-map {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .pos {
+      border-radius: 11px;
+      background: #f5f8fb;
+      padding: 9px 6px;
+      text-align: center;
+      font-size: 12px;
+      color: #687789;
+      font-weight: 800;
+    }
+    .pos b { display: block; color: var(--text); font-size: 17px; margin-bottom: 2px; }
+    .pos.active { background: var(--orange-soft); color: #9a5a00; }
+
+    .wave {
+      height: 76px;
+      position: relative;
+      overflow: hidden;
+      background: #f5f8fb;
+      border-radius: 12px;
+    }
+    .wave svg { width: 100%; height: 100%; }
+
+    .source-note {
+      max-width: 1440px;
+      margin: 18px auto 0;
+      color: #5e6b7a;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .device-card {
+      border: 1px solid #e8eef5;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .device-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .device-name {
+      font-size: 17px;
+      font-weight: 860;
+      margin-bottom: 4px;
+    }
+    .device-model {
+      color: #8d99a8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .device-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .metric-chip {
+      background: #f2f6fb;
+      color: #647386;
+      border-radius: 13px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      margin: 0 0 12px;
+    }
+    .filter-chip {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 15px;
+      background: #edf2f7;
+      color: #657385;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .filter-chip.active {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+    .month-block {
+      margin-bottom: 14px;
+    }
+    .day-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #607083;
+      font-size: 14px;
+      font-weight: 850;
+      margin: 13px 0 8px;
+    }
+    .history-item {
+      background: var(--card);
+      border-radius: 13px;
+      padding: 12px;
+      margin-bottom: 9px;
+      border: 1px solid #eef2f7;
+    }
+    .history-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .history-title {
+      font-size: 16px;
+      font-weight: 850;
+    }
+    .history-value {
+      font-size: 20px;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+    .history-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: #8d99a8;
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.6;
+    }
+    .source-badge {
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #647386;
+      font-size: 11px;
+      font-weight: 850;
+    }
+    .source-badge.device {
+      background: #eef6ff;
+      color: var(--blue);
+    }
+    .drawer-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(19, 29, 42, .34);
+      z-index: 8;
+      display: flex;
+      align-items: flex-end;
+    }
+    .drawer {
+      width: 100%;
+      max-height: 72%;
+      background: #fff;
+      border-radius: 22px 22px 0 0;
+      padding: 10px 16px 18px;
+      box-shadow: 0 -14px 30px rgba(20,36,54,.18);
+      overflow: hidden;
+    }
+    .handle {
+      width: 42px;
+      height: 4px;
+      border-radius: 999px;
+      background: #d8dee7;
+      margin: 0 auto 14px;
+    }
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 880;
+      margin-bottom: 4px;
+    }
+    .detail-list {
+      display: grid;
+      gap: 9px;
+      margin-bottom: 14px;
+    }
+    .detail-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eef2f7;
+      font-size: 13px;
+    }
+    .detail-line span {
+      color: #8a97a8;
+      font-weight: 750;
+    }
+    .detail-line b {
+      text-align: right;
+      font-weight: 820;
+    }
+    .drawer-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .outline-action,
+    .danger-action {
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .outline-action {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+    .danger-action {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+  </style>
+</head>
+<body>
+  <div class="board-title">
+    <h1>记录模块视觉设计稿</h1>
+    <p>覆盖：记录页、指标记录页、血糖详情页、血氧详情页、指标记录明细页、睡眠报告二级分析页、睡眠历史报告页、设备管理占位页。尺寸按 iPhone 390×844 进行小程序视觉预览，所有页面保留统一底部 Tab Bar 规范。</p>
+  </div>
+
+  <div class="canvas">
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="mini-page-title">
+            <div>记录<div class="sub">查看和补录每日健康数据</div></div>
+            <div class="device-link">设备管理</div>
+          </div>
+          <div class="date-bar">
+            <div class="date-main"><i class="calendar-icon"></i><span>2023年5月16日</span><span class="week">周二</span></div>
+            <div class="date-actions"><button class="round-btn">‹</button><button class="round-btn">›</button></div>
+          </div>
+          <div class="anchors">
+            <div class="pill active">全部</div><div class="pill">基础指标</div><div class="pill">血氧呼吸</div><div class="pill">睡眠</div><div class="pill">症状</div><div class="pill">用药</div>
+          </div>
+
+          <h2 class="section-title">基础指标</h2>
+          <div class="grid">
+            <article class="card wide">
+              <div class="card-head">
+                <div>
+                  <div class="metric-title">BMI <span class="value-inline">23.4</span><span class="tag normal">正常</span></div>
+                  <div class="time">05.16 14:18</div>
+                </div>
+                <div class="add">+</div>
+              </div>
+              <div class="two-cols">
+                <div><div class="field-label">身高</div><div class="field-value">160.0<span class="unit">cm</span></div></div>
+                <div><div class="field-label">体重</div><div class="field-value">60.0<span class="unit">kg</span></div></div>
+              </div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div class="metric-title compact">血压<span class="tag normal">正常</span></div><div class="add">+</div></div>
+              <div class="time">05.16 22:21</div>
+              <div class="metric-value small">120/90<span class="unit">mmHg</span></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div class="metric-title compact">血糖<span class="tag normal">正常</span></div><div class="add">+</div></div>
+              <div class="time">05.16 14:53</div>
+              <div class="value-row"><div class="metric-value small">5<span class="unit">mmol/L</span></div><div class="fasting">空腹</div></div>
+            </article>
+          </div>
+
+          <h2 class="section-title">血氧呼吸</h2>
+          <div class="grid">
+            <article class="card">
+              <div class="card-head"><div class="metric-title compact">SpO2<span class="tag normal">正常</span></div><div class="add">+</div></div>
+              <div class="time">05.16 08:30</div>
+              <div class="metric-value small">98<span class="unit">%</span></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div class="metric-title compact">脉率<span class="tag normal">正常</span></div><div class="add">+</div></div>
+              <div class="time">05.16 08:30</div>
+              <div class="metric-value small">72<span class="unit">次/分</span></div>
+            </article>
+          </div>
+
+          <h2 class="section-title">睡眠</h2>
+          <article class="card wide sleep-card">
+            <div class="card-head">
+              <div>
+                <div class="metric-title">昨晚睡眠报告 <span class="tag warn">轻度风险</span></div>
+                <div class="time">05.15 22:48 - 05.16 06:20</div>
+              </div>
+              <div class="link-add">详情</div>
+            </div>
+            <div class="sleep-summary">
+              <div class="summary-cell"><b>6.5</b><span>睡眠时长/小时</span></div>
+              <div class="summary-cell"><b>3.2</b><span>AHI/次每小时</span></div>
+              <div class="summary-cell"><b>88%</b><span>最低血氧</span></div>
+            </div>
+            <div class="note">低于 90% 累计 12 分钟，仰卧位事件更集中，建议继续监测并关注白天嗜睡。</div>
+          </article>
+
+          <div class="record-head"><h2 class="section-title">症状记录</h2><div class="link-add">+ 添加</div></div>
+          <article class="list-card">
+            <div class="list-top"><span>05.16 19:30</span><span class="tag warn">轻度</span></div>
+            <div class="list-title">头痛，略有头晕</div>
+            <div class="list-desc">持续约2小时，休息后缓解</div>
+          </article>
+
+          <div class="record-head"><h2 class="section-title">用药记录</h2><div class="link-add">+ 添加</div></div>
+          <article class="list-card">
+            <div class="list-top"><span>05.16 08:00</span><span class="tag good">已服用</span></div>
+            <div class="list-title">阿司匹林肠溶片</div>
+            <div class="list-desc">100mg · 早餐前服用</div>
+          </article>
+        </main>
+        <nav class="tabbar"><div class="tab"><i class="tab-icon home"></i>首页</div><div class="tab active"><i class="tab-icon"></i>记录</div><div class="tab"><i class="tab-icon"></i>方案</div><div class="tab"><i class="tab-icon user"></i>我的</div></nav>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">记录血糖</div><div class="ghost"></div></div>
+          <div class="segmented"><div class="seg active">空腹</div><div class="seg">餐后</div><div class="seg">随机</div><div class="seg">睡前</div></div>
+          <section class="picker-card">
+            <div class="input-label">血糖值</div>
+            <div class="picker-value"><b>5.0</b><span class="unit">mmol/L</span></div>
+            <div class="ruler">
+              <i class="tick s"></i><i class="tick m"></i><i class="tick s"></i><i class="tick l"><span>4.8</span></i><i class="tick s"></i><i class="tick m"></i><i class="tick s"></i><i class="tick l"><span>5.0</span></i><i class="tick s"></i><i class="tick m"></i><i class="tick s"></i><i class="tick l"><span>5.2</span></i><i class="tick s"></i><i class="tick m"></i><i class="tick s"></i>
+            </div>
+            <div class="picker-hint"><span>左右滑动选择</span><span>键盘精确输入</span></div>
+            <div class="sub">正常范围：空腹 4.4-7.0 mmol/L</div>
+          </section>
+          <section class="input-card">
+            <div class="input-label">记录时间</div>
+            <div class="date-bar" style="margin:0; padding:0; box-shadow:none;"><div class="date-main" style="font-size:16px;">2023年5月16日 <span class="week">周二</span></div><div class="time" style="margin:0;">14:53</div></div>
+          </section>
+          <section class="input-card">
+            <div class="input-label">测量场景</div>
+            <div class="chips"><span class="chip active">早餐前</span><span class="chip">午餐前</span><span class="chip">晚餐前</span><span class="chip">运动后</span></div>
+          </section>
+          <section class="input-card">
+            <div class="input-label">备注</div>
+            <div class="note">今天没有明显低血糖症状，饮食正常。</div>
+          </section>
+          <div class="bottom-action">保存记录</div>
+        </main>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">血糖详情</div><div class="ghost"></div></div>
+          <section class="hero">
+            <div class="label">最新血糖 · 空腹 · 05.16 14:53</div>
+            <div class="hero-main"><div><span class="hero-value">5.0</span><span class="hero-unit">mmol/L</span></div><div class="hero-status">正常</div></div>
+            <div class="label">近 7 天空腹血糖稳定，暂无连续异常。</div>
+          </section>
+          <div class="segmented"><div class="seg active">全部</div><div class="seg">空腹</div><div class="seg">餐后</div><div class="seg">随机</div></div>
+          <section class="chart-card">
+            <div class="chart-head"><span>血糖趋势</span><span class="range">近7天</span></div>
+            <div class="chart-summary"><div class="mini-stat"><span>平均</span><b>5.6</b></div><div class="mini-stat"><span>最高</span><b>7.8</b></div><div class="mini-stat"><span>达标率</span><b>86%</b></div></div>
+            <div class="line-chart">
+              <svg class="poly" viewBox="0 0 320 100" preserveAspectRatio="none">
+                <rect x="0" y="30" width="320" height="32" fill="rgba(16,185,129,.10)"/>
+                <polyline points="0,60 45,52 90,58 135,44 180,50 225,38 270,46 320,35" fill="none" stroke="#1f82ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M0,60 L45,52 L90,58 L135,44 L180,50 L225,38 L270,46 L320,35 L320,100 L0,100 Z" fill="rgba(31,130,255,.12)"/>
+                <circle cx="225" cy="38" r="5" fill="#fff" stroke="#1f82ff" stroke-width="3"/>
+                <circle cx="320" cy="35" r="5" fill="#fff" stroke="#1f82ff" stroke-width="3"/>
+              </svg>
+              <div class="chart-tip">05.16 5.0</div>
+            </div>
+            <div class="chart-x"><span>05.10</span><span>05.12</span><span>05.14</span><span>05.16</span></div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><span>目标范围</span></div>
+            <div class="kv">
+              <div class="kv-item"><span>空腹</span><b>4.4-7.0</b><span>mmol/L</span></div>
+              <div class="kv-item"><span>餐后2小时</span><b>&lt;10.0</b><span>mmol/L</span></div>
+            </div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><span>最近记录</span><span class="link-add">查看全部</span></div>
+            <article class="list-card" style="padding:0; margin:0 0 12px;"><div class="list-top"><span>05.16 14:53</span><span class="tag normal">空腹</span></div><div class="list-title">5.0 mmol/L</div></article>
+            <article class="list-card" style="padding:0; margin:0;"><div class="list-top"><span>05.15 21:30</span><span class="tag purple">睡前</span></div><div class="list-title">7.8 mmol/L</div></article>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">血氧详情</div><div class="ghost"></div></div>
+          <section class="hero" style="background:linear-gradient(135deg,#06b6d4,#1f82ff);">
+            <div class="label">最新血氧 · 静息 · 05.16 08:30</div>
+            <div class="hero-main"><div><span class="hero-value">98</span><span class="hero-unit">%</span></div><div class="hero-status">SpO2 正常</div></div>
+            <div class="label">脉率 72 次/分。夜间最低血氧进入睡眠报告查看。</div>
+          </section>
+          <div class="segmented"><div class="seg active">全部</div><div class="seg">静息</div><div class="seg">活动后</div><div class="seg">睡前</div></div>
+          <section class="chart-card">
+            <div class="chart-head"><span>SpO2 趋势</span><span class="range">近7天</span></div>
+            <div class="chart-summary"><div class="mini-stat"><span>平均</span><b>96%</b></div><div class="mini-stat"><span>最低</span><b>94%</b></div><div class="mini-stat"><span>低氧</span><b>0次</b></div></div>
+            <div class="line-chart">
+              <svg class="poly" viewBox="0 0 320 100" preserveAspectRatio="none">
+                <rect x="0" y="18" width="320" height="42" fill="rgba(6,182,212,.09)"/>
+                <polyline points="0,34 45,32 90,42 135,35 180,39 225,30 270,34 320,28" fill="none" stroke="#06b6d4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="0" y1="68" x2="320" y2="68" stroke="#f59e0b" stroke-dasharray="6 6" stroke-width="2"/>
+                <circle cx="320" cy="28" r="5" fill="#fff" stroke="#06b6d4" stroke-width="3"/>
+              </svg>
+              <div class="chart-tip">最新 98%</div>
+            </div>
+            <div class="chart-x"><span>05.10</span><span>05.12</span><span>05.14</span><span>05.16</span></div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><span>脉率趋势</span><span class="range">近7天</span></div>
+            <div class="bar-chart">
+              <div class="bar" style="height:54%;"></div><div class="bar deep" style="height:62%;"></div><div class="bar" style="height:50%;"></div><div class="bar deep" style="height:66%;"></div><div class="bar" style="height:58%;"></div><div class="bar deep" style="height:55%;"></div><div class="bar" style="height:60%;"></div>
+            </div>
+          </section>
+          <section class="chart-card">
+            <div class="chart-head"><span>最近记录</span><span class="link-add">查看全部</span></div>
+            <article class="list-card" style="padding:0; margin:0 0 12px;"><div class="list-top"><span>05.16 08:30</span><span class="tag normal">静息</span></div><div class="list-title">SpO2 98% · 脉率 72次/分</div></article>
+            <article class="list-card" style="padding:0; margin:0;"><div class="list-top"><span>05.15 21:20</span><span class="tag warn">睡前</span></div><div class="list-title">SpO2 94% · 脉率 78次/分</div></article>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">血糖记录明细</div><div class="ghost"></div></div>
+          <div class="date-bar">
+            <div class="date-main"><i class="calendar-icon"></i><span>2026年5月</span></div>
+            <div class="date-actions"><button class="round-btn">‹</button><button class="round-btn">›</button></div>
+          </div>
+          <div class="segmented"><div class="seg">按年</div><div class="seg active">按月</div><div class="seg">按日</div><div class="seg">全部</div></div>
+          <section class="chart-card">
+            <div class="chart-head"><span>本月概览</span><span class="range">28条</span></div>
+            <div class="chart-summary"><div class="mini-stat"><span>异常</span><b>3</b></div><div class="mini-stat"><span>手动</span><b>20</b></div><div class="mini-stat"><span>设备</span><b>8</b></div></div>
+          </section>
+          <div class="filter-row"><span class="filter-chip active">全部来源</span><span class="filter-chip">手动</span><span class="filter-chip">设备</span><span class="filter-chip">正常</span><span class="filter-chip">异常</span></div>
+          <div class="filter-row"><span class="filter-chip active">全部场景</span><span class="filter-chip">空腹</span><span class="filter-chip">餐后</span><span class="filter-chip">随机</span><span class="filter-chip">睡前</span></div>
+          <section class="month-block">
+            <div class="day-title"><span>05.17 周日</span><span>3条</span></div>
+            <article class="history-item">
+              <div class="history-main"><div><div class="history-title">血糖 · 空腹</div><div class="history-meta"><span>08:30</span><span class="source-badge">手动记录</span><span>早餐前测量</span></div></div><div class="history-value">5.0<span class="unit">mmol/L</span></div></div>
+              <div class="history-meta"><span class="tag normal">正常</span><span>未修改</span></div>
+            </article>
+            <article class="history-item">
+              <div class="history-main"><div><div class="history-title">血糖 · 餐后</div><div class="history-meta"><span>13:05</span><span class="source-badge device">设备采集</span><span>SN ZG-P11H-0021</span></div></div><div class="history-value">8.6<span class="unit">mmol/L</span></div></div>
+              <div class="history-meta"><span class="tag normal">正常</span><span>有备注</span></div>
+            </article>
+            <div class="day-title"><span>05.16 周六</span><span>2条</span></div>
+            <article class="history-item">
+              <div class="history-main"><div><div class="history-title">血糖 · 睡前</div><div class="history-meta"><span>21:20</span><span class="source-badge">手动记录</span><span>晚餐后散步30分钟</span></div></div><div class="history-value">7.8<span class="unit">mmol/L</span></div></div>
+              <div class="history-meta"><span class="tag normal">正常</span><span>已修改</span></div>
+            </article>
+          </section>
+        </main>
+        <div class="drawer-mask">
+          <div class="drawer">
+            <div class="handle"></div>
+            <div class="drawer-head">
+              <div><div class="drawer-title">血糖记录详情</div><div class="sub">单条记录完整信息</div></div>
+              <span class="tag normal">正常</span>
+            </div>
+            <div class="detail-list">
+              <div class="detail-line"><span>指标值</span><b>5.0 mmol/L</b></div>
+              <div class="detail-line"><span>记录时间</span><b>2026.05.17 08:30</b></div>
+              <div class="detail-line"><span>记录场景</span><b>空腹</b></div>
+              <div class="detail-line"><span>数据来源</span><b>手动记录</b></div>
+              <div class="detail-line"><span>备注</span><b>早餐前测量，无明显低血糖症状</b></div>
+              <div class="detail-line"><span>修改信息</span><b>未修改</b></div>
+            </div>
+            <div class="drawer-actions"><div class="outline-action">编辑记录</div><div class="danger-action">删除记录</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">睡眠报告</div><div class="ghost"></div></div>
+          <section class="sleep-hero">
+            <h3>昨晚睡眠分析</h3>
+            <div class="sleep-time">05.15 22:48 入睡 · 05.16 06:20 起床 · 监测 7小时32分</div>
+            <div class="sleep-score">
+              <div><div class="score-num">76</div><div class="label">睡眠评分</div></div>
+              <div class="risk-badge">轻度风险</div>
+            </div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>报告概览</span><span class="tag warn">低氧需关注</span></div>
+            <div class="kv">
+              <div class="kv-item"><span>睡眠时长</span><b>6.5</b><span>小时</span></div>
+              <div class="kv-item"><span>入睡耗时</span><b>18</b><span>分钟</span></div>
+              <div class="kv-item"><span>AHI</span><b>3.2</b><span>次/小时</span></div>
+              <div class="kv-item"><span>ODI</span><b>2.8</b><span>次/小时</span></div>
+              <div class="kv-item"><span>最低血氧</span><b>88%</b><span>夜间最低</span></div>
+              <div class="kv-item"><span>低氧累计</span><b>12</b><span>分钟 &lt;90%</span></div>
+            </div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>睡眠阶段</span><span class="range">整晚</span></div>
+            <div class="timeline">
+              <div class="stage-light" style="width:18%;"></div>
+              <div class="stage-deep" style="width:20%;"></div>
+              <div class="stage-light" style="width:16%;"></div>
+              <div class="stage-rem" style="width:14%;"></div>
+              <div class="stage-awake" style="width:6%;"></div>
+              <div class="stage-light" style="width:16%;"></div>
+              <div class="stage-rem" style="width:10%;"></div>
+            </div>
+            <div class="legend"><span><i class="stage-awake"></i>清醒 22分</span><span><i class="stage-light"></i>浅睡 3.6h</span><span><i class="stage-deep"></i>深睡 1.4h</span><span><i class="stage-rem"></i>REM 1.1h</span></div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>呼吸事件</span><span class="tag normal">AHI正常</span></div>
+            <div class="kv">
+              <div class="kv-item"><span>呼吸暂停</span><b>12</b><span>次/晚</span></div>
+              <div class="kv-item"><span>低通气</span><b>18</b><span>次/晚</span></div>
+              <div class="kv-item"><span>阻塞型</span><b>8</b><span>次</span></div>
+              <div class="kv-item"><span>中枢/混合</span><b>4</b><span>次</span></div>
+            </div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>血氧趋势</span><span class="tag warn">最低88%</span></div>
+            <div class="chart-summary"><div class="mini-stat"><span>平均血氧</span><b>94%</b></div><div class="mini-stat"><span>最低血氧</span><b>88%</b></div><div class="mini-stat"><span>&lt;90%</span><b>12分</b></div></div>
+            <div class="line-chart">
+              <svg class="poly" viewBox="0 0 320 100" preserveAspectRatio="none">
+                <rect x="0" y="0" width="320" height="60" fill="rgba(16,185,129,.08)"/>
+                <rect x="0" y="60" width="320" height="40" fill="rgba(239,68,68,.08)"/>
+                <polyline points="0,28 38,35 70,30 104,70 134,44 168,76 198,42 230,60 262,34 320,40" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="0" y1="60" x2="320" y2="60" stroke="#f59e0b" stroke-dasharray="6 6" stroke-width="2"/>
+                <circle cx="168" cy="76" r="5" fill="#fff" stroke="#ef4444" stroke-width="3"/>
+              </svg>
+              <div class="chart-tip">最低 88%</div>
+            </div>
+            <div class="chart-x"><span>23:00</span><span>01:00</span><span>03:00</span><span>05:00</span></div>
+            <div class="note">虚线为 90% 风险线。低氧事件主要集中在 02:30-04:10。</div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>体位分析</span><span class="tag purple">ZG-M11A支持</span></div>
+            <div class="position-map">
+              <div class="pos active"><b>46%</b>仰卧</div>
+              <div class="pos"><b>28%</b>左侧</div>
+              <div class="pos"><b>22%</b>右侧</div>
+              <div class="pos"><b>4%</b>俯卧</div>
+            </div>
+            <div class="note" style="margin-top:10px;">仰卧位 AHI 5.8 次/小时，高于侧卧位，建议睡前减少仰卧时间。</div>
+          </section>
+
+          <section class="chart-card">
+            <div class="chart-head"><span>鼾声与体动</span><span class="range">夜间分布</span></div>
+            <div class="wave">
+              <svg viewBox="0 0 320 76" preserveAspectRatio="none">
+                <path d="M0 45 C20 20 38 70 56 40 C74 12 88 66 106 38 C126 10 142 72 160 32 C180 14 196 70 214 40 C234 20 248 66 266 36 C286 18 302 60 320 44" fill="none" stroke="#7c6df0" stroke-width="4"/>
+              </svg>
+            </div>
+            <div class="kv" style="margin-top:10px;">
+              <div class="kv-item"><span>鼾声时长</span><b>48</b><span>分钟</span></div>
+              <div class="kv-item"><span>体动次数</span><b>36</b><span>次</span></div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">睡眠历史报告</div><div class="ghost"></div></div>
+          <div class="date-bar">
+            <div class="date-main"><i class="calendar-icon"></i><span>2026年5月</span></div>
+            <div class="date-actions"><button class="round-btn">‹</button><button class="round-btn">›</button></div>
+          </div>
+          <section class="chart-card">
+            <div class="chart-head"><span>本月睡眠概览</span><span class="range">18晚</span></div>
+            <div class="chart-summary"><div class="mini-stat"><span>平均AHI</span><b>3.8</b></div><div class="mini-stat"><span>低氧异常</span><b>4晚</b></div><div class="mini-stat"><span>平均时长</span><b>6.6h</b></div></div>
+          </section>
+          <div class="filter-row"><span class="filter-chip active">全部报告</span><span class="filter-chip">正常</span><span class="filter-chip">轻度风险</span><span class="filter-chip">无效</span></div>
+          <article class="history-item">
+            <div class="history-main">
+              <div><div class="history-title">05.17 周日 · 昨晚报告</div><div class="history-meta"><span>22:48-06:20</span><span class="source-badge device">ZG-M11A-0008</span></div></div>
+              <span class="tag warn">轻度风险</span>
+            </div>
+            <div class="kv">
+              <div class="kv-item"><span>睡眠</span><b>6.5h</b></div>
+              <div class="kv-item"><span>AHI</span><b>3.2</b></div>
+              <div class="kv-item"><span>最低血氧</span><b>88%</b></div>
+              <div class="kv-item"><span>低氧</span><b>12分</b></div>
+            </div>
+          </article>
+          <article class="history-item">
+            <div class="history-main">
+              <div><div class="history-title">05.16 周六 · 睡眠报告</div><div class="history-meta"><span>23:10-06:42</span><span class="source-badge device">ZG-M11A-0008</span></div></div>
+              <span class="tag normal">正常</span>
+            </div>
+            <div class="kv">
+              <div class="kv-item"><span>睡眠</span><b>6.9h</b></div>
+              <div class="kv-item"><span>AHI</span><b>2.6</b></div>
+              <div class="kv-item"><span>最低血氧</span><b>92%</b></div>
+              <div class="kv-item"><span>低氧</span><b>0分</b></div>
+            </div>
+          </article>
+          <article class="history-item">
+            <div class="history-main">
+              <div><div class="history-title">05.15 周五 · 睡眠报告</div><div class="history-meta"><span>报告生成中</span><span class="source-badge device">ZG-M11A-0008</span></div></div>
+              <span class="tag purple">生成中</span>
+            </div>
+            <div class="note">设备数据已同步，报告正在分析，稍后可查看详情。</div>
+          </article>
+        </main>
+      </div>
+    </section>
+
+    <section class="phone">
+      <div class="screen">
+        <div class="status"><span>16:00</span><span class="status-icons"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="battery"></i></span></div>
+        <main class="content scroll">
+          <div class="form-nav"><div class="back">‹</div><div class="nav-title">设备管理</div><div class="ghost"></div></div>
+          <section class="hero" style="background:linear-gradient(135deg,#0f766e,#1f82ff);">
+            <div class="label">已绑定设备</div>
+            <div class="hero-main"><div><span class="hero-value">2</span><span class="hero-unit">台</span></div><div class="hero-status">同步正常</div></div>
+            <div class="label">用于自动同步血氧、脉率、睡眠报告等数据。</div>
+          </section>
+
+          <div class="record-head"><h2 class="section-title">我的设备</h2><div class="link-add">+ 添加设备</div></div>
+          <article class="device-card">
+            <div class="device-top">
+              <div><div class="device-name">医用脉搏血氧仪</div><div class="device-model">ZG-P11H · 最近同步 08:30</div></div>
+              <span class="tag good">已连接</span>
+            </div>
+            <div class="device-metrics"><span class="metric-chip">SpO2</span><span class="metric-chip">脉率</span><span class="metric-chip">ODI</span><span class="metric-chip">夜间血氧</span></div>
+          </article>
+
+          <article class="device-card">
+            <div class="device-top">
+              <div><div class="device-name">睡眠呼吸监测系统</div><div class="device-model">ZG-M11A · 昨晚报告已生成</div></div>
+              <span class="tag normal">已绑定</span>
+            </div>
+            <div class="device-metrics"><span class="metric-chip">AHI</span><span class="metric-chip">ODI</span><span class="metric-chip">体位</span><span class="metric-chip">睡眠分期</span><span class="metric-chip">血氧趋势</span></div>
+          </article>
+
+          <div class="record-head"><h2 class="section-title">可添加设备</h2></div>
+          <article class="device-card">
+            <div class="device-top">
+              <div><div class="device-name">血糖仪</div><div class="device-model">后续支持蓝牙同步，当前可手动记录</div></div>
+              <span class="tag normal">添加</span>
+            </div>
+            <div class="device-metrics"><span class="metric-chip">血糖</span><span class="metric-chip">空腹/餐后</span></div>
+          </article>
+
+          <article class="device-card">
+            <div class="device-top">
+              <div><div class="device-name">血压计</div><div class="device-model">后续支持设备对接，当前可手动记录</div></div>
+              <span class="tag normal">添加</span>
+            </div>
+            <div class="device-metrics"><span class="metric-chip">收缩压</span><span class="metric-chip">舒张压</span><span class="metric-chip">脉搏</span></div>
+          </article>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <div class="source-note">
+    设计原则：记录页只展示用户需要当天快速判断和补录的核心结果；AHI、ODI、低氧、体位、睡眠阶段、鼾声、体动等属于整晚报告分析，放入睡眠报告二级页。若接入 ZG-M11B 或设备未返回某类数据，对应模块展示“设备暂不支持/本次无有效数据”。
+  </div>
+</body>
+</html>

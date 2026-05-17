@@ -1,0 +1,42 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/screening/index",
+    "pages/record/index",
+    "pages/plan/index",
+    "pages/me/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "慢病管家",
+    "navigationBarBackgroundColor": "#4B92F0",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F7FB"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#8A96A3",
+    "selectedColor": "#237BE8",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/plan/index",
+        "text": "方案"
+      },
+      {
+        "pagePath": "pages/me/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

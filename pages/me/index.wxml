@@ -1,0 +1,46 @@
+<view class="page">
+  <view class="profile-card">
+    <view class="avatar">陈</view>
+    <view class="profile-info">
+      <text class="profile-name">陈女士</text>
+      <text class="profile-desc">2型糖尿病 · 慢阻肺稳定期 · 睡眠呼吸障碍风险</text>
+    </view>
+    <text class="risk-tag">中风险</text>
+  </view>
+
+  <view class="section-head">
+    <text>健康档案</text>
+    <button>编辑</button>
+  </view>
+  <view class="info-grid">
+    <view wx:for="{{profileItems}}" wx:key="label" class="info-card">
+      <text>{{item.label}}</text>
+      <text>{{item.value}}</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>设备管理</text>
+    <button>绑定</button>
+  </view>
+  <view class="device-list">
+    <view wx:for="{{devices}}" wx:key="name" class="device-card">
+      <view class="device-icon">{{item.mark}}</view>
+      <view>
+        <text class="device-name">{{item.name}}</text>
+        <text class="device-desc">{{item.desc}}</text>
+      </view>
+      <text class="device-status">{{item.status}}</text>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text>服务与设置</text>
+  </view>
+  <view class="menu-list">
+    <view wx:for="{{menus}}" wx:key="label" class="menu-item">
+      <text>{{item.label}}</text>
+      <text>›</text>
+    </view>
+  </view>
+</view>

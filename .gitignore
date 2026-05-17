@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+miniprogram_npm/
+dist/
+build/
+coverage/
+*.log
+
+# WeChat DevTools local/private settings
+project.private.config.json
+
+# Generated previews
+homepage-preview.png

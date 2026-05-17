@@ -1,0 +1,176 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx 32rpx 156rpx;
+  background: #f6f7f9;
+  color: #17212b;
+}
+
+.profile-card {
+  padding: 30rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: 88rpx 1fr auto;
+  gap: 20rpx;
+  align-items: center;
+}
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #eaf3ff;
+  color: #237be8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.profile-info {
+  min-width: 0;
+}
+
+.profile-name {
+  display: block;
+  color: #1f2937;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.profile-desc {
+  display: block;
+  margin-top: 8rpx;
+  color: #8a96a3;
+  font-size: 23rpx;
+  line-height: 1.35;
+}
+
+.risk-tag {
+  padding: 8rpx 14rpx;
+  border-radius: 10rpx;
+  background: #fff0c7;
+  color: #d97706;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.section-head {
+  margin: 34rpx 0 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-head text {
+  color: #1f2937;
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.section-head button {
+  color: #237be8;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18rpx;
+}
+
+.info-card,
+.device-card,
+.menu-list {
+  border-radius: 18rpx;
+  background: #ffffff;
+}
+
+.info-card {
+  min-height: 112rpx;
+  padding: 22rpx;
+}
+
+.info-card text:first-child {
+  display: block;
+  color: #8a96a3;
+  font-size: 23rpx;
+}
+
+.info-card text:last-child {
+  display: block;
+  margin-top: 12rpx;
+  color: #1f2937;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.device-card {
+  min-height: 112rpx;
+  padding: 22rpx;
+  display: grid;
+  grid-template-columns: 58rpx 1fr auto;
+  gap: 18rpx;
+  align-items: center;
+}
+
+.device-icon {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 18rpx;
+  background: #eaf3ff;
+  color: #237be8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.device-name {
+  display: block;
+  color: #1f2937;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.device-desc {
+  display: block;
+  margin-top: 6rpx;
+  color: #8a96a3;
+  font-size: 23rpx;
+}
+
+.device-status {
+  color: #17a466;
+  font-size: 23rpx;
+  font-weight: 900;
+}
+
+.menu-list {
+  overflow: hidden;
+}
+
+.menu-item {
+  min-height: 92rpx;
+  padding: 0 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid #edf2f7;
+  color: #1f2937;
+  font-size: 27rpx;
+  font-weight: 800;
+}
+
+.menu-item:last-child {
+  border-bottom: 0;
+}

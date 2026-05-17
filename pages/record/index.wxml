@@ -1,0 +1,127 @@
+<view class="page">
+  <view class="date-card">
+    <view class="date-left">
+      <view class="calendar-icon"></view>
+      <text class="date-main">{{currentDate}}</text>
+      <text class="date-week">{{currentWeek}}</text>
+    </view>
+    <view class="date-actions">
+      <button bindtap="showToast" data-title="上一天">‹</button>
+      <button bindtap="showToast" data-title="下一天">›</button>
+    </view>
+  </view>
+
+  <scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="tabs-inner">
+      <view wx:for="{{anchors}}" wx:key="key" class="anchor-pill {{activeAnchor == item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="scrollToAnchor">
+        <text>{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view id="section-basic" class="anchor-section">
+    <view class="section-title">基础指标</view>
+    <view class="card-grid">
+      <view wx:for="{{basicMetrics}}" wx:key="name" class="metric-card {{item.wide ? 'wide' : ''}} {{item.type}}">
+        <view class="card-head">
+          <view class="title-row">
+            <text class="metric-title">{{item.name}}</text>
+            <text wx:if="{{item.inlineValue}}" class="inline-value">{{item.inlineValue}}</text>
+            <text class="tag {{item.warning ? 'warning' : ''}}">{{item.status}}</text>
+          </view>
+          <view class="plus-btn" bindtap="showToast" data-title="添加{{item.name}}">＋</view>
+        </view>
+        <text class="time">{{item.time}}</text>
+        <view class="value-row">
+          <text class="metric-value">{{item.value}}</text>
+          <text wx:if="{{item.unit}}" class="unit">{{item.unit}}</text>
+          <text wx:if="{{item.note}}" class="inline-note">{{item.note}}</text>
+        </view>
+        <view wx:if="{{item.children}}" class="child-row">
+          <view wx:for="{{item.children}}" wx:for-item="child" wx:key="label" class="child-item">
+            <text class="child-label">{{child.label}}</text>
+            <text class="child-value">{{child.value}}</text>
+            <text class="child-unit">{{child.unit}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view id="section-oxygen" class="anchor-section">
+    <view class="section-title">血氧呼吸</view>
+    <view class="card-grid">
+      <view wx:for="{{oxygenMetrics}}" wx:key="name" class="metric-card {{item.wide ? 'wide' : ''}} {{item.type}}">
+        <view class="card-head">
+          <view class="title-row">
+            <text class="metric-title">{{item.name}}</text>
+            <text class="tag">{{item.status}}</text>
+          </view>
+          <view class="plus-btn" bindtap="showToast" data-title="添加{{item.name}}">＋</view>
+        </view>
+        <text class="time">{{item.time}}</text>
+        <view class="value-row">
+          <text class="metric-value">{{item.value}}</text>
+          <text class="unit">{{item.unit}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view id="section-sleep" class="anchor-section">
+    <view class="section-title">睡眠状况</view>
+    <view class="card-grid">
+      <view wx:for="{{sleepMetrics}}" wx:key="name" class="metric-card {{item.wide ? 'wide' : ''}} {{item.type}}">
+        <view class="card-head">
+          <view class="title-row">
+            <text class="metric-title">{{item.name}}</text>
+            <text class="tag {{item.warning ? 'warning' : ''}}">{{item.status}}</text>
+          </view>
+          <view class="plus-btn" bindtap="showToast" data-title="添加{{item.name}}">＋</view>
+        </view>
+        <text class="time">{{item.time}}</text>
+        <view class="value-row">
+          <text class="metric-value">{{item.value}}</text>
+          <text class="unit">{{item.unit}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view id="section-symptom" class="anchor-section">
+    <view class="section-head">
+      <text>症状记录</text>
+      <button bindtap="showToast" data-title="添加症状">＋ 添加</button>
+    </view>
+    <view wx:for="{{symptomRecords}}" wx:key="time" class="record-card symptom-card">
+      <view class="record-top">
+        <text class="record-time">{{item.time}}</text>
+        <text class="level-tag">{{item.level}}</text>
+      </view>
+      <text class="record-title">{{item.title}}</text>
+      <text class="record-desc">{{item.desc}}</text>
+    </view>
+    <view class="empty-other">
+      <text class="empty-doc">▤</text>
+      <text>今日暂无其他症状记录</text>
+    </view>
+  </view>
+
+  <view id="section-medicine" class="anchor-section">
+    <view class="section-head">
+      <text>用药记录</text>
+      <button bindtap="showToast" data-title="添加用药">＋ 添加</button>
+    </view>
+    <view wx:for="{{medicineRecords}}" wx:key="name" class="record-card medicine-card">
+      <view class="record-top">
+        <text class="record-time">{{item.time}}</text>
+        <text class="medicine-status {{item.done ? 'done' : 'pending'}}">{{item.status}}</text>
+      </view>
+      <view class="medicine-main">
+        <text class="record-title">{{item.name}}</text>
+        <text class="dose">{{item.dose}}</text>
+      </view>
+      <text class="record-desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

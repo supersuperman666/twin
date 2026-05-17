@@ -1,0 +1,182 @@
+<view class="assessment-page">
+  <view wx:if="{{!showResult}}" class="assessment-shell">
+    <view class="assessment-nav" style="padding-top: {{statusBarHeight}}px;">
+      <button class="nav-icon" bindtap="handleBack">←</button>
+      <text class="nav-title">健康状况评估</text>
+      <button class="nav-icon close" bindtap="goHome">×</button>
+    </view>
+
+    <view class="step-header">
+      <view class="step-meta">
+        <text>步骤 {{currentIndex + 1}}/4</text>
+        <text>{{currentStep.name}}</text>
+      </view>
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
+      </view>
+    </view>
+
+    <scroll-view class="content-scroll" scroll-y="true">
+      <view class="intro">
+        <text class="intro-title">{{currentStep.title}}</text>
+        <text class="intro-desc">{{currentStep.desc}}</text>
+      </view>
+
+      <block wx:for="{{visibleFields}}" wx:key="code">
+        <view wx:if="{{item.kind === 'sectionTitle'}}" class="section-title">{{item.label}}</view>
+
+        <view wx:elif="{{item.kind === 'number'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="required">*</text>
+          </view>
+          <view class="input-box">
+            <input type="digit" value="{{item.value}}" placeholder="{{item.placeholder}}" placeholder-class="input-placeholder" data-code="{{item.code}}" bindinput="onNumberInput" />
+            <text>{{item.unit}}</text>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'text'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="required">*</text>
+          </view>
+          <view class="input-box">
+            <input value="{{item.value}}" placeholder="{{item.placeholder}}" placeholder-class="input-placeholder" data-code="{{item.code}}" bindinput="onTextInput" />
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'computed'}}" class="question-card compact-card">
+          <view class="computed-row">
+            <view>
+              <view class="question-title"><text>{{item.label}}</text></view>
+              <text class="muted">{{item.note}}</text>
+            </view>
+            <view class="computed-value">
+              <text>{{bmiDisplay}}</text>
+              <text>{{item.unit}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'single'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="required">*</text>
+          </view>
+          <view class="option-list {{item.variant === 'grid' ? 'grid-options' : ''}}">
+            <button wx:for="{{item.options}}" wx:for-item="option" wx:key="value" class="option-row {{option.selected ? 'selected' : ''}}" data-code="{{item.code}}" data-value="{{option.value}}" bindtap="onSingleSelect">
+              <view class="radio-dot"></view>
+              <view class="option-copy">
+                <text>{{option.label}}</text>
+                <text wx:if="{{option.desc}}">{{option.desc}}</text>
+              </view>
+            </button>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'segment'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="required">*</text>
+          </view>
+          <view class="segment-grid {{item.columns === 2 ? 'two' : ''}}">
+            <button wx:for="{{item.options}}" wx:for-item="option" wx:key="value" class="segment-option {{option.selected ? 'selected' : ''}}" data-code="{{item.code}}" data-value="{{option.value}}" bindtap="onSingleSelect">
+              <text wx:if="{{option.icon}}">{{option.icon}}</text>
+              <text>{{option.label}}</text>
+            </button>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'multiple'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text wx:if="{{item.required}}" class="required">*</text>
+            <text wx:else class="optional">（可多选）</text>
+          </view>
+          <view class="option-list">
+            <button wx:for="{{item.options}}" wx:for-item="option" wx:key="value" class="check-row {{option.selected ? 'selected' : ''}}" data-code="{{item.code}}" data-value="{{option.value}}" data-exclusive="{{option.exclusive}}" bindtap="onMultipleToggle">
+              <view class="check-box">{{option.selected ? '✓' : ''}}</view>
+              <view class="option-copy">
+                <text>{{option.label}}</text>
+                <text wx:if="{{option.desc}}">{{option.desc}}</text>
+              </view>
+            </button>
+          </view>
+          <view wx:if="{{item.extraInput}}" class="textarea-box">
+            <textarea value="{{item.extraValue}}" placeholder="{{item.extraPlaceholder}}" placeholder-class="input-placeholder" data-code="{{item.extraInput}}" bindinput="onTextInput"></textarea>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'tags'}}" class="question-card">
+          <view class="question-title">
+            <text>{{item.label}}</text>
+            <text class="optional">（可多选）</text>
+          </view>
+          <view class="tag-wrap">
+            <button wx:for="{{item.options}}" wx:for-item="option" wx:key="value" class="tag-option {{option.selected ? 'selected' : ''}}" data-code="{{item.code}}" data-value="{{option.value}}" bindtap="onMultipleToggle">
+              {{option.label}}
+            </button>
+          </view>
+          <view wx:if="{{item.extraInput}}" class="textarea-box">
+            <textarea value="{{item.extraValue}}" placeholder="{{item.extraPlaceholder}}" placeholder-class="input-placeholder" data-code="{{item.extraInput}}" bindinput="onTextInput"></textarea>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.kind === 'rating'}}" class="question-card">
+          <view class="question-title"><text>{{item.label}}</text></view>
+          <view class="rating-row">
+            <button wx:for="{{ratingOptions}}" wx:for-item="starValue" wx:key="*this" class="star {{item.value >= starValue ? 'selected' : ''}}" data-code="{{item.code}}" data-value="{{starValue}}" bindtap="onSingleSelect">★</button>
+          </view>
+          <view class="rating-labels">
+            <text>很差</text>
+            <text>一般</text>
+            <text>很好</text>
+          </view>
+        </view>
+      </block>
+    </scroll-view>
+
+    <view class="bottom-actions">
+      <button wx:if="{{currentIndex > 0}}" class="ghost-btn" bindtap="handlePrev">← 上一步</button>
+      <button class="primary-btn {{canContinue ? '' : 'disabled'}}" bindtap="handleNext">
+        {{currentIndex === steps.length - 1 ? '提交评估 ✓' : '下一步 →'}}
+      </button>
+    </view>
+  </view>
+
+  <view wx:else class="result-page">
+    <view class="result-hero">
+      <text class="result-kicker">测评完成</text>
+      <text class="result-title">{{result.resultTitle}}</text>
+      <view class="score-ring">
+        <text class="score">{{result.score}}</text>
+        <text class="score-label">健康分</text>
+      </view>
+      <view class="result-risk-pill">{{result.riskName}}</view>
+      <text class="result-desc">{{result.primaryAdvice}}</text>
+    </view>
+
+    <view class="result-card">
+      <view class="card-head">
+        <text>风险摘要</text>
+        <text>{{result.deduction}} 分风险扣分</text>
+      </view>
+      <view wx:if="{{result.abnormalItems.length}}" class="abnormal-list">
+        <view wx:for="{{result.abnormalItems}}" wx:key="code" class="abnormal-item">
+          <view>
+            <text class="abnormal-name">{{item.label}}</text>
+            <text class="abnormal-desc">{{item.desc}}</text>
+          </view>
+          <text class="abnormal-score">-{{item.points}}</text>
+        </view>
+      </view>
+      <view wx:else class="empty-state">本次未发现明显风险项，请继续保持良好习惯。</view>
+    </view>
+
+    <view class="action-row">
+      <button class="outline-btn" bindtap="restart">重新测评</button>
+      <button class="solid-btn" bindtap="finish">查看最新结果</button>
+    </view>
+  </view>
+</view>
