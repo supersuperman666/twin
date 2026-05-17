@@ -1,0 +1,112 @@
+@import "../../record/common.wxss";
+
+.stage-bar {
+  height: 46rpx;
+  border-radius: 14rpx;
+  overflow: hidden;
+  display: flex;
+}
+
+.stage.light {
+  background: #60a5fa;
+}
+
+.stage.deep {
+  background: #2563eb;
+}
+
+.stage.rem {
+  background: #a78bfa;
+}
+
+.stage.awake {
+  background: #fbbf24;
+}
+
+.legend {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx 18rpx;
+  color: #647386;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.danger-chart::before {
+  top: 0;
+  height: 128rpx;
+  background: rgba(16, 185, 129, .08);
+}
+
+.danger-chart::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 78rpx;
+  background: rgba(239, 68, 68, .08);
+}
+
+.danger-line {
+  background: #ef4444;
+}
+
+.note {
+  display: block;
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border-radius: 16rpx;
+  color: #627084;
+  background: #f4f7fb;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.position {
+  padding: 18rpx 8rpx;
+  border-radius: 18rpx;
+  color: #647386;
+  background: #f4f7fb;
+  text-align: center;
+}
+
+.position.active {
+  color: #9a5a00;
+  background: #fff1cf;
+}
+
+.position text:first-child {
+  display: block;
+  color: #17212b;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.position text:last-child {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.wave {
+  height: 120rpx;
+  margin-bottom: 18rpx;
+  border-radius: 18rpx;
+  background:
+    radial-gradient(circle at 10% 52%, #7c6df0 0 5rpx, transparent 6rpx),
+    radial-gradient(circle at 25% 35%, #7c6df0 0 7rpx, transparent 8rpx),
+    radial-gradient(circle at 42% 62%, #7c6df0 0 5rpx, transparent 6rpx),
+    radial-gradient(circle at 58% 30%, #7c6df0 0 7rpx, transparent 8rpx),
+    radial-gradient(circle at 76% 58%, #7c6df0 0 5rpx, transparent 6rpx),
+    #f4f7fb;
+}

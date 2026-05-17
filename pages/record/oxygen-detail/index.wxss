@@ -1,0 +1,5 @@
+@import "../common.wxss";
+
+.oxygen-line {
+  background: #06a9c6;
+}

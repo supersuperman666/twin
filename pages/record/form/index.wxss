@@ -1,0 +1,124 @@
+@import "../common.wxss";
+
+.picker-card {
+  margin-bottom: 24rpx;
+  padding: 30rpx;
+  border: 2rpx solid #e5efff;
+  border-radius: 24rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.field-label {
+  display: block;
+  color: #667085;
+  font-size: 27rpx;
+  font-weight: 900;
+  margin-bottom: 18rpx;
+}
+
+.picker-value {
+  margin: 12rpx 0 28rpx;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.picker-value text:first-child {
+  color: #111827;
+  font-size: 86rpx;
+  font-weight: 800;
+}
+
+.picker-unit {
+  margin-left: 10rpx;
+  color: #98a2b3;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.ruler {
+  height: 130rpx;
+  border-radius: 24rpx;
+  background: #f0f6fd;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16rpx;
+  padding-bottom: 32rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.tick {
+  width: 4rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: #b7c5d6;
+}
+
+.tick.mid {
+  height: 44rpx;
+}
+
+.tick.large {
+  height: 66rpx;
+  background: #8da2bb;
+}
+
+.center-line {
+  position: absolute;
+  top: 18rpx;
+  bottom: 18rpx;
+  left: 50%;
+  width: 6rpx;
+  border-radius: 6rpx;
+  background: #237be8;
+  box-shadow: 0 0 0 10rpx rgba(35, 123, 232, .08);
+}
+
+.picker-hint,
+.time-row {
+  margin-top: 18rpx;
+  color: #98a2b3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.range-tip {
+  display: block;
+  margin-top: 10rpx;
+  color: #8a96a8;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.time-row {
+  color: #17212b;
+  justify-content: flex-start;
+  gap: 14rpx;
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.time-value {
+  margin-left: auto;
+  color: #98a2b3;
+}
+
+.scene-chips {
+  flex-wrap: wrap;
+}
+
+.remark-box {
+  min-height: 86rpx;
+  padding: 22rpx;
+  border-radius: 18rpx;
+  color: #667085;
+  background: #f4f7fb;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.45;
+}

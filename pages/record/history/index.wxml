@@ -1,0 +1,81 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">{{title}}</text>
+    <view class="nav-space"></view>
+  </view>
+
+  <view class="date-card">
+    <view class="date-main-row">
+      <view class="calendar-icon-small"></view>
+      <text>2026年5月</text>
+    </view>
+    <view class="date-switch"><text>‹</text><text>›</text></view>
+  </view>
+
+  <view class="segmented">
+    <view wx:for="{{timeModes}}" wx:key="*this" class="seg {{activeTimeMode == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTimeMode">{{item}}</view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">本月概览</text><text class="link">28条</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">3</text></view>
+      <view class="summary-item"><text class="summary-label">手动</text><text class="summary-value">20</text></view>
+      <view class="summary-item"><text class="summary-label">设备</text><text class="summary-value">8</text></view>
+    </view>
+  </view>
+
+  <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="chips">
+      <view wx:for="{{filters}}" wx:key="*this" class="chip {{activeFilter == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectFilter">{{item}}</view>
+    </view>
+  </scroll-view>
+  <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="chips">
+      <view wx:for="{{scenes}}" wx:key="*this" class="chip {{activeScene == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectScene">{{item}}</view>
+    </view>
+  </scroll-view>
+
+  <block wx:for="{{dayGroups}}" wx:key="day" wx:for-item="group">
+    <view class="day-title">{{group.day}} <text>{{group.count}}条</text></view>
+    <view wx:for="{{group.items}}" wx:key="id" wx:for-item="item" class="history-item" data-id="{{item.id}}" bindtap="openDrawer">
+      <view class="history-main">
+        <view>
+          <text class="history-title">{{item.title}}</text>
+          <view class="history-meta">
+            <text>{{item.time}}</text>
+            <text class="source {{item.sourceType}}">{{item.source}}</text>
+            <text wx:if="{{item.device}}">SN {{item.device}}</text>
+          </view>
+        </view>
+        <view class="history-value"><text>{{item.value}}</text><text class="unit">{{item.unit}}</text></view>
+      </view>
+      <view class="history-meta"><text class="tag">{{item.status}}</text><text>{{item.remark}}</text></view>
+    </view>
+  </block>
+
+  <view wx:if="{{drawerVisible}}" class="drawer-mask" bindtap="closeDrawer">
+    <view class="drawer" catchtap="noop">
+      <view class="handle"></view>
+      <view class="drawer-head">
+        <view>
+          <text class="drawer-title">记录详情</text>
+          <text class="list-desc">单条记录完整信息</text>
+        </view>
+        <text class="tag">{{selectedRecord.status}}</text>
+      </view>
+      <view class="detail-line"><text>指标值</text><text>{{selectedRecord.value}} {{selectedRecord.unit}}</text></view>
+      <view class="detail-line"><text>记录时间</text><text>2026.05.17 {{selectedRecord.time}}</text></view>
+      <view class="detail-line"><text>记录场景</text><text>{{selectedRecord.title}}</text></view>
+      <view class="detail-line"><text>数据来源</text><text>{{selectedRecord.source}}</text></view>
+      <view wx:if="{{selectedRecord.device}}" class="detail-line"><text>设备号</text><text>{{selectedRecord.device}}</text></view>
+      <view class="detail-line"><text>备注</text><text>{{selectedRecord.remark}}</text></view>
+      <view class="detail-line"><text>修改信息</text><text>{{selectedRecord.edited}}</text></view>
+      <view class="drawer-actions">
+        <view class="outline-action" bindtap="handlePrimaryAction">{{selectedRecord.sourceType == 'device' ? '添加备注' : '编辑记录'}}</view>
+        <view class="danger-action" bindtap="handleDangerAction">{{selectedRecord.sourceType == 'device' ? '标记无效' : '删除记录'}}</view>
+      </view>
+    </view>
+  </view>
+</view>

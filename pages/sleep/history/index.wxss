@@ -1,0 +1,37 @@
+@import "../../record/common.wxss";
+
+.date-card {
+  margin-bottom: 22rpx;
+  height: 76rpx;
+  padding: 0 24rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.date-title {
+  color: #17212b;
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.date-switch {
+  display: flex;
+  gap: 28rpx;
+  color: #667085;
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.chips {
+  margin-bottom: 22rpx;
+}
+
+.report-card {
+  margin-bottom: 20rpx;
+  padding: 26rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+}

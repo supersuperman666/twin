@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="hero">
+    <text class="hero-label">今日状态</text>
+    <view class="hero-main">
+      <view><text class="hero-value">轻度</text></view>
+      <text class="hero-badge">有症状</text>
+    </view>
+    <text class="hero-label">头痛、略有头晕，休息后缓解。</text>
+  </view>
+
+  <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="filter-scroll">
+    <view class="chips">
+      <view wx:for="{{categories}}" wx:key="*this" class="chip {{activeCategory == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectCategory">{{item}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">近7天变化</text><text class="link">症状天数 2天</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">最高程度</text><text class="summary-value">轻度</text></view>
+      <view class="summary-item"><text class="summary-label">呼吸症状</text><text class="summary-value">0天</text></view>
+      <view class="summary-item"><text class="summary-label">睡眠相关</text><text class="summary-value">1天</text></view>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">症状记录</text>
+    <text class="link" bindtap="markNoSymptom">今日无不适</text>
+  </view>
+  <view wx:for="{{records}}" wx:key="time" class="list-card">
+    <view class="list-top">
+      <view><text class="list-title">{{item.title}}</text><text class="list-desc">{{item.time}} · {{item.desc}}</text></view>
+      <text class="tag warn">{{item.level}}</text>
+    </view>
+  </view>
+</view>

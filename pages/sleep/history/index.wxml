@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">睡眠历史报告</text>
+    <view class="nav-space"></view>
+  </view>
+
+  <view class="date-card">
+    <text class="date-title">2026年5月</text>
+    <view class="date-switch"><text>‹</text><text>›</text></view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">本月睡眠概览</text><text class="link">18晚</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">平均AHI</text><text class="summary-value">3.8</text></view>
+      <view class="summary-item"><text class="summary-label">低氧异常</text><text class="summary-value">4晚</text></view>
+      <view class="summary-item"><text class="summary-label">平均时长</text><text class="summary-value">6.6h</text></view>
+    </view>
+  </view>
+
+  <view class="chips">
+    <view wx:for="{{filters}}" wx:key="*this" class="chip {{activeFilter == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectFilter">{{item}}</view>
+  </view>
+
+  <view wx:for="{{reports}}" wx:key="date" class="report-card" bindtap="goReport">
+    <view class="list-top">
+      <view>
+        <text class="list-title">{{item.date}} · 睡眠报告</text>
+        <text class="list-desc">{{item.range}} · {{item.device}}</text>
+      </view>
+      <text class="tag {{item.warn ? 'warn' : ''}}">{{item.status}}</text>
+    </view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">睡眠</text><text class="summary-value">{{item.sleep}}</text></view>
+      <view class="summary-item"><text class="summary-label">AHI</text><text class="summary-value">{{item.ahi}}</text></view>
+      <view class="summary-item"><text class="summary-label">最低血氧</text><text class="summary-value">{{item.spo2}}</text></view>
+    </view>
+  </view>
+
+  <view class="report-card">
+    <view class="list-top">
+      <view>
+        <text class="list-title">05.15 周五 · 睡眠报告</text>
+        <text class="list-desc">设备数据已同步，报告正在分析</text>
+      </view>
+      <text class="tag gray">生成中</text>
+    </view>
+  </view>
+</view>

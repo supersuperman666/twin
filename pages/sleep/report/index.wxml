@@ -1,0 +1,88 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">睡眠报告</text>
+    <text class="link" bindtap="goHistory">历史</text>
+  </view>
+
+  <view class="hero dark">
+    <text class="hero-label">05.15 22:48 入睡 · 05.16 06:20 起床 · 监测 7小时32分</text>
+    <view class="hero-main">
+      <view><text class="hero-value">76</text><text class="hero-unit">分</text></view>
+      <text class="hero-badge">轻度风险</text>
+    </view>
+    <text class="hero-label">低氧事件集中在 02:30-04:10，仰卧位事件更集中。</text>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">报告概览</text><text class="tag warn">低氧需关注</text></view>
+    <view class="summary-grid two">
+      <view wx:for="{{overview}}" wx:key="label" class="summary-item">
+        <text class="summary-label">{{item.label}}</text>
+        <text class="summary-value">{{item.value}}</text>
+        <text class="summary-label">{{item.unit}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">睡眠阶段</text><text class="link">整晚</text></view>
+    <view class="stage-bar">
+      <view class="stage light" style="width:18%"></view>
+      <view class="stage deep" style="width:20%"></view>
+      <view class="stage light" style="width:16%"></view>
+      <view class="stage rem" style="width:14%"></view>
+      <view class="stage awake" style="width:6%"></view>
+      <view class="stage light" style="width:16%"></view>
+      <view class="stage rem" style="width:10%"></view>
+    </view>
+    <view class="legend">
+      <text>清醒 22分</text>
+      <text>浅睡 3.6h</text>
+      <text>深睡 1.4h</text>
+      <text>REM 1.1h</text>
+    </view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">呼吸事件</text><text class="tag">AHI正常</text></view>
+    <view class="summary-grid two">
+      <view wx:for="{{events}}" wx:key="label" class="summary-item">
+        <text class="summary-label">{{item.label}}</text>
+        <text class="summary-value">{{item.value}}</text>
+        <text class="summary-label">{{item.unit}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">血氧趋势</text><text class="tag warn">最低88%</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">平均血氧</text><text class="summary-value">94%</text></view>
+      <view class="summary-item"><text class="summary-label">最低血氧</text><text class="summary-value">88%</text></view>
+      <view class="summary-item"><text class="summary-label">&lt;90%</text><text class="summary-value">12分</text></view>
+    </view>
+    <view class="line-chart danger-chart"><view class="line danger-line"></view></view>
+    <text class="note">虚线为 90% 风险线。低氧事件主要集中在 02:30-04:10。</text>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">体位分析</text><text class="tag">ZG-M11A支持</text></view>
+    <view class="position-grid">
+      <view wx:for="{{positions}}" wx:key="name" class="position {{item.active ? 'active' : ''}}">
+        <text>{{item.value}}</text>
+        <text>{{item.name}}</text>
+      </view>
+    </view>
+    <text class="note">仰卧位 AHI 5.8 次/小时，高于侧卧位，建议减少仰卧睡眠。</text>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">鼾声与体动</text><text class="link">夜间分布</text></view>
+    <view class="wave"></view>
+    <view class="summary-grid two">
+      <view class="summary-item"><text class="summary-label">鼾声时长</text><text class="summary-value">48分</text></view>
+      <view class="summary-item"><text class="summary-label">体动次数</text><text class="summary-value">36次</text></view>
+    </view>
+  </view>
+</view>

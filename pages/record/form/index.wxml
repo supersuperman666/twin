@@ -1,0 +1,51 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">{{config.title}}</text>
+    <view class="nav-space"></view>
+  </view>
+
+  <view class="segmented">
+    <view wx:for="{{config.tabs}}" wx:key="*this" class="seg {{activeTab == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view>
+  </view>
+
+  <view class="picker-card">
+    <text class="field-label">{{config.label}}值</text>
+    <view class="picker-value">
+      <text>{{config.value}}</text>
+      <text class="picker-unit">{{config.unit}}</text>
+    </view>
+    <view class="ruler">
+      <view wx:for="{{ticks}}" wx:key="index" class="tick {{item}}"></view>
+      <view class="center-line"></view>
+    </view>
+    <view class="picker-hint">
+      <text>左右滑动选择</text>
+      <text>键盘精确输入</text>
+    </view>
+    <text class="range-tip">{{config.range}}</text>
+  </view>
+
+  <view class="card">
+    <text class="field-label">记录时间</text>
+    <view class="time-row">
+      <text>{{date}}</text>
+      <text class="tag gray">{{week}}</text>
+      <text class="time-value">{{time}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="field-label">测量场景</text>
+    <view class="chips scene-chips">
+      <view wx:for="{{config.scenes}}" wx:key="*this" class="chip {{activeScene == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectScene">{{item}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="field-label">备注</text>
+    <view class="remark-box">{{remark}}</view>
+  </view>
+
+  <view class="bottom-action" bindtap="saveRecord">保存记录</view>
+</view>

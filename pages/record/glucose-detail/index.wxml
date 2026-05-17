@@ -1,0 +1,58 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">血糖详情</text>
+    <view class="nav-space"></view>
+  </view>
+
+  <view class="hero">
+    <text class="hero-label">最新血糖 · 空腹 · 05.17 08:30</text>
+    <view class="hero-main">
+      <view><text class="hero-value">5.0</text><text class="hero-unit">mmol/L</text></view>
+      <text class="hero-badge">正常</text>
+    </view>
+    <text class="hero-label">近 7 天空腹血糖稳定，暂无连续异常。</text>
+  </view>
+
+  <view class="segmented">
+    <view wx:for="{{tabs}}" wx:key="*this" class="seg {{activeTab == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head">
+      <text class="chart-title">血糖趋势</text>
+      <text class="link">近7天</text>
+    </view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">5.6</text></view>
+      <view class="summary-item"><text class="summary-label">最高</text><text class="summary-value">7.8</text></view>
+      <view class="summary-item"><text class="summary-label">达标率</text><text class="summary-value">86%</text></view>
+    </view>
+    <view class="line-chart"><view class="line"></view></view>
+    <view class="chart-axis"><text>05.10</text><text>05.12</text><text>05.14</text><text>05.17</text></view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">目标范围</text></view>
+    <view class="summary-grid two">
+      <view class="summary-item"><text class="summary-label">空腹</text><text class="summary-value">4.4-7.0</text></view>
+      <view class="summary-item"><text class="summary-label">餐后2小时</text><text class="summary-value">&lt;10.0</text></view>
+    </view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">最近记录</text>
+    <text class="link" bindtap="goHistory">查看全部</text>
+  </view>
+  <view wx:for="{{records}}" wx:key="time" class="list-card">
+    <view class="list-top">
+      <view>
+        <text class="list-title">{{item.value}}</text>
+        <text class="list-desc">{{item.time}} · {{item.scene}}</text>
+      </view>
+      <text class="tag">{{item.status}}</text>
+    </view>
+  </view>
+
+  <view class="bottom-action" bindtap="goForm">新增血糖记录</view>
+</view>

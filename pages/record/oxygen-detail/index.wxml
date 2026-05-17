@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="nav-row">
+    <view class="back" bindtap="goBack">‹</view>
+    <text class="nav-title">血氧详情</text>
+    <text class="link" bindtap="goDevice">设备</text>
+  </view>
+
+  <view class="hero cyan">
+    <text class="hero-label">最新血氧 · 静息 · 05.17 08:30</text>
+    <view class="hero-main">
+      <view><text class="hero-value">98</text><text class="hero-unit">%</text></view>
+      <text class="hero-badge">SpO2 正常</text>
+    </view>
+    <text class="hero-label">脉率 72 次/分。夜间最低血氧进入睡眠报告查看。</text>
+  </view>
+
+  <view class="segmented">
+    <view wx:for="{{tabs}}" wx:key="*this" class="seg {{activeTab == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view>
+  </view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">SpO2 趋势</text><text class="link">近7天</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">96%</text></view>
+      <view class="summary-item"><text class="summary-label">最低</text><text class="summary-value">94%</text></view>
+      <view class="summary-item"><text class="summary-label">低氧</text><text class="summary-value">0次</text></view>
+    </view>
+    <view class="line-chart"><view class="line oxygen-line"></view></view>
+    <view class="chart-axis"><text>05.10</text><text>05.12</text><text>05.14</text><text>05.17</text></view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">最近记录</text>
+    <text class="link" bindtap="goHistory">查看全部</text>
+  </view>
+  <view wx:for="{{records}}" wx:key="time" class="list-card">
+    <view class="list-top">
+      <view>
+        <text class="list-title">{{item.value}}</text>
+        <text class="list-desc">{{item.time}} · {{item.scene}}</text>
+      </view>
+      <text class="tag {{item.status == '偏低' ? 'warn' : ''}}">{{item.status}}</text>
+    </view>
+  </view>
+
+  <view class="bottom-action" bindtap="goForm">新增血氧记录</view>
+</view>

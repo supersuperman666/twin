@@ -1,0 +1,25 @@
+@import "../../record/common.wxss";
+
+.device-card {
+  margin-bottom: 20rpx;
+  padding: 26rpx;
+  border: 2rpx solid #e8eef5;
+  border-radius: 22rpx;
+  background: #ffffff;
+}
+
+.device-metrics {
+  margin-top: 22rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.metric-chip {
+  padding: 8rpx 14rpx;
+  border-radius: 18rpx;
+  color: #647386;
+  background: #f2f6fb;
+  font-size: 22rpx;
+  font-weight: 900;
+}

@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="hero green">
+    <text class="hero-label">今日进度</text>
+    <view class="hero-main">
+      <view><text class="hero-value">3/4</text><text class="hero-unit">完成</text></view>
+      <text class="hero-badge">1项待执行</text>
+    </view>
+    <text class="hero-label">包含口服药、吸入药、氧疗和 CPAP 治疗执行记录。</text>
+  </view>
+
+  <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="filter-scroll">
+    <view class="chips">
+      <view wx:for="{{filters}}" wx:key="*this" class="chip {{activeFilter == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectFilter">{{item}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="chart-card">
+    <view class="chart-head"><text class="chart-title">近7天依从性</text><text class="link">完成率 86%</text></view>
+    <view class="summary-grid">
+      <view class="summary-item"><text class="summary-label">漏服</text><text class="summary-value">1次</text></view>
+      <view class="summary-item"><text class="summary-label">氧疗</text><text class="summary-value">5晚</text></view>
+      <view class="summary-item"><text class="summary-label">CPAP</text><text class="summary-value">6晚</text></view>
+    </view>
+  </view>
+
+  <view class="section-head"><text class="section-title">今日任务</text></view>
+  <view wx:for="{{tasks}}" wx:key="name" class="list-card" bindtap="checkIn">
+    <view class="list-top">
+      <view><text class="list-title">{{item.name}}</text><text class="list-desc">{{item.dose}} · {{item.desc}}</text></view>
+      <text class="tag {{item.done ? 'good' : 'gray'}}">{{item.status}} {{item.time}}</text>
+    </view>
+  </view>
+</view>

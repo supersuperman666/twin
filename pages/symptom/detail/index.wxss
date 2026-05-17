@@ -1,0 +1,6 @@
+@import "../../record/common.wxss";
+
+.filter-scroll {
+  margin-bottom: 20rpx;
+  white-space: nowrap;
+}

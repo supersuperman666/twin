@@ -9,6 +9,37 @@ page {
   color: #15181d;
 }
 
+.record-topbar {
+  margin: 6rpx 0 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.device-entry {
+  height: 56rpx;
+  padding: 0 20rpx 0 44rpx;
+  border-radius: 28rpx;
+  color: #237be8;
+  background: #e9f3ff;
+  display: flex;
+  align-items: center;
+  position: relative;
+  font-size: 24rpx;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.device-entry::before {
+  content: "";
+  position: absolute;
+  left: 18rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border: 4rpx solid #237be8;
+  border-radius: 5rpx;
+}
+
 .date-card {
   height: 76rpx;
   padding: 0 22rpx;
@@ -452,4 +483,68 @@ page {
   color: #2478ff;
   font-size: 26rpx;
   font-weight: 900;
+}
+
+.detail-link {
+  color: #237be8;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.sleep-report-card {
+  padding: 28rpx;
+  border: 2rpx solid #e5efff;
+  border-radius: 22rpx;
+  background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 100%);
+}
+
+.sleep-report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.sleep-summary {
+  margin: 22rpx 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.sleep-summary-item {
+  padding: 16rpx 14rpx;
+  border: 2rpx solid #edf2f8;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, .78);
+}
+
+.sleep-value {
+  display: block;
+  color: #111827;
+  font-size: 36rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sleep-value.warning {
+  color: #f59e0b;
+}
+
+.sleep-label {
+  display: block;
+  margin-top: 8rpx;
+  color: #8a96a8;
+  font-size: 20rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.sleep-note {
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  color: #627084;
+  background: #f3f6fb;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1.45;
 }

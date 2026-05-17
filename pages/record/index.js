@@ -15,6 +15,8 @@ Page({
       {
         name: 'BMI',
         type: 'bmi',
+        formType: 'profile',
+        detail: 'profile',
         value: '23.4',
         inlineValue: '23.4',
         unit: '',
@@ -28,6 +30,8 @@ Page({
       },
       {
         name: '血压',
+        formType: 'blood_pressure',
+        detail: 'blood-pressure',
         value: '120/90',
         unit: 'mmHg',
         status: '正常',
@@ -35,6 +39,8 @@ Page({
       },
       {
         name: '血糖',
+        formType: 'glucose',
+        detail: 'glucose',
         value: '5',
         unit: 'mmol/L',
         status: '正常',
@@ -45,6 +51,8 @@ Page({
     oxygenMetrics: [
       {
         name: 'SpO2',
+        formType: 'oxygen',
+        detail: 'oxygen',
         value: '98',
         unit: '%',
         status: '正常',
@@ -52,6 +60,8 @@ Page({
       },
       {
         name: '脉率',
+        formType: 'pulse',
+        detail: 'oxygen',
         value: '72',
         unit: '次/分',
         status: '正常',
@@ -59,6 +69,8 @@ Page({
       },
       {
         name: '呼吸频率',
+        formType: 'respiration',
+        detail: 'oxygen',
         value: '18',
         unit: '次/分',
         status: '正常',
@@ -159,6 +171,53 @@ Page({
       title: event.currentTarget.dataset.title || '功能开发中',
       icon: 'none'
     })
+  },
+
+  goRecordForm(event) {
+    const { type = 'glucose', title = '' } = event.currentTarget.dataset
+    if (type === 'profile') {
+      wx.switchTab({ url: '/pages/me/index' })
+      return
+    }
+    wx.navigateTo({
+      url: `/pages/record/form/index?type=${type}&title=${title}`
+    })
+  },
+
+  goMetricDetail(event) {
+    const { detail } = event.currentTarget.dataset
+    const detailRoutes = {
+      glucose: '/pages/record/glucose-detail/index',
+      oxygen: '/pages/record/oxygen-detail/index',
+      'blood-pressure': '/pages/record/blood-pressure-detail/index'
+    }
+    if (detail === 'profile') {
+      wx.switchTab({ url: '/pages/me/index' })
+      return
+    }
+    const url = detailRoutes[detail]
+    if (!url) return
+    wx.navigateTo({ url })
+  },
+
+  goSleepReport() {
+    wx.navigateTo({ url: '/pages/sleep/report/index' })
+  },
+
+  goSleepHistory() {
+    wx.navigateTo({ url: '/pages/sleep/history/index' })
+  },
+
+  goDevice() {
+    wx.navigateTo({ url: '/pages/device/index/index' })
+  },
+
+  goSymptomDetail() {
+    wx.navigateTo({ url: '/pages/symptom/detail/index' })
+  },
+
+  goMedicationDetail() {
+    wx.navigateTo({ url: '/pages/medication/detail/index' })
   },
 
   goBack() {
