@@ -6,31 +6,13 @@
 
 .top-area {
   margin: 0 -28rpx;
-  padding: 0 28rpx 32rpx;
+  padding: 24rpx 28rpx 32rpx;
   background: linear-gradient(180deg, #4b92f0 0%, #66b4f4 62%, #f5f7fb 100%);
-}
-
-.custom-nav {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  color: #ffffff;
-}
-
-.custom-nav-title {
-  width: 280rpx;
-  overflow: hidden;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 800;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .stage-switch {
   display: flex;
   gap: 8rpx;
-  margin-top: 18rpx;
   margin-bottom: 20rpx;
   padding: 8rpx;
   border-radius: 18rpx;

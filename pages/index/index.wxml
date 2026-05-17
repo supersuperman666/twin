@@ -1,9 +1,5 @@
 <view class="page">
   <view class="top-area">
-    <view class="custom-nav" style="height: {{nav.totalHeight}}px; padding-top: {{nav.statusBarHeight}}px;">
-      <view class="custom-nav-title" style="height: {{nav.navBarHeight}}px; line-height: {{nav.navBarHeight}}px;">慢病管家</view>
-    </view>
-
     <view class="stage-switch">
       <button class="{{userStage === 'new' ? 'active' : ''}}" data-stage="new" bindtap="switchStage">新用户</button>
       <button class="{{userStage === 'assessed' ? 'active' : ''}}" data-stage="assessed" bindtap="switchStage">已筛查</button>

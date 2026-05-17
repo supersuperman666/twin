@@ -7,11 +7,6 @@ Page({
       { label: '指标风险', value: '--' },
       { label: '生活方式', value: '--' }
     ],
-    nav: {
-      statusBarHeight: 20,
-      navBarHeight: 44,
-      totalHeight: 64
-    },
     quickRecords: [
       { label: '血糖', type: 'glucose' },
       { label: '血氧', type: 'oxygen' },
@@ -50,20 +45,6 @@ Page({
   },
 
   onLoad() {
-    const systemInfo = wx.getSystemInfoSync()
-    const menuButton = wx.getMenuButtonBoundingClientRect()
-    const statusBarHeight = systemInfo.statusBarHeight || 20
-    const navBarHeight = menuButton.top
-      ? (menuButton.top - statusBarHeight) * 2 + menuButton.height
-      : 44
-
-    this.setData({
-      nav: {
-        statusBarHeight,
-        navBarHeight,
-        totalHeight: statusBarHeight + navBarHeight
-      }
-    })
     this.loadAssessmentResult()
   },
 
