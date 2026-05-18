@@ -1,51 +1,97 @@
 <view class="page">
-  <view class="nav-row">
-    <view class="back" bindtap="goBack">‹</view>
-    <text class="nav-title">{{config.title}}</text>
-    <view class="nav-space"></view>
-  </view>
+  <block wx:if="{{metricType === 'glucose'}}">
+    <scroll-view class="point-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="point-tabs-inner">
+        <view wx:for="{{glucosePoints}}" wx:key="key" class="point-tab {{activePointKey === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectGlucosePoint">
+          <text>{{item.name}}</text>
+          <text wx:if="{{item.sub}}" class="point-sub">{{item.sub}}</text>
+        </view>
+      </view>
+    </scroll-view>
 
-  <view class="segmented">
-    <view wx:for="{{config.tabs}}" wx:key="*this" class="seg {{activeTab == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view>
-  </view>
+    <view class="glucose-picker">
+      <text class="range-copy">{{currentPoint.name}}：{{currentPoint.minText}}-{{currentPoint.maxText}} mmol/L</text>
 
-  <view class="picker-card">
-    <text class="field-label">{{config.label}}值</text>
-    <view class="picker-value">
-      <text>{{config.value}}</text>
-      <text class="picker-unit">{{config.unit}}</text>
+      <view class="value-edit">
+        <input class="value-input" type="digit" value="{{glucoseValueText}}" bindinput="onGlucoseInput" bindblur="normalizeGlucoseInput" />
+        <text class="picker-unit">mmol/L</text>
+      </view>
+
+      <view class="ruler-box">
+        <view class="tick-row">
+          <view wx:for="{{glucoseTicks}}" wx:key="index" class="tick {{item}}"></view>
+        </view>
+        <slider class="real-slider" min="{{glucoseMin}}" max="{{glucoseMax}}" step="{{glucoseStep}}" value="{{glucoseValue}}" activeColor="#2f91f3" backgroundColor="#d7dde6" block-size="24" block-color="#2f91f3" bindchanging="onGlucoseSliderChanging" bindchange="onGlucoseSliderChange" />
+        <view class="center-marker"></view>
+      </view>
+
+      <view class="slider-meta">
+        <text>{{glucoseMin}} mmol/L</text>
+        <text>可拖动，也可点击数字输入</text>
+        <text>{{glucoseMax}} mmol/L</text>
+      </view>
     </view>
-    <view class="ruler">
-      <view wx:for="{{ticks}}" wx:key="index" class="tick {{item}}"></view>
-      <view class="center-line"></view>
-    </view>
-    <view class="picker-hint">
-      <text>左右滑动选择</text>
-      <text>键盘精确输入</text>
-    </view>
-    <text class="range-tip">{{config.range}}</text>
-  </view>
 
-  <view class="card">
-    <text class="field-label">记录时间</text>
-    <view class="time-row">
-      <text>{{date}}</text>
-      <text class="tag gray">{{week}}</text>
-      <text class="time-value">{{time}}</text>
+    <view class="form-list">
+      <picker mode="date" value="{{dateValue}}" bindchange="onDateChange">
+        <view class="form-row">
+          <text>测量日期</text>
+          <view class="row-value"><text>{{dateValue}}</text><text class="chevron">›</text></view>
+        </view>
+      </picker>
+
+      <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+        <view class="form-row">
+          <text>测量时间</text>
+          <view class="row-value"><text>{{timeValue}}</text><text class="chevron">›</text></view>
+        </view>
+      </picker>
+
+      <view class="form-row">
+        <text>血糖状态</text>
+        <view class="status-value {{glucoseStatus.level}}">{{glucoseStatus.text}}</view>
+      </view>
+
+      <view class="remark-row">
+        <view class="remark-head">
+          <text>添加备注</text>
+          <text class="remark-count">{{remarkLength}}/100</text>
+        </view>
+        <textarea class="remark-input" value="{{remark}}" maxlength="100" auto-height placeholder="可记录饮食、运动、用药或不适症状" placeholder-class="remark-placeholder" bindinput="onRemarkInput"></textarea>
+      </view>
     </view>
-  </view>
 
-  <view class="card">
-    <text class="field-label">测量场景</text>
-    <view class="chips scene-chips">
-      <view wx:for="{{config.scenes}}" wx:key="*this" class="chip {{activeScene == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectScene">{{item}}</view>
+    <button class="submit-btn" bindtap="saveRecord">提交</button>
+  </block>
+
+  <block wx:else>
+    <view class="segmented">
+      <view wx:for="{{config.tabs}}" wx:key="*this" class="seg {{activeTab == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTab">{{item}}</view>
     </view>
-  </view>
 
-  <view class="card">
-    <text class="field-label">备注</text>
-    <view class="remark-box">{{remark}}</view>
-  </view>
+    <view class="picker-card">
+      <text class="field-label">{{config.label}}值</text>
+      <view class="value-edit compact">
+        <input class="value-input" type="digit" value="{{genericValue}}" bindinput="onGenericInput" />
+        <text class="picker-unit">{{config.unit}}</text>
+      </view>
+      <slider min="{{config.min}}" max="{{config.max}}" step="{{config.step}}" value="{{genericValue}}" activeColor="#2f91f3" block-size="24" block-color="#2f91f3" bindchanging="onGenericSlider" bindchange="onGenericSlider" />
+      <text class="range-tip">{{config.range}}</text>
+    </view>
 
-  <view class="bottom-action" bindtap="saveRecord">保存记录</view>
+    <view class="form-list">
+      <picker mode="date" value="{{dateValue}}" bindchange="onDateChange">
+        <view class="form-row"><text>测量日期</text><view class="row-value"><text>{{dateValue}}</text><text class="chevron">›</text></view></view>
+      </picker>
+      <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+        <view class="form-row"><text>测量时间</text><view class="row-value"><text>{{timeValue}}</text><text class="chevron">›</text></view></view>
+      </picker>
+      <view class="remark-row">
+        <view class="remark-head"><text>添加备注</text><text class="remark-count">{{remarkLength}}/100</text></view>
+        <textarea class="remark-input" value="{{remark}}" maxlength="100" auto-height placeholder="添加备注" placeholder-class="remark-placeholder" bindinput="onRemarkInput"></textarea>
+      </view>
+    </view>
+
+    <button class="submit-btn" bindtap="saveRecord">提交</button>
+  </block>
 </view>
