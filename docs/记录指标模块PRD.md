@@ -997,7 +997,7 @@ CPAP 佩戴               昨晚 5.8小时
 
 ### 7.1 指标记录 `health_metric_record`
 
-用于承载手动记录和单点设备数据。
+用于承载手动记录和单点设备数据。该表也是后续数字孪生建模的基础事实表，必须保留数据来源、测量场景、目标范围、症状关联和修改痕迹。
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1012,13 +1012,26 @@ CPAP 佩戴               昨晚 5.8小时
 | `target_max` | number | 记录时使用的目标上限，便于状态复算和历史展示 |
 | `recorded_at` | datetime | 记录时间 |
 | `source` | enum | `manual`、`device`、`doctor` |
+| `source_detail` | string/object | 来源补充信息，如设备型号、设备号、医生录入来源 |
 | `status` | enum | `normal`、`warning`、`danger`、`unknown` |
+| `scene` | string | 测量场景，如静息、活动后、睡前、晨起 |
+| `related_symptom_ids` | array | 关联症状记录 ID，用于判断指标异常是否伴随体感异常 |
+| `related_medication_ids` | array | 关联用药记录 ID，用于后续分析用药与指标变化 |
+| `rule_version` | string | 状态判定使用的规则版本 |
 | `remark` | string | 备注 |
 | `created_at` | datetime | 创建时间 |
 | `updated_at` | datetime | 最近修改时间 |
 | `edit_count` | number | 修改次数 |
 | `edit_reason` | string | 修改原因，非必填 |
 | `is_invalid` | boolean | 是否被标记为无效 |
+
+数字孪生前置要求：
+
+- 血糖、血氧、血压等核心记录必须支持与症状可选关联。
+- 异常记录要保留“是否复测、复测记录 ID、医生处理状态”扩展能力。
+- 患者备注、饮食运动、用药、睡眠等上下文信息应尽量结构化，不只作为纯文本。
+- 设备原始数据不允许覆盖修改，标记无效时仍保留原始值和无效原因。
+- 记录时使用的目标范围必须随记录保存，避免医生后续调整目标后历史状态失真。
 
 ### 7.2 设备管理 `device_binding`
 

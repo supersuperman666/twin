@@ -12,13 +12,16 @@
 
 医生 PC 端不是诊断系统，也不是处方系统。系统可以提供风险提示、趋势汇总和管理建议模板，但疾病诊断、用药调整、治疗决策必须由医生确认并留痕。
 
+医生 PC 端同时是未来数字孪生辅助诊疗能力的主要承载端。本期需要先建设轻量数字画像、趋势偏离解释、规则证据链和医生反馈闭环，为后续疾病状态预测、耐药机制识别、远程诊断辅助和治疗方案准确率优化积累可用数据。
+
 ### 1.1 核心目标
 
 - 让医生快速识别“今天最需要处理的人”。
 - 让医生在 1-2 分钟内看懂单个患者近期风险和关键数据。
 - 将患者端血糖、血氧、睡眠、症状、用药、设备数据整合为可解释的管理视图。
 - 支持医生处理预警、发送建议、调整管理方案、创建随访计划。
-- 为后续医生端与患者端消息、处方、复诊、设备报告解读预留扩展。
+- 形成轻量数字画像，让医生看到患者个体基线、趋势偏离、主要风险证据和干预效果。
+- 为后续医生端与患者端消息、处方、复诊、设备报告解读和数字孪生辅助诊疗预留扩展。
 
 ### 1.2 MVP 边界
 
@@ -33,6 +36,8 @@
 - 管理方案创建/编辑/下发。
 - 随访计划创建、随访记录和随访结论。
 - 医生建议发送与留痕。
+- 轻量数字画像：展示基础画像、疾病画像、近期趋势偏离、主要风险证据和干预状态。
+- 规则/模型输出留痕：记录规则版本、证据数据、医生采纳/修改/驳回结果。
 
 本期暂不做：
 
@@ -40,6 +45,7 @@
 - 医保、支付、药品交易。
 - 电子处方完整闭环。
 - AI 自动诊断或自动调整治疗。
+- 完整数字孪生预测模型和耐药机制识别模型。
 - 医生直接修改设备原始数据。
 - 多机构复杂运营后台。
 
@@ -80,6 +86,7 @@ flowchart TD
 | 工作台 | 今日概览 | 今日预警、随访、缺失记录、待确认方案 |
 | 患者管理 | 患者列表、患者详情 | 医生端核心入口 |
 | 风险预警 | 预警列表、预警详情 | 支持集中处理高风险事件 |
+| 数字画像 | 个体基线、趋势偏离、风险解释、干预效果 | MVP 做轻量视图，后续升级为数字孪生 |
 | 管理方案 | 方案模板、患者方案 | 创建和维护阶段管理方案 |
 | 随访管理 | 随访日历、随访列表、随访详情 | 创建计划、记录结论 |
 | 设备数据 | 设备绑定状态、报告状态 | 查看设备关联和数据同步状态 |
@@ -196,6 +203,27 @@ flowchart TD
 | 管理方案 | 当前方案、历史方案、任务配置 |
 | 随访记录 | 计划、准备材料、结论 |
 | 医生建议 | 已发送建议、患者阅读/执行状态 |
+
+### 7.3 轻量数字画像
+
+轻量数字画像是本期为未来数字孪生预留的医生端核心视图，不做黑盒诊断，只做可解释的状态聚合和趋势偏离提示。
+
+页面内容：
+
+| 模块 | 展示内容 | 设计目的 |
+| --- | --- | --- |
+| 个体基线 | 近 30 天血糖、血压、SpO2、睡眠、症状、用药依从性基线 | 为后续个体化预测建立参照 |
+| 疾病画像 | 糖尿病、慢阻肺、睡眠呼吸障碍风险/诊断标签 | 支持多病共管 |
+| 趋势偏离 | 相比个体基线的异常变化，如空腹血糖连续偏高、夜间低氧增加 | 不只看单次阈值，而看趋势变化 |
+| 风险解释 | 当前主要风险、证据数据、数据来源、规则版本 | 让医生知道系统为什么提示风险 |
+| 干预状态 | 最近医生建议、患者执行情况、复测结果、随访结论 | 为干预效果评估留数据 |
+
+交互要求：
+
+- 点击风险解释可查看触发规则、证据记录和规则版本。
+- 医生可对系统建议执行“采纳、修改后采纳、驳回”，必须填写处理意见或驳回原因。
+- 患者端只展示医生确认后的建议；未确认的系统建议不直接下发给患者。
+- 每次处理结果都进入后续模型评估样本，用于计算医生采纳率、误报率、漏报率和干预效果。
 
 ## 8. 健康筛查查看
 
@@ -599,10 +627,14 @@ MVP 内置模板：
 | `title` | string | 预警标题 |
 | `reason` | text | 触发原因 |
 | `evidence` | object | 触发数据 |
+| `rule_code` | string | 触发规则编码 |
+| `rule_version` | string | 触发规则版本 |
 | `status` | string | pending_patient/pending_doctor/resolved/closed |
 | `handled_by` | string | 处理医生 |
 | `handled_at` | datetime | 处理时间 |
 | `handle_result` | text | 处理结论 |
+| `doctor_feedback` | string | accept/modify/reject |
+| `feedback_reason` | text | 修改或驳回原因 |
 | `created_at` | datetime | 创建时间 |
 
 ### 16.5 followup_plan
@@ -620,6 +652,38 @@ MVP 内置模板：
 | `conclusion` | text | 医生结论 |
 | `next_followup_at` | datetime | 下次随访 |
 
+### 16.6 digital_twin_profile
+
+MVP 阶段命名为轻量数字画像，用于沉淀未来数字孪生所需的聚合状态。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 数字画像 ID |
+| `patient_id` | string | 患者 ID |
+| `baseline_summary` | object | 个体基线摘要 |
+| `disease_profile` | object | 疾病画像 |
+| `physiology_state` | object | 生理状态 |
+| `behavior_state` | object | 行为状态 |
+| `risk_state` | object | 风险状态 |
+| `intervention_state` | object | 干预状态 |
+| `updated_at` | datetime | 最近更新时间 |
+
+### 16.7 rule_execution_log
+
+用于记录规则或模型输出，支撑未来预警准确率、医生采纳率和模型优化。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 执行记录 ID |
+| `patient_id` | string | 患者 ID |
+| `rule_code` | string | 规则编码 |
+| `rule_version` | string | 规则版本 |
+| `input_snapshot` | object | 输入数据快照 |
+| `output_result` | object | 输出结果 |
+| `evidence_record_ids` | array | 证据记录 ID |
+| `doctor_feedback` | string | accept/modify/reject |
+| `created_at` | datetime | 创建时间 |
+
 ## 17. 接口草案
 
 | 接口 | 方法 | 说明 |
@@ -630,11 +694,13 @@ MVP 内置模板：
 | `/api/doctor/patients/{id}/screening` | GET | 筛查结果 |
 | `/api/doctor/patients/{id}/metrics/trends` | GET | 指标趋势 |
 | `/api/doctor/patients/{id}/records` | GET | 记录明细 |
+| `/api/doctor/patients/{id}/digital-profile` | GET | 轻量数字画像 |
 | `/api/doctor/patients/{id}/sleep-reports` | GET | 睡眠报告列表 |
 | `/api/doctor/patients/{id}/devices` | GET | 设备状态 |
 | `/api/doctor/alerts` | GET | 预警列表 |
 | `/api/doctor/alerts/{id}` | GET | 预警详情 |
 | `/api/doctor/alerts/{id}/handle` | POST | 处理预警 |
+| `/api/doctor/rule-executions/{id}` | GET | 规则/模型输出证据 |
 | `/api/doctor/plans` | GET/POST | 方案列表/创建 |
 | `/api/doctor/plans/{id}` | GET/PUT | 方案详情/编辑 |
 | `/api/doctor/plans/{id}/publish` | POST | 下发方案 |
