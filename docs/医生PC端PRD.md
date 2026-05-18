@@ -1351,9 +1351,240 @@ flowchart TD
 - 随访结束后，患者端展示医生确认后的结论和下一步任务。
 - 患者端不展示医生内部备注、系统未确认草稿和驳回原因。
 
-## 17. 设备与报告
+## 17. 任务模块
 
-### 17.1 设备管理
+任务模块是管理方案、随访计划、预警处理和医生建议落到患者端执行的统一承载层。所有患者端待办都应生成标准任务，任务执行结果回流到医生端，用于评估依从性、风险分、随访准备完成度和方案效果。
+
+### 17.1 业务定位
+
+| 来源 | 生成任务 | 示例 |
+| --- | --- | --- |
+| 管理方案 | 周期性任务 | 每天空腹血糖、每晚服药、每周睡眠报告 |
+| 随访计划 | 准备任务 | 随访前完成近 7 天血糖、症状问卷、上传报告 |
+| 风险预警 | 临时任务 | 立即复测血糖、补充症状、查看睡眠报告 |
+| 医生建议 | 一次性任务 | 本周三前复测血压、补充用药备注 |
+| 设备管理 | 设备任务 | 绑定设备、同步数据、检查 CPAP 使用记录 |
+| 健康筛查/疾病标签 | 补充资料任务 | 完善病史、补充检查报告、确认症状 |
+
+核心规则：
+
+- 任务是患者端可执行的最小单元。
+- 管理方案和随访计划只配置规则，真正执行时生成任务实例。
+- 同一患者同一时间段的相似任务需要合并展示，避免待办过载。
+- 医生确认后的任务才能下发患者端；系统自动生成的高风险临时任务需要标明来源。
+- 任务完成、跳过、逾期、失败都要留痕。
+
+### 17.2 任务类型
+
+| 任务类型 | 说明 | 对应疾病/场景 |
+| --- | --- | --- |
+| 指标记录 | 血糖、血压、血氧、呼吸频率、体重等记录 | 糖尿病、慢阻肺、高血压 |
+| 用药/治疗执行 | 服药、吸入药、氧疗、CPAP、肺康复 | 全部疾病 |
+| 症状评估 | 低血糖症状、咳喘、气促、睡眠症状、头痛胸闷 | 全部疾病 |
+| 睡眠报告 | 上传或同步睡眠报告、查看睡眠分析 | 睡眠呼吸障碍 |
+| 报告上传 | 检查报告、线下就诊资料、设备报告 | 随访/诊断辅助 |
+| 随访准备 | 随访问卷、资料确认、近期记录补齐 | 随访计划 |
+| 复测任务 | 异常后再次测量并反馈 | 预警处理 |
+| 生活方式 | 饮食、运动、限盐、戒烟、睡眠卫生 | 慢病长期管理 |
+| 设备任务 | 添加设备、同步设备、检查连接状态 | 设备数据采集 |
+| 确认阅读 | 确认已知晓方案、医生建议或风险提示 | 医患沟通留痕 |
+
+### 17.3 任务可编辑字段
+
+医生在方案审核、随访创建、预警处理和医生建议中创建/编辑任务时，应支持以下字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 任务名称 | input | 是 | 患者端展示标题 |
+| 任务类型 | select | 是 | 指标记录/用药/症状/随访准备等 |
+| 适用疾病 | multi-select | 可选 | diabetes/copd/sleep_apnea/hypertension |
+| 任务来源 | auto | 是 | 管理方案/随访/预警/医生建议/设备 |
+| 关联对象 | selector | 可选 | 关联方案、随访、预警、医生建议 |
+| 执行频率 | select/custom | 是 | 一次性、每日、每周、自定义周期 |
+| 执行时间 | time/multi-time | 可选 | 晨起、餐前、餐后 2h、睡前、自定义 |
+| 开始/结束日期 | date range | 是 | 任务有效期 |
+| 截止时间 | datetime/rule | 可选 | 适用于复测、报告上传、随访准备 |
+| 指标类型 | select | 条件必填 | 血糖、血压、SpO2、呼吸频率等 |
+| 指标场景 | select | 条件必填 | 空腹、餐后 2h、晨起、睡前、静息等 |
+| 目标范围 | range | 可选 | 用于患者端提示和异常判定 |
+| 录入方式 | select | 是 | 手动、设备、手动或设备 |
+| 是否允许补记 | switch | 是 | 默认允许，医生可关闭 |
+| 是否允许跳过 | switch | 是 | 高风险任务默认不允许跳过 |
+| 跳过原因 | enum/custom | 条件必填 | 患者跳过时选择 |
+| 是否必填备注 | switch | 可选 | 如异常值、漏服、症状加重时必填 |
+| 患者端说明 | textarea | 是 | 简明说明任务目的和注意事项 |
+| 医生内部备注 | textarea | 否 | 患者不可见 |
+| 提醒方式 | checkbox | 可选 | 小程序订阅消息、首页提示、随访提醒 |
+| 逾期处理 | rule | 可选 | 逾期提醒、推送医生、生成数据缺失预警 |
+| 优先级 | select | 是 | 普通、重要、紧急 |
+
+### 17.4 不同任务的专属字段
+
+| 任务类型 | 专属字段 |
+| --- | --- |
+| 血糖记录 | 血糖时点、正常范围、是否要求饮食/运动/用药备注 |
+| 血压记录 | 测量时段、是否记录心率、是否要求症状备注 |
+| 血氧记录 | 静息/活动后/睡前、是否设备采集、低氧阈值 |
+| 用药任务 | 药品名称、剂量、频次、服用时间、是否关键药物、漏服原因 |
+| 吸入药任务 | 药物名称、吸入次数、使用时间、是否记录不适 |
+| 氧疗任务 | 氧疗时长、氧流量、设备来源、是否仅记录不做调整建议 |
+| CPAP 任务 | 使用时长目标、漏气关注、残余 AHI 关注、设备同步要求 |
+| 症状评估 | 症状项、严重程度、持续时间、是否关联指标 |
+| 睡眠报告 | 报告日期、数据来源、是否要求设备同步、报告关键项 |
+| 随访准备 | 需要准备的数据范围、问卷、报告、备注、截止时间 |
+| 生活方式 | 任务内容、完成标准、频次、是否允许自评 |
+
+### 17.5 任务生成规则
+
+管理方案生成任务：
+
+- 按方案周期和频率生成任务实例。
+- 每天只生成当天及未来短周期任务，避免一次性生成过多历史数据。
+- 方案变更后，新任务按新版本生成，旧任务保留执行结果。
+- 方案停用后，未开始任务取消，已完成任务保留。
+
+随访计划生成任务：
+
+- 创建随访后自动生成准备任务。
+- 准备材料按随访类型和疾病模板生成。
+- 随访改期后，未完成准备任务的截止时间同步调整。
+- 随访取消后，准备任务取消或转为普通补充资料任务，由医生选择。
+
+预警生成任务：
+
+- 指标异常可生成复测任务。
+- 预警后任务优先级默认为重要或紧急。
+- 危急预警任务不替代线下就医提示。
+- 复测完成后回写预警详情，支持医生继续处理或关闭预警。
+
+医生建议生成任务：
+
+- 医生发送建议时可勾选“生成患者任务”。
+- 建议任务可以是一次性，也可以转为短周期任务。
+- 患者完成后医生端显示执行状态。
+
+### 17.6 任务合并与降噪
+
+为降低患者负担，系统需要支持任务合并：
+
+| 合并场景 | 规则 |
+| --- | --- |
+| 同一时间段多指标 | 合并为“晨间测量”或“睡前测量”任务组 |
+| 同一随访准备材料 | 合并去重，只展示一次 |
+| 方案和预警同时要求复测 | 保留更高优先级和更早截止时间 |
+| 多病共管重复生活方式任务 | 合并为一条患者可理解任务 |
+| 设备采集已完成 | 自动完成对应记录任务，并标记来源为设备 |
+
+任务组展示要求：
+
+- 患者端可展开查看子任务。
+- 医生端可查看每个子任务完成状态。
+- 任务组完成率按子任务计算。
+- 高风险子任务未完成时，任务组不能显示全部完成。
+
+### 17.7 患者端任务交互
+
+患者端入口：
+
+- 首页今日待办。
+- 管理方案页任务清单。
+- 随访计划页准备材料。
+- 预警详情页复测任务。
+- 医生建议消息卡片。
+
+任务卡片展示：
+
+```text
+任务名称
+来源标签：管理方案/随访/预警/医生建议
+截止时间或建议执行时间
+任务说明
+关联疾病或指标
+操作按钮：去记录、去打卡、上传报告、填写问卷、确认已读
+状态：待完成、已完成、已逾期、已跳过
+```
+
+患者操作：
+
+- 完成任务。
+- 补记任务。
+- 跳过任务并填写原因。
+- 查看任务来源。
+- 查看医生说明。
+- 异常值提交后自动提示是否补充症状或备注。
+
+限制规则：
+
+- 患者不能修改医生设置的任务目标、频率和截止时间。
+- 高风险预警任务不允许无原因跳过。
+- 用药/治疗任务只允许记录实际执行情况，不允许患者修改方案药品和剂量。
+- 设备自动采集任务完成后，患者可补充备注。
+
+### 17.8 医生端任务管理
+
+医生端展示位置：
+
+| 页面 | 展示内容 |
+| --- | --- |
+| 患者列表 | 今日任务完成度、连续未完成、随访准备完成度 |
+| 患者 360 总览 | 今日任务、逾期任务、关键任务缺失 |
+| 管理方案审核页 | 任务配置、任务负担、患者端预览 |
+| 随访详情页 | 随访准备任务完成情况 |
+| 预警详情页 | 复测任务完成情况 |
+| 数据看板 | 任务完成率、逾期率、跳过原因 |
+
+医生操作：
+
+- 查看任务明细。
+- 调整未来任务频率。
+- 暂停/取消未来任务。
+- 手动新增临时任务。
+- 将未完成任务转为随访问题。
+- 对高风险未完成任务发送提醒或创建随访。
+
+权限边界：
+
+- 健康管理师可创建提醒类、随访准备类和资料补充类任务。
+- 医生/家庭医生可创建和修改管理方案相关任务。
+- 涉及用药、氧疗、CPAP、复诊/转诊的任务必须由医生确认。
+
+### 17.9 任务状态机
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending
+  pending --> completed: 患者完成/设备同步完成
+  pending --> skipped: 患者跳过并填写原因
+  pending --> overdue: 超过截止时间
+  overdue --> completed: 补完成
+  overdue --> closed: 医生关闭
+  skipped --> reopened: 医生要求重新完成
+  completed --> invalidated: 医生标记无效
+  invalidated --> pending: 重新生成任务
+```
+
+状态说明：
+
+| 状态 | 说明 |
+| --- | --- |
+| pending | 待完成 |
+| completed | 已完成 |
+| skipped | 已跳过 |
+| overdue | 已逾期 |
+| closed | 医生关闭 |
+| invalidated | 记录无效，需重做 |
+
+### 17.10 任务与风险分/预警/随访关系
+
+- 任务完成率影响健康风险分中的数据完整度和依从性维度。
+- 关键任务连续未完成可生成数据缺失预警。
+- 高风险预警复测任务完成后，回写预警处理证据。
+- 随访准备任务完成度影响医生端随访列表排序。
+- 任务执行结果进入干预效果评估，用于判断管理方案是否有效。
+
+## 18. 设备与报告
+
+### 18.1 设备管理
 
 展示：
 
@@ -1364,7 +1595,7 @@ flowchart TD
 - 支持指标能力。
 - 异常和无效数据。
 
-### 17.2 睡眠报告
+### 18.2 睡眠报告
 
 展示：
 
@@ -1375,7 +1606,7 @@ flowchart TD
 - CPAP 使用时长、漏气、残余 AHI。
 - 报告有效性和设备能力说明。
 
-### 17.3 数据可信度
+### 18.3 数据可信度
 
 系统需要提示：
 
@@ -1384,9 +1615,9 @@ flowchart TD
 - 是否存在连续缺失。
 - 是否存在设备不同型号导致指标能力差异。
 
-## 18. 消息建议
+## 19. 消息建议
 
-### 18.1 建议类型
+### 19.1 建议类型
 
 | 类型 | 示例 |
 | --- | --- |
@@ -1398,7 +1629,7 @@ flowchart TD
 | 转诊建议 | “建议预约呼吸专科进一步评估” |
 | 随访建议 | “请在本周五前完成随访准备材料” |
 
-### 18.2 发送规则
+### 19.2 发送规则
 
 - 可从患者 360、预警详情、随访详情、辅助诊疗建议发送。
 - 支持模板选择后编辑。
@@ -1406,9 +1637,9 @@ flowchart TD
 - 支持设置是否生成患者端任务。
 - 发送后记录医生、时间、内容、来源场景和患者执行情况。
 
-## 19. 数据看板与质控
+## 20. 数据看板与质控
 
-### 19.1 医生效率
+### 20.1 医生效率
 
 - 单医生管理患者数。
 - 预警处理时长。
@@ -1416,7 +1647,7 @@ flowchart TD
 - 随访完成率。
 - 医生建议采纳和执行率。
 
-### 19.2 患者管理效果
+### 20.2 患者管理效果
 
 - 血糖达标率。
 - 血压控制率。
@@ -1426,7 +1657,7 @@ flowchart TD
 - 任务完成率。
 - 复诊率和失访率。
 
-### 19.3 模型效果
+### 20.3 模型效果
 
 - 预警准确率。
 - 误报率。
@@ -1436,9 +1667,9 @@ flowchart TD
 - 驳回原因分布。
 - 干预后指标改善率。
 
-## 20. 数据模型
+## 21. 数据模型
 
-### 20.1 doctor_patient_relation
+### 21.1 doctor_patient_relation
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1454,7 +1685,7 @@ flowchart TD
 | `confirmed_at` | datetime | 绑定生效时间 |
 | `revoked_at` | datetime | 解绑时间 |
 
-### 20.2 disease_risk_tag
+### 21.2 disease_risk_tag
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1468,7 +1699,7 @@ flowchart TD
 | `status` | string | active/dismissed/converted |
 | `created_at` | datetime | 创建时间 |
 
-### 20.3 doctor_confirmed_disease
+### 21.3 doctor_confirmed_disease
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1482,7 +1713,7 @@ flowchart TD
 | `confirmed_at` | datetime | 确认时间 |
 | `status` | string | active/removed |
 
-### 20.4 digital_twin_profile
+### 21.4 digital_twin_profile
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1498,7 +1729,7 @@ flowchart TD
 | `model_version` | string | 模型版本 |
 | `updated_at` | datetime | 更新时间 |
 
-### 20.5 risk_alert
+### 21.5 risk_alert
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1518,7 +1749,7 @@ flowchart TD
 | `handled_by` | string | 处理医生 |
 | `handled_at` | datetime | 处理时间 |
 
-### 20.6 clinical_decision_support
+### 21.6 clinical_decision_support
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1532,7 +1763,7 @@ flowchart TD
 | `doctor_comment` | text | 医生意见 |
 | `created_at` | datetime | 创建时间 |
 
-### 20.7 intervention_outcome
+### 21.7 intervention_outcome
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1546,7 +1777,7 @@ flowchart TD
 | `outcome_summary` | text | 效果摘要 |
 | `evaluated_at` | datetime | 评估时间 |
 
-### 20.8 management_plan_template
+### 21.8 management_plan_template
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1566,7 +1797,7 @@ flowchart TD
 | `version` | string | 模板版本 |
 | `status` | string | active/inactive |
 
-### 20.9 patient_management_plan
+### 21.9 patient_management_plan
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1592,7 +1823,7 @@ flowchart TD
 | `review_reason` | text | 修改或驳回原因 |
 | `published_at` | datetime | 下发时间 |
 
-### 20.10 followup_plan
+### 21.10 followup_plan
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1612,7 +1843,7 @@ flowchart TD
 | `reschedule_reason` | text | 改期原因 |
 | `created_at` | datetime | 创建时间 |
 
-### 20.11 followup_record
+### 21.11 followup_record
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -1630,7 +1861,72 @@ flowchart TD
 | `next_followup_at` | datetime | 下次随访时间 |
 | `completed_at` | datetime | 完成时间 |
 
-## 21. 接口草案
+### 21.12 task_template
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 任务模板 ID |
+| `template_code` | string | 模板编码 |
+| `task_type` | string | metric_record/medication/symptom/sleep_report/followup_prepare/recheck/lifestyle/device/acknowledge |
+| `disease_codes` | json | 适用疾病 |
+| `risk_level` | string | low/medium/high/urgent |
+| `title_template` | string | 任务标题模板 |
+| `patient_instruction_template` | text | 患者端说明模板 |
+| `default_frequency` | object | 默认频率 |
+| `default_time_windows` | json | 默认执行时间 |
+| `default_due_rule` | object | 默认截止规则 |
+| `required_fields` | json | 完成任务需要的字段 |
+| `allow_skip` | boolean | 是否允许跳过 |
+| `allow_backfill` | boolean | 是否允许补记 |
+| `priority` | string | normal/important/urgent |
+| `version` | string | 模板版本 |
+| `status` | string | active/inactive |
+
+### 21.13 patient_task
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 患者任务 ID |
+| `patient_id` | string | 患者 ID |
+| `task_type` | string | 任务类型 |
+| `source_type` | string | management_plan/followup/alert/advice/device/screening |
+| `source_id` | string | 来源对象 ID |
+| `related_plan_id` | string | 关联方案 |
+| `related_followup_id` | string | 关联随访 |
+| `related_alert_id` | string | 关联预警 |
+| `disease_codes` | json | 适用疾病 |
+| `title` | string | 患者端标题 |
+| `patient_instruction` | text | 患者端说明 |
+| `task_payload` | object | 任务配置，例如指标类型、目标范围、用药信息 |
+| `schedule_rule` | object | 周期规则 |
+| `scheduled_at` | datetime | 建议执行时间 |
+| `due_at` | datetime | 截止时间 |
+| `priority` | string | normal/important/urgent |
+| `status` | string | pending/completed/skipped/overdue/closed/invalidated |
+| `allow_skip` | boolean | 是否允许跳过 |
+| `allow_backfill` | boolean | 是否允许补记 |
+| `skip_reason` | text | 跳过原因 |
+| `completed_at` | datetime | 完成时间 |
+| `completed_by_source` | string | manual/device/system |
+| `result_record_id` | string | 关联生成的记录 ID |
+| `doctor_note` | text | 医生内部备注 |
+| `created_at` | datetime | 创建时间 |
+
+### 21.14 task_execution_log
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 执行日志 ID |
+| `task_id` | string | 任务 ID |
+| `patient_id` | string | 患者 ID |
+| `action` | string | complete/skip/backfill/overdue/close/invalidate/reopen |
+| `operator_type` | string | patient/doctor/system/device |
+| `operator_id` | string | 操作人或设备 ID |
+| `result_payload` | object | 执行结果 |
+| `reason` | text | 原因 |
+| `created_at` | datetime | 操作时间 |
+
+## 22. 接口草案
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
@@ -1665,10 +1961,16 @@ flowchart TD
 | `/api/doctor/followups/{id}/complete` | POST | 完成随访并保存结论 |
 | `/api/doctor/followups/{id}/reschedule` | POST | 随访改期 |
 | `/api/doctor/followups/{id}/cancel` | POST | 取消随访 |
+| `/api/doctor/task-templates` | GET | 查询任务模板 |
+| `/api/doctor/patients/{id}/tasks` | GET/POST | 查询或创建患者任务 |
+| `/api/doctor/tasks/{id}` | GET/PUT | 任务详情/编辑未来任务 |
+| `/api/doctor/tasks/{id}/close` | POST | 医生关闭任务 |
+| `/api/doctor/tasks/{id}/reopen` | POST | 重新打开任务 |
+| `/api/doctor/tasks/{id}/invalidate` | POST | 标记任务执行无效 |
 | `/api/doctor/advice` | POST | 发送医生建议 |
 | `/api/doctor/analytics` | GET | 数据看板 |
 
-## 22. 权限与审计
+## 23. 权限与审计
 
 - 医生/家庭医生仅能查看与自己通过医生二维码扫码绑定并获得患者授权的患者。
 - 诊断确认、治疗方案调整、用药建议、转诊建议必须记录医生身份和时间。
@@ -1679,7 +1981,7 @@ flowchart TD
 - 绑定、解绑、授权范围变更必须进入审计日志。
 - 所有模型输出必须记录模型版本、规则版本和证据快照。
 
-## 23. 非功能要求
+## 24. 非功能要求
 
 | 类型 | 要求 |
 | --- | --- |
@@ -1690,7 +1992,7 @@ flowchart TD
 | 可扩展 | 疾病、指标、规则、模型、方案模板配置化 |
 | 安全 | 登录态、权限校验、敏感字段脱敏、防越权 |
 
-## 24. 验收标准
+## 25. 验收标准
 
 - 家庭医生可以生成绑定二维码，患者扫码确认后建立绑定关系。
 - 医生可以查看授权患者的患者 360、数字孪生画像、趋势和报告。
