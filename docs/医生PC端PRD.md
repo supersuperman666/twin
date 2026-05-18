@@ -1372,7 +1372,7 @@ flowchart TD
 - 管理方案和随访计划只配置规则，真正执行时生成任务实例。
 - 同一患者同一时间段的相似任务需要合并展示，避免待办过载。
 - 医生确认后的任务才能下发患者端；系统自动生成的高风险临时任务需要标明来源。
-- 任务完成、跳过、逾期、失败都要留痕。
+- 任务完成、逾期、无法完成反馈、失败都要留痕。
 
 ### 17.2 任务类型
 
@@ -1409,8 +1409,8 @@ flowchart TD
 | 目标范围 | range | 可选 | 用于患者端提示和异常判定 |
 | 录入方式 | select | 是 | 手动、设备、手动或设备 |
 | 是否允许补记 | switch | 是 | 默认允许，医生可关闭 |
-| 是否允许跳过 | switch | 是 | 高风险任务默认不允许跳过 |
-| 跳过原因 | enum/custom | 条件必填 | 患者跳过时选择 |
+| 是否允许反馈无法完成 | switch | 是 | 默认允许，反馈后任务仍保留为未完成或逾期 |
+| 无法完成原因 | enum/custom | 条件必填 | 患者反馈无法完成时选择 |
 | 是否必填备注 | switch | 可选 | 如异常值、漏服、症状加重时必填 |
 | 患者端说明 | textarea | 是 | 简明说明任务目的和注意事项 |
 | 医生内部备注 | textarea | 否 | 患者不可见 |
@@ -1501,14 +1501,14 @@ flowchart TD
 任务说明
 关联疾病或指标
 操作按钮：去记录、去打卡、上传报告、填写问卷、确认已读
-状态：待完成、已完成、已逾期、已跳过
+状态：待完成、已完成、已逾期
 ```
 
 患者操作：
 
 - 完成任务。
 - 补记任务。
-- 跳过任务并填写原因。
+- 反馈无法完成原因，任务不消失，仍按待完成或逾期处理。
 - 查看任务来源。
 - 查看医生说明。
 - 异常值提交后自动提示是否补充症状或备注。
@@ -1516,7 +1516,7 @@ flowchart TD
 限制规则：
 
 - 患者不能修改医生设置的任务目标、频率和截止时间。
-- 高风险预警任务不允许无原因跳过。
+- 高风险预警任务反馈无法完成后，应推送医生端并保留待处理状态。
 - 用药/治疗任务只允许记录实际执行情况，不允许患者修改方案药品和剂量。
 - 设备自动采集任务完成后，患者可补充备注。
 
@@ -1531,7 +1531,7 @@ flowchart TD
 | 管理方案审核页 | 任务配置、任务负担、患者端预览 |
 | 随访详情页 | 随访准备任务完成情况 |
 | 预警详情页 | 复测任务完成情况 |
-| 数据看板 | 任务完成率、逾期率、跳过原因 |
+| 数据看板 | 任务完成率、逾期率、无法完成原因 |
 
 医生操作：
 
@@ -1554,11 +1554,12 @@ flowchart TD
 stateDiagram-v2
   [*] --> pending
   pending --> completed: 患者完成/设备同步完成
-  pending --> skipped: 患者跳过并填写原因
+  pending --> unable: 患者反馈无法完成
   pending --> overdue: 超过截止时间
   overdue --> completed: 补完成
   overdue --> closed: 医生关闭
-  skipped --> reopened: 医生要求重新完成
+  unable --> pending: 医生要求继续完成
+  unable --> closed: 医生确认关闭
   completed --> invalidated: 医生标记无效
   invalidated --> pending: 重新生成任务
 ```
@@ -1569,7 +1570,7 @@ stateDiagram-v2
 | --- | --- |
 | pending | 待完成 |
 | completed | 已完成 |
-| skipped | 已跳过 |
+| unable | 患者反馈无法完成 |
 | overdue | 已逾期 |
 | closed | 医生关闭 |
 | invalidated | 记录无效，需重做 |
@@ -1771,7 +1772,7 @@ stateDiagram-v2
 | `patient_id` | string | 患者 ID |
 | `intervention_type` | string | advice/plan/followup/referral |
 | `intervention_id` | string | 关联干预 |
-| `execution_status` | string | completed/skipped/not_done |
+| `execution_status` | string | completed/unable/not_done |
 | `pre_metrics` | object | 干预前指标 |
 | `post_metrics` | object | 干预后指标 |
 | `outcome_summary` | text | 效果摘要 |
@@ -1876,7 +1877,7 @@ stateDiagram-v2
 | `default_time_windows` | json | 默认执行时间 |
 | `default_due_rule` | object | 默认截止规则 |
 | `required_fields` | json | 完成任务需要的字段 |
-| `allow_skip` | boolean | 是否允许跳过 |
+| `allow_unable_feedback` | boolean | 是否允许反馈无法完成 |
 | `allow_backfill` | boolean | 是否允许补记 |
 | `priority` | string | normal/important/urgent |
 | `version` | string | 模板版本 |
@@ -1902,10 +1903,10 @@ stateDiagram-v2
 | `scheduled_at` | datetime | 建议执行时间 |
 | `due_at` | datetime | 截止时间 |
 | `priority` | string | normal/important/urgent |
-| `status` | string | pending/completed/skipped/overdue/closed/invalidated |
-| `allow_skip` | boolean | 是否允许跳过 |
+| `status` | string | pending/completed/unable/overdue/closed/invalidated |
+| `allow_unable_feedback` | boolean | 是否允许反馈无法完成 |
 | `allow_backfill` | boolean | 是否允许补记 |
-| `skip_reason` | text | 跳过原因 |
+| `unable_reason` | text | 无法完成原因 |
 | `completed_at` | datetime | 完成时间 |
 | `completed_by_source` | string | manual/device/system |
 | `result_record_id` | string | 关联生成的记录 ID |
@@ -1919,7 +1920,7 @@ stateDiagram-v2
 | `id` | string | 执行日志 ID |
 | `task_id` | string | 任务 ID |
 | `patient_id` | string | 患者 ID |
-| `action` | string | complete/skip/backfill/overdue/close/invalidate/reopen |
+| `action` | string | complete/unable/backfill/overdue/close/invalidate/reopen |
 | `operator_type` | string | patient/doctor/system/device |
 | `operator_id` | string | 操作人或设备 ID |
 | `result_payload` | object | 执行结果 |
