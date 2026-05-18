@@ -1,41 +1,29 @@
 <view class="page">
-  <view class="nav-row">
-    <view class="back" bindtap="goBack">‹</view>
-    <text class="nav-title">{{title}}</text>
-    <view class="nav-space"></view>
-  </view>
-
-  <view class="date-card">
-    <view class="date-main-row">
-      <view class="calendar-icon-small"></view>
-      <text>2026年5月</text>
+  <view class="date-range-card">
+    <view class="date-range-head">
+      <view class="date-title-row">
+        <view class="calendar-icon-small"></view>
+        <text>记录时间</text>
+      </view>
+      <text class="range-hint">最多30天</text>
     </view>
-    <view class="date-switch"><text>‹</text><text>›</text></view>
-  </view>
-
-  <view class="segmented">
-    <view wx:for="{{timeModes}}" wx:key="*this" class="seg {{activeTimeMode == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectTimeMode">{{item}}</view>
-  </view>
-
-  <view class="chart-card">
-    <view class="chart-head"><text class="chart-title">本月概览</text><text class="link">{{summary.total}}条</text></view>
-    <view class="summary-grid">
-      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">{{summary.abnormal}}</text></view>
-      <view class="summary-item"><text class="summary-label">手动</text><text class="summary-value">{{summary.manual}}</text></view>
-      <view class="summary-item"><text class="summary-label">设备</text><text class="summary-value">{{summary.device}}</text></view>
+    <view class="date-picker-row">
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <view class="date-picker">
+          <text class="date-label">开始日期</text>
+          <text class="date-value">{{startDate}}</text>
+        </view>
+      </picker>
+      <text class="date-separator">至</text>
+      <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+        <view class="date-picker">
+          <text class="date-label">结束日期</text>
+          <text class="date-value">{{endDate}}</text>
+        </view>
+      </picker>
     </view>
+    <view class="date-summary">{{dateRangeText}} · 共{{summary.total}}条</view>
   </view>
-
-  <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-    <view class="chips">
-      <view wx:for="{{filters}}" wx:key="*this" class="chip {{activeFilter == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectFilter">{{item}}</view>
-    </view>
-  </scroll-view>
-  <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-    <view class="chips">
-      <view wx:for="{{scenes}}" wx:key="*this" class="chip {{activeScene == index ? 'active' : ''}}" data-index="{{index}}" bindtap="selectScene">{{item}}</view>
-    </view>
-  </scroll-view>
 
   <block wx:for="{{dayGroups}}" wx:key="day" wx:for-item="group">
     <view class="day-title">{{group.day}} <text>{{group.count}}条</text></view>
@@ -55,6 +43,12 @@
     </view>
   </block>
 
+  <view wx:if="{{!dayGroups.length}}" class="empty-state">
+    <view class="empty-icon"></view>
+    <text>当前时间范围暂无记录</text>
+    <text class="empty-desc">可调整开始日期或结束日期查看</text>
+  </view>
+
   <view wx:if="{{drawerVisible}}" class="drawer-mask" bindtap="closeDrawer">
     <view class="drawer" catchtap="noop">
       <view class="handle"></view>
@@ -66,7 +60,7 @@
         <text class="tag">{{selectedRecord.status}}</text>
       </view>
       <view class="detail-line"><text>指标值</text><text>{{selectedRecord.value}} {{selectedRecord.unit}}</text></view>
-      <view class="detail-line"><text>记录时间</text><text>2026.05.17 {{selectedRecord.time}}</text></view>
+      <view class="detail-line"><text>记录时间</text><text>{{selectedRecord.fullTime}}</text></view>
       <view class="detail-line"><text>记录场景</text><text>{{selectedRecord.title}}</text></view>
       <view class="detail-line"><text>数据来源</text><text>{{selectedRecord.source}}</text></view>
       <view wx:if="{{selectedRecord.device}}" class="detail-line"><text>设备号</text><text>{{selectedRecord.device}}</text></view>

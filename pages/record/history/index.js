@@ -11,12 +11,9 @@ const pageTitles = {
 Page({
   data: {
     title: '血糖记录明细',
-    timeModes: ['按年', '按月', '按日', '全部'],
-    activeTimeMode: 1,
-    filters: ['全部来源', '手动', '设备', '正常', '异常'],
-    scenes: ['全部场景', '空腹', '餐后', '随机', '睡前'],
-    activeFilter: 0,
-    activeScene: 0,
+    startDate: '',
+    endDate: '',
+    dateRangeText: '',
     drawerVisible: false,
     selectedRecord: null,
     metric: 'glucose',
@@ -27,9 +24,15 @@ Page({
 
   onLoad(options) {
     const metric = options.metric || 'glucose'
+    const title = pageTitles[metric] || '指标记录明细'
+    const range = this.getDefaultRange()
+    wx.setNavigationBarTitle({ title })
     this.setData({
       metric,
-      title: pageTitles[metric] || '指标记录明细'
+      title,
+      startDate: range.startDate,
+      endDate: range.endDate,
+      dateRangeText: `${range.startDate} 至 ${range.endDate}`
     })
     this.refreshRecords()
   },
@@ -40,6 +43,7 @@ Page({
 
   refreshRecords() {
     const rawRecords = recordStore.listRecords({ metric: this.data.metric })
+      .filter((item) => this.inDateRange(item.recorded_at))
     const records = rawRecords.map((item) => this.mapHistoryRecord(item))
     const groups = records.reduce((result, item) => {
       const existed = result.find((group) => group.day === item.day)
@@ -63,12 +67,91 @@ Page({
     })
   },
 
+  getDefaultRange() {
+    const end = new Date()
+    const start = new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000)
+    return {
+      startDate: this.formatDate(start),
+      endDate: this.formatDate(end)
+    }
+  },
+
+  formatDate(date) {
+    const month = `${date.getMonth() + 1}`.padStart(2, '0')
+    const day = `${date.getDate()}`.padStart(2, '0')
+    return `${date.getFullYear()}-${month}-${day}`
+  },
+
+  parseDate(value) {
+    return new Date(`${value} 00:00:00`.replace(/-/g, '/'))
+  },
+
+  formatGroupDay(recordedAt) {
+    if (!recordedAt) return '--'
+    const date = this.parseDate(recordedAt.slice(0, 10))
+    const shortDay = recordedAt.replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$2.$3')
+    const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()]
+    return `${shortDay} ${week}`
+  },
+
+  inDateRange(recordedAt) {
+    if (!recordedAt) return false
+    const recordDate = this.parseDate(recordedAt.slice(0, 10)).getTime()
+    const start = this.parseDate(this.data.startDate).getTime()
+    const end = this.parseDate(this.data.endDate).getTime() + 24 * 60 * 60 * 1000 - 1
+    return recordDate >= start && recordDate <= end
+  },
+
+  normalizeRange(startDate, endDate, changedField) {
+    let start = this.parseDate(startDate)
+    let end = this.parseDate(endDate)
+    const day = 24 * 60 * 60 * 1000
+
+    if (start.getTime() > end.getTime()) {
+      if (changedField === 'start') end = start
+      else start = end
+    }
+
+    if ((end.getTime() - start.getTime()) / day > 29) {
+      wx.showToast({ title: '最多查看30天数据', icon: 'none' })
+      if (changedField === 'start') {
+        end = new Date(start.getTime() + 29 * day)
+      } else {
+        start = new Date(end.getTime() - 29 * day)
+      }
+    }
+
+    return {
+      startDate: this.formatDate(start),
+      endDate: this.formatDate(end)
+    }
+  },
+
+  onStartDateChange(event) {
+    const range = this.normalizeRange(event.detail.value, this.data.endDate, 'start')
+    this.setData({
+      ...range,
+      dateRangeText: `${range.startDate} 至 ${range.endDate}`
+    })
+    this.refreshRecords()
+  },
+
+  onEndDateChange(event) {
+    const range = this.normalizeRange(this.data.startDate, event.detail.value, 'end')
+    this.setData({
+      ...range,
+      dateRangeText: `${range.startDate} 至 ${range.endDate}`
+    })
+    this.refreshRecords()
+  },
+
   mapHistoryRecord(item) {
     const titleSuffix = item.measure_point_name || item.scene || item.level || item.status_text || ''
     return {
       id: item.id,
-      day: recordStore.formatDay(item),
+      day: this.formatGroupDay(item.recorded_at),
       time: (recordStore.formatShortTime(item).split(' ')[1]) || '--',
+      fullTime: item.recorded_at || '--',
       title: titleSuffix ? `${item.metric_name} · ${titleSuffix}` : item.metric_name,
       value: item.value || item.title || item.name || '--',
       unit: item.unit || '',
@@ -81,20 +164,8 @@ Page({
     }
   },
 
-  selectTimeMode(event) {
-    this.setData({ activeTimeMode: Number(event.currentTarget.dataset.index) })
-  },
-
-  selectFilter(event) {
-    this.setData({ activeFilter: Number(event.currentTarget.dataset.index) })
-  },
-
-  selectScene(event) {
-    this.setData({ activeScene: Number(event.currentTarget.dataset.index) })
-  },
-
   openDrawer(event) {
-    const id = Number(event.currentTarget.dataset.id)
+    const id = event.currentTarget.dataset.id
     const selectedRecord = this.data.records.find((item) => item.id === id)
     this.setData({ selectedRecord, drawerVisible: true })
   },

@@ -1,23 +1,25 @@
 @import "../common.wxss";
 
-.date-card {
+.date-range-card {
   margin-bottom: 20rpx;
-  height: 76rpx;
-  padding: 0 22rpx;
-  border-radius: 16rpx;
+  padding: 22rpx;
+  border-radius: 20rpx;
   background: #ffffff;
+}
+
+.date-range-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.date-main-row {
+.date-title-row {
   display: flex;
   align-items: center;
   gap: 12rpx;
   color: #17212b;
-  font-size: 30rpx;
-  font-weight: 900;
+  font-size: 28rpx;
+  font-weight: 800;
 }
 
 .calendar-icon-small {
@@ -27,17 +29,54 @@
   border-radius: 7rpx;
 }
 
-.date-switch {
-  display: flex;
-  gap: 24rpx;
-  color: #667085;
-  font-size: 36rpx;
-  font-weight: 900;
+.range-hint {
+  color: #8a96a8;
+  font-size: 23rpx;
+  font-weight: 600;
 }
 
-.filter-scroll {
-  margin-bottom: 16rpx;
-  white-space: nowrap;
+.date-picker-row {
+  margin-top: 18rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.date-picker {
+  min-width: 242rpx;
+  height: 72rpx;
+  padding: 0 18rpx;
+  border-radius: 16rpx;
+  background: #f6f8fb;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.date-label {
+  color: #8a96a8;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.date-value {
+  margin-top: 4rpx;
+  color: #17212b;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.date-separator {
+  color: #8a96a8;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.date-summary {
+  margin-top: 16rpx;
+  color: #667085;
+  font-size: 23rpx;
+  font-weight: 600;
 }
 
 .day-title {
@@ -88,6 +127,54 @@
 .history-value text:first-child {
   font-size: 36rpx;
   font-weight: 800;
+}
+
+.empty-state {
+  min-height: 360rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+  color: #8a96a8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.empty-icon {
+  width: 72rpx;
+  height: 72rpx;
+  margin-bottom: 18rpx;
+  border: 4rpx solid #d8dee7;
+  border-radius: 20rpx;
+  position: relative;
+}
+
+.empty-icon::before,
+.empty-icon::after {
+  content: "";
+  position: absolute;
+  left: 16rpx;
+  right: 16rpx;
+  height: 4rpx;
+  border-radius: 99rpx;
+  background: #d8dee7;
+}
+
+.empty-icon::before {
+  top: 22rpx;
+}
+
+.empty-icon::after {
+  top: 40rpx;
+}
+
+.empty-desc {
+  margin-top: 8rpx;
+  color: #a6b0bf;
+  font-size: 23rpx;
+  font-weight: 600;
 }
 
 .source {
