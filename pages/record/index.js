@@ -1,3 +1,5 @@
+const recordStore = require('../../utils/record-store')
+
 Page({
   data: {
     activeAnchor: 'all',
@@ -133,6 +135,71 @@ Page({
 
   onShow() {
     this.setTabBarSelected()
+    this.refreshLocalRecords()
+  },
+
+  refreshLocalRecords() {
+    const glucose = recordStore.getLatestRecord('glucose')
+    const bloodPressure = recordStore.getLatestRecord('blood_pressure')
+    const oxygen = recordStore.getLatestRecord('oxygen')
+    const pulse = recordStore.getLatestRecord('pulse')
+    const respiration = recordStore.getLatestRecord('respiration')
+    const symptoms = recordStore.listRecords({ metric: 'symptom' }).slice(0, 2)
+    const medications = recordStore.listRecords({ metric: 'medication' }).slice(0, 4)
+
+    const basicMetrics = this.data.basicMetrics.map((item) => {
+      if (item.detail === 'glucose' && glucose) {
+        return {
+          ...item,
+          value: `${glucose.value}`,
+          status: glucose.status_text || '正常',
+          warning: glucose.status !== 'normal',
+          time: recordStore.formatShortTime(glucose),
+          note: glucose.measure_point_name || '随机'
+        }
+      }
+      if (item.detail === 'blood-pressure' && bloodPressure) {
+        return {
+          ...item,
+          value: `${bloodPressure.value}`,
+          status: bloodPressure.status_text || '正常',
+          warning: bloodPressure.status !== 'normal',
+          time: recordStore.formatShortTime(bloodPressure)
+        }
+      }
+      return item
+    })
+
+    const oxygenMetrics = this.data.oxygenMetrics.map((item) => {
+      const source = item.formType === 'oxygen' ? oxygen : item.formType === 'pulse' ? pulse : respiration
+      if (!source) return item
+      return {
+        ...item,
+        value: `${source.value}`,
+        status: source.status_text || '正常',
+        warning: source.status !== 'normal',
+        time: recordStore.formatShortTime(source)
+      }
+    })
+
+    this.setData({
+      basicMetrics,
+      oxygenMetrics,
+      symptomRecords: symptoms.length ? symptoms.map((item) => ({
+        time: recordStore.formatShortTime(item),
+        title: item.title || item.metric_name,
+        desc: item.desc || item.remark || '已记录',
+        level: item.level || item.status_text || '已记录'
+      })) : this.data.symptomRecords,
+      medicineRecords: medications.length ? medications.map((item) => ({
+        time: recordStore.formatShortTime(item),
+        name: item.name || item.metric_name,
+        dose: item.dose || '',
+        desc: item.desc || item.remark || '',
+        status: item.status_text || '已记录',
+        done: item.status === 'done'
+      })) : this.data.medicineRecords
+    })
   },
 
   setTabBarSelected() {

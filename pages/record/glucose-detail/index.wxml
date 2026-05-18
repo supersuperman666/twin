@@ -6,12 +6,12 @@
   </view>
 
   <view class="hero">
-    <text class="hero-label">最新血糖 · 空腹 · 05.17 08:30</text>
+    <text class="hero-label">最新血糖 · {{latest.scene || '暂无'}} · {{latest.time || '--'}}</text>
     <view class="hero-main">
-      <view><text class="hero-value">5.0</text><text class="hero-unit">mmol/L</text></view>
-      <text class="hero-badge">正常</text>
+      <view><text class="hero-value">{{latest.value || '--'}}</text><text class="hero-unit">{{latest.unit || 'mmol/L'}}</text></view>
+      <text class="hero-badge">{{latest.status || '暂无'}}</text>
     </view>
-    <text class="hero-label">近 7 天空腹血糖稳定，暂无连续异常。</text>
+    <text class="hero-label">{{latest.desc || '新增血糖记录后这里会自动更新。'}}</text>
   </view>
 
   <view class="segmented">
@@ -24,9 +24,9 @@
       <text class="link">近7天</text>
     </view>
     <view class="summary-grid">
-      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">5.6</text></view>
-      <view class="summary-item"><text class="summary-label">最高</text><text class="summary-value">7.8</text></view>
-      <view class="summary-item"><text class="summary-label">达标率</text><text class="summary-value">86%</text></view>
+      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">{{summary.avg}}</text></view>
+      <view class="summary-item"><text class="summary-label">最高</text><text class="summary-value">{{summary.max}}</text></view>
+      <view class="summary-item"><text class="summary-label">达标率</text><text class="summary-value">{{summary.rate}}</text></view>
     </view>
     <view class="line-chart"><view class="line"></view></view>
     <view class="chart-axis"><text>05.10</text><text>05.12</text><text>05.14</text><text>05.17</text></view>

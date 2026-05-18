@@ -24,7 +24,7 @@
   </view>
 
   <view class="section-head"><text class="section-title">今日任务</text></view>
-  <view wx:for="{{tasks}}" wx:key="name" class="list-card" bindtap="checkIn">
+  <view wx:for="{{tasks}}" wx:key="name" class="list-card" data-index="{{index}}" bindtap="checkIn">
     <view class="list-top">
       <view><text class="list-title">{{item.name}}</text><text class="list-desc">{{item.dose}} · {{item.desc}}</text></view>
       <text class="tag {{item.done ? 'good' : 'gray'}}">{{item.status}} {{item.time}}</text>

@@ -1,3 +1,5 @@
+const recordStore = require('../../../utils/record-store')
+
 const pageTitles = {
   glucose: '血糖记录明细',
   oxygen: '血氧记录明细',
@@ -17,62 +19,66 @@ Page({
     activeScene: 0,
     drawerVisible: false,
     selectedRecord: null,
-    records: [
-      {
-        id: 1,
-        day: '05.17 周日',
-        time: '08:30',
-        title: '血糖 · 空腹',
-        value: '5.0',
-        unit: 'mmol/L',
-        status: '正常',
-        source: '手动记录',
-        sourceType: 'manual',
-        device: '',
-        remark: '早餐前测量，无明显低血糖症状',
-        edited: '未修改'
-      },
-      {
-        id: 2,
-        day: '05.17 周日',
-        time: '13:05',
-        title: '血糖 · 餐后',
-        value: '8.6',
-        unit: 'mmol/L',
-        status: '正常',
-        source: '设备采集',
-        sourceType: 'device',
-        device: 'ZG-P11H-0021',
-        remark: '午餐后 2 小时自动同步',
-        edited: '设备原始数据'
-      },
-      {
-        id: 3,
-        day: '05.16 周六',
-        time: '21:20',
-        title: '血糖 · 睡前',
-        value: '7.8',
-        unit: 'mmol/L',
-        status: '正常',
-        source: '手动记录',
-        sourceType: 'manual',
-        device: '',
-        remark: '晚餐后散步 30 分钟',
-        edited: '已修改'
-      }
-    ],
+    metric: 'glucose',
+    summary: { total: 0, abnormal: 0, manual: 0, device: 0 },
+    records: [],
     dayGroups: []
   },
 
   onLoad(options) {
     const metric = options.metric || 'glucose'
     this.setData({
-      title: pageTitles[metric] || '指标记录明细',
-      dayGroups: [
-        { day: '05.17 周日', count: 2, items: this.data.records.slice(0, 2) },
-        { day: '05.16 周六', count: 1, items: this.data.records.slice(2) }
-      ]
+      metric,
+      title: pageTitles[metric] || '指标记录明细'
     })
+    this.refreshRecords()
+  },
+
+  onShow() {
+    this.refreshRecords()
+  },
+
+  refreshRecords() {
+    const rawRecords = recordStore.listRecords({ metric: this.data.metric })
+    const records = rawRecords.map((item) => this.mapHistoryRecord(item))
+    const groups = records.reduce((result, item) => {
+      const existed = result.find((group) => group.day === item.day)
+      if (existed) {
+        existed.items.push(item)
+        existed.count += 1
+        return result
+      }
+      result.push({ day: item.day, count: 1, items: [item] })
+      return result
+    }, [])
+    this.setData({
+      records,
+      dayGroups: groups,
+      summary: {
+        total: records.length,
+        abnormal: rawRecords.filter((item) => item.status && item.status !== 'normal' && item.status !== 'done').length,
+        manual: rawRecords.filter((item) => item.source !== 'device').length,
+        device: rawRecords.filter((item) => item.source === 'device').length
+      }
+    })
+  },
+
+  mapHistoryRecord(item) {
+    const titleSuffix = item.measure_point_name || item.scene || item.level || item.status_text || ''
+    return {
+      id: item.id,
+      day: recordStore.formatDay(item),
+      time: (recordStore.formatShortTime(item).split(' ')[1]) || '--',
+      title: titleSuffix ? `${item.metric_name} · ${titleSuffix}` : item.metric_name,
+      value: item.value || item.title || item.name || '--',
+      unit: item.unit || '',
+      status: item.status_text || item.level || '已记录',
+      source: recordStore.sourceText(item.source),
+      sourceType: item.source || 'manual',
+      device: item.device || '',
+      remark: item.remark || item.desc || '',
+      edited: item.source === 'device' ? '设备原始数据' : '未修改'
+    }
   },
 
   selectTimeMode(event) {

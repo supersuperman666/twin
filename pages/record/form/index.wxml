@@ -79,6 +79,15 @@
       <text class="range-tip">{{config.range}}</text>
     </view>
 
+    <view wx:if="{{metricType === 'blood_pressure'}}" class="picker-card">
+      <text class="field-label">舒张压值</text>
+      <view class="value-edit compact">
+        <input class="value-input" type="number" value="{{diastolicValue}}" bindinput="onDiastolicInput" />
+        <text class="picker-unit">mmHg</text>
+      </view>
+      <slider min="40" max="140" step="1" value="{{diastolicValue}}" activeColor="#2f91f3" block-size="24" block-color="#2f91f3" bindchanging="onDiastolicSlider" bindchange="onDiastolicSlider" />
+    </view>
+
     <view class="form-list">
       <picker mode="date" value="{{dateValue}}" bindchange="onDateChange">
         <view class="form-row"><text>测量日期</text><view class="row-value"><text>{{dateValue}}</text><text class="chevron">›</text></view></view>

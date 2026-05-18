@@ -6,10 +6,10 @@
   </view>
 
   <view class="hero">
-    <text class="hero-label">最新血压 · 晨起 · 05.17 08:10</text>
+    <text class="hero-label">最新血压 · {{latest.scene || '暂无'}} · {{latest.time || '--'}}</text>
     <view class="hero-main">
-      <view><text class="hero-value">120/90</text><text class="hero-unit">mmHg</text></view>
-      <text class="hero-badge">正常</text>
+      <view><text class="hero-value">{{latest.value || '--'}}</text><text class="hero-unit">{{latest.unit || 'mmHg'}}</text></view>
+      <text class="hero-badge">{{latest.status || '暂无'}}</text>
     </view>
     <text class="hero-label">近 7 天血压整体平稳，建议继续晨起和睡前记录。</text>
   </view>
@@ -17,9 +17,9 @@
   <view class="chart-card">
     <view class="chart-head"><text class="chart-title">血压趋势</text><text class="link">近7天</text></view>
     <view class="summary-grid">
-      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">126/86</text></view>
-      <view class="summary-item"><text class="summary-label">最高</text><text class="summary-value">138/92</text></view>
-      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">0次</text></view>
+      <view class="summary-item"><text class="summary-label">平均</text><text class="summary-value">{{summary.avg}}</text></view>
+      <view class="summary-item"><text class="summary-label">最高</text><text class="summary-value">{{summary.max}}</text></view>
+      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">{{summary.abnormal}}</text></view>
     </view>
     <view class="line-chart"><view class="line"></view></view>
   </view>

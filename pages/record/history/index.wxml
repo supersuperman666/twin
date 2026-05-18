@@ -18,11 +18,11 @@
   </view>
 
   <view class="chart-card">
-    <view class="chart-head"><text class="chart-title">本月概览</text><text class="link">28条</text></view>
+    <view class="chart-head"><text class="chart-title">本月概览</text><text class="link">{{summary.total}}条</text></view>
     <view class="summary-grid">
-      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">3</text></view>
-      <view class="summary-item"><text class="summary-label">手动</text><text class="summary-value">20</text></view>
-      <view class="summary-item"><text class="summary-label">设备</text><text class="summary-value">8</text></view>
+      <view class="summary-item"><text class="summary-label">异常</text><text class="summary-value">{{summary.abnormal}}</text></view>
+      <view class="summary-item"><text class="summary-label">手动</text><text class="summary-value">{{summary.manual}}</text></view>
+      <view class="summary-item"><text class="summary-label">设备</text><text class="summary-value">{{summary.device}}</text></view>
     </view>
   </view>
 

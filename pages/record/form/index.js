@@ -1,3 +1,5 @@
+const recordStore = require('../../../utils/record-store')
+
 const glucosePoints = [
   { key: 'dawn', name: '凌晨', min: 3.9, max: 7.8 },
   { key: 'fasting', name: '空腹', min: 4.4, max: 7.0 },
@@ -115,6 +117,7 @@ Page({
     currentPoint: glucosePoints[8],
     glucoseStatus: { text: '达标', level: 'normal' },
     genericValue: 98,
+    diastolicValue: 80,
     dateValue: '',
     timeValue: '',
     remark: '',
@@ -220,6 +223,14 @@ Page({
     this.setData({ genericValue: normalizeNumber(event.detail.value, this.data.config.min, this.data.config.max, this.data.config.step) })
   },
 
+  onDiastolicSlider(event) {
+    this.setData({ diastolicValue: normalizeNumber(event.detail.value, 40, 140, 1) })
+  },
+
+  onDiastolicInput(event) {
+    this.setData({ diastolicValue: normalizeNumber(event.detail.value, 40, 140, 1) })
+  },
+
   onDateChange(event) {
     this.setData({ dateValue: event.detail.value })
   },
@@ -235,10 +246,23 @@ Page({
     })
   },
 
+  getGenericStatus() {
+    const type = this.data.metricType
+    const value = Number(this.data.genericValue)
+    if (type === 'oxygen') return value < 95 ? { status: 'warning', text: '偏低' } : { status: 'normal', text: '正常' }
+    if (type === 'pulse') return value < 50 || value > 120 ? { status: 'warning', text: '异常' } : { status: 'normal', text: '正常' }
+    if (type === 'respiration') return value < 12 || value > 24 ? { status: 'warning', text: '异常' } : { status: 'normal', text: '正常' }
+    if (type === 'blood_pressure') {
+      const systolic = Number(this.data.genericValue)
+      const diastolic = Number(this.data.diastolicValue)
+      return systolic >= 140 || diastolic >= 90 ? { status: 'warning', text: '偏高' } : { status: 'normal', text: '正常' }
+    }
+    return { status: 'normal', text: '正常' }
+  },
+
   saveRecord() {
     const record = this.buildRecord()
-    const records = wx.getStorageSync('healthMetricRecords') || []
-    wx.setStorageSync('healthMetricRecords', [record, ...records])
+    recordStore.addRecord(record)
     wx.showToast({ title: '记录已保存', icon: 'success' })
     setTimeout(() => wx.navigateBack(), 500)
   },
@@ -266,13 +290,18 @@ Page({
       }
     }
 
+    const status = this.getGenericStatus()
     return {
       id: `manual_${this.data.metricType}_${Date.now()}`,
       metric_code: this.data.metricType,
-      metric_name: this.data.config.label,
-      value: this.data.genericValue,
+      metric_name: this.data.metricType === 'blood_pressure' ? '血压' : this.data.config.label,
+      value: this.data.metricType === 'blood_pressure' ? `${this.data.genericValue}/${this.data.diastolicValue}` : this.data.genericValue,
+      systolic: this.data.metricType === 'blood_pressure' ? this.data.genericValue : undefined,
+      diastolic: this.data.metricType === 'blood_pressure' ? this.data.diastolicValue : undefined,
       unit: this.data.config.unit,
       scene: this.data.config.tabs[this.data.activeTab],
+      status: status.status,
+      status_text: status.text,
       recorded_at: `${this.data.dateValue} ${this.data.timeValue}`,
       source: 'manual',
       remark: this.data.remark,
