@@ -1401,6 +1401,22 @@ button:disabled {
   background: #fff;
 }
 
+.structured-table th {
+  padding: 8px 10px;
+  color: var(--sub);
+  background: #f8fafc;
+  font-size: 12px;
+  text-align: left;
+}
+
+.config-table small,
+.task-rule-preview small {
+  display: block;
+  margin-top: 3px;
+  color: var(--weak);
+  font-weight: 500;
+}
+
 .config-table td {
   padding: 9px 10px;
   border-bottom: 1px solid var(--line);
@@ -1417,6 +1433,71 @@ button:disabled {
   color: var(--text);
   font-weight: 700;
   white-space: nowrap;
+}
+
+.mini-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mini-tags em {
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #475467;
+  background: #eef2f7;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.rule-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.rule-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rule-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+
+.rule-card.single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rule-card label.wide {
+  grid-column: 1 / -1;
+}
+
+.rule-card input,
+.rule-card select,
+.rule-card textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+
+.rule-card textarea {
+  min-height: 68px;
+}
+
+.task-rule-preview {
+  display: grid;
+  gap: 6px;
 }
 
 .audit-panel {

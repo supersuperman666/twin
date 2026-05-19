@@ -458,10 +458,74 @@ function ensurePlanShape(plan) {
     if (module.key === "metrics" && (module.fields.rows || []).some((row) => ["<", ">", "<=", ">=", "="].includes(String(row).split("|")[1]))) {
       module.fields.rows = defaults.rows;
     }
+    normalizeModuleConfig(plan, module);
   });
+  plan.taskRules = generatePlanTaskRules(plan);
   plan.patientPreview = plan.patientPreview || buildPatientPreview(plan);
   plan.changeLogs = plan.changeLogs || [{ time: plan.updatedAt, text: `${plan.source}创建方案` }];
   return plan;
+}
+
+function normalizeModuleConfig(plan, module) {
+  if (module.key === "metrics" && !module.fields.metricItems) {
+    module.fields.metricItems = (module.fields.rows || []).map(metricRowToConfig);
+  }
+  if (module.key === "alerts" && !module.fields.alertRules) {
+    module.fields.alertRules = (module.fields.rows || []).map(alertRowToConfig);
+  }
+  if (module.key === "followup" && !module.fields.followupRule) {
+    module.fields.followupRule = followupRowsToRule(module.fields.rows || [], plan);
+  }
+}
+
+function metricRowToConfig(row) {
+  const [metricName = "核心指标", targetRange = "按医嘱目标", frequency = "每日", dataSource = "手动记录", taskTitle = "患者按方案记录"] = String(row).split("|");
+  return {
+    metricCode: metricCodeOf(metricName),
+    metricName,
+    scenes: metricScenes(metricName),
+    frequency,
+    timeWindow: defaultTimeWindow(metricName, frequency),
+    dataSources: dataSource.split("/"),
+    targetRange,
+    generateTodo: true,
+    allowBackfill: true,
+    allowUnableFeedback: true,
+    taskGroup: taskGroupOf(metricName, frequency),
+    priority: "普通",
+    patientInstruction: taskTitle
+  };
+}
+
+function alertRowToConfig(row) {
+  const [metricName = "核心指标", condition = "连续异常", patientAction = "提醒复测", level = "重要预警"] = String(row).split("|");
+  const parsed = parseCondition(condition);
+  return {
+    metricCode: metricCodeOf(metricName),
+    metricName,
+    operator: parsed.operator,
+    threshold: parsed.threshold,
+    duration: parsed.duration,
+    alertLevel: level.includes("紧急") ? "紧急" : level.includes("重要") ? "重要" : "一般",
+    patientActions: patientAction.includes("症状") ? ["复测", "记录症状"] : ["复测"],
+    doctorActions: ["查看详情", patientAction.includes("随访") ? "创建随访" : "关闭预警"],
+    generateFollowupSuggestion: level.includes("重要") || level.includes("紧急"),
+    enabled: true
+  };
+}
+
+function followupRowsToRule(rows, plan) {
+  const first = rows[0]?.split("|") || [];
+  return {
+    firstFollowupAfterDays: Number(String(first[1] || "").match(/\d+/)?.[0] || 7),
+    frequencyRule: plan?.period === "14 天" ? "每 2 周" : "每月",
+    methods: ["小程序问卷", "电话"],
+    focusItems: ["指标达标", "症状变化", "用药依从性", "设备同步"],
+    prepareItems: ["近 7 天记录", "症状反馈", plan?.disease?.includes("睡眠") ? "睡眠报告" : "用药记录"].filter(Boolean),
+    autoFollowup: true,
+    noAutoReason: "",
+    patientInstruction: "请在随访前补齐近期记录和症状反馈。"
+  };
 }
 
 function defaultPlanModules(plan) {
@@ -574,6 +638,174 @@ function parseTargetText(item) {
   return [item, "按医嘱目标"];
 }
 
+function metricCodeOf(name) {
+  if (/血糖/.test(name)) return "blood_glucose";
+  if (/血压/.test(name)) return "blood_pressure";
+  if (/SpO2|血氧|最低血氧/.test(name)) return "spo2";
+  if (/呼吸/.test(name)) return "respiratory_rate";
+  if (/AHI/.test(name)) return "ahi";
+  if (/CPAP/.test(name)) return "cpap_usage";
+  if (/体重|BMI/.test(name)) return "weight";
+  return "custom_metric";
+}
+
+function metricScenes(name) {
+  if (/血糖/.test(name)) return ["空腹", "餐后 2h"];
+  if (/血压/.test(name)) return ["晨起", "睡前"];
+  if (/SpO2|血氧/.test(name)) return ["静息", "睡前"];
+  if (/睡眠|AHI|CPAP/.test(name)) return ["夜间"];
+  return ["默认"];
+}
+
+function defaultTimeWindow(name, frequency) {
+  if (/空腹|晨起|血压/.test(name)) return "06:00-09:00";
+  if (/睡前/.test(name)) return "21:00-23:00";
+  if (/睡眠|AHI|CPAP/.test(name) || frequency.includes("夜间")) return "睡眠后自动同步";
+  return "";
+}
+
+function taskGroupOf(name, frequency) {
+  if (/空腹|晨起|血压/.test(name)) return "晨间测量";
+  if (/睡前/.test(name)) return "睡前测量";
+  if (/睡眠|AHI|CPAP|夜间/.test(name) || frequency.includes("夜间")) return "睡眠监测";
+  return "日常记录";
+}
+
+function parseCondition(condition) {
+  const text = String(condition);
+  const operator = text.includes("<=") ? "<=" : text.includes(">=") ? ">=" : text.includes("<") ? "<" : text.includes(">") ? ">" : "连续异常";
+  return {
+    operator,
+    threshold: text.match(/[<>]=?\s*([^，； ]+)/)?.[1] || text.match(/\d+(\.\d+)?%?/)?.[0] || "",
+    duration: text.includes("连续") ? text.match(/连续\s*(\d+)/)?.[1] || "2" : text.includes("持续") ? text.match(/持续\s*(\d+)/)?.[1] || "10" : ""
+  };
+}
+
+function generatePlanTaskRules(plan) {
+  const rules = [];
+  const version = Number(String(plan.version || "V1.0").replace(/\D/g, "")) || 1;
+  const pushRule = (rule) => rules.push({
+    id: rule.id || uid("TR"),
+    sourceType: "management_plan",
+    sourceModule: rule.sourceModule,
+    relatedPlanId: plan.id,
+    planVersion: version,
+    diseaseCodes: [plan.disease],
+    allowUnableFeedback: rule.allowUnableFeedback ?? true,
+    allowBackfill: rule.allowBackfill ?? true,
+    status: "active",
+    ...rule
+  });
+  plan.modules.forEach((module) => {
+    if (!module.included) return;
+    if (module.key === "metrics") {
+      (module.fields.metricItems || []).filter((item) => item.generateTodo).forEach((item) => pushRule({
+        sourceModule: "指标测量方案",
+        taskType: metricCodeOf(item.metricName) === "cpap_usage" ? "CPAP 任务" : "指标记录",
+        title: `${item.taskGroup || "记录"}：${item.metricName}`,
+        patientInstruction: item.patientInstruction,
+        scheduleRule: { frequency: item.frequency, timeWindow: item.timeWindow },
+        taskPayload: { metricCode: item.metricCode, metricName: item.metricName, scenes: item.scenes, targetRange: item.targetRange, dataSources: item.dataSources },
+        taskGroup: item.taskGroup,
+        mergeKey: `${item.taskGroup || "metric"}_${item.timeWindow || "any"}`,
+        priority: item.priority
+      }));
+    }
+    if (module.key === "symptoms") {
+      (module.fields.rows || []).slice(0, 3).forEach((row) => {
+        const [symptom, frequency, fields, action] = row.split("|");
+        pushRule({
+          sourceModule: "症状记录方案",
+          taskType: "症状评估",
+          title: `记录症状：${symptom}`,
+          patientInstruction: module.fields.patientInstruction,
+          scheduleRule: { frequency },
+          taskPayload: { symptom, requiredFields: fields, triggerAction: action },
+          taskGroup: "症状反馈",
+          mergeKey: "symptom_record",
+          priority: "普通"
+        });
+      });
+    }
+    if (module.key === "medication") {
+      (module.fields.rows || []).forEach((row) => {
+        const [drug, reminder, patientRecord, note] = row.split("|");
+        pushRule({
+          sourceModule: "用药方案",
+          taskType: "用药/治疗执行",
+          title: `用药提醒：${drug}`,
+          patientInstruction: module.fields.patientInstruction,
+          scheduleRule: { frequency: reminder, timeWindow: "按用药时间" },
+          taskPayload: { drugName: drug, patientRecord, note, isKeyMedication: true },
+          taskGroup: "用药提醒",
+          mergeKey: "medication",
+          priority: "重要"
+        });
+      });
+    }
+    if (module.key === "device") {
+      (module.fields.rows || []).forEach((row) => {
+        const [deviceType, frequency, source, action] = row.split("|");
+        pushRule({
+          sourceModule: "设备监测方案",
+          taskType: /CPAP|睡眠/.test(deviceType) ? "睡眠报告" : "设备任务",
+          title: `设备同步：${deviceType}`,
+          patientInstruction: module.fields.patientInstruction,
+          scheduleRule: { frequency },
+          taskPayload: { deviceType, dataSource: source, failedAction: action },
+          taskGroup: "设备同步",
+          mergeKey: "device_sync",
+          priority: "重要"
+        });
+      });
+    }
+    if (module.key === "lifestyle") {
+      (module.fields.rows || []).forEach((row) => {
+        const [content, frequency, feedback, review] = row.split("|");
+        pushRule({
+          sourceModule: "生活方式方案",
+          taskType: "生活方式",
+          title: content,
+          patientInstruction: module.fields.patientInstruction,
+          scheduleRule: { frequency },
+          taskPayload: { content, feedback, review },
+          taskGroup: "生活方式",
+          mergeKey: "lifestyle",
+          priority: "普通"
+        });
+      });
+    }
+    if (module.key === "followup") {
+      const rule = module.fields.followupRule;
+      if (rule?.autoFollowup) pushRule({
+        sourceModule: "随访计划",
+        taskType: "随访准备",
+        title: `随访准备：${rule.firstFollowupAfterDays} 天后首次随访`,
+        patientInstruction: rule.patientInstruction,
+        scheduleRule: { frequency: rule.frequencyRule, firstAfterDays: rule.firstFollowupAfterDays },
+        taskPayload: { methods: rule.methods, focusItems: rule.focusItems, prepareItems: rule.prepareItems },
+        taskGroup: "随访准备",
+        mergeKey: "followup_prepare",
+        priority: "重要"
+      });
+    }
+  });
+  pushRule({
+    sourceModule: "患者指导",
+    taskType: "确认阅读",
+    title: `确认已知晓：${plan.title}`,
+    patientInstruction: "请确认已知晓并开始执行当前管理方案。",
+    scheduleRule: { frequency: "一次性", timeWindow: "下发后" },
+    taskPayload: { acknowledgeObject: plan.id },
+    taskGroup: "方案确认",
+    mergeKey: "plan_acknowledge",
+    priority: "重要",
+    allowBackfill: false,
+    allowUnableFeedback: false
+  });
+  return rules;
+}
+
 function metricFrequency(disease, item) {
   if (/CPAP|睡眠|AHI|最低血氧/.test(item)) return "每日夜间";
   if (disease.includes("糖尿病")) return item.includes("餐后") ? "每周至少 2 次" : "每日晨起";
@@ -635,6 +867,12 @@ function validatePlan(plan) {
   plan.modules.filter((module) => module.type === "conditional" && module.included).forEach((module) => {
     if (!String(module.summary || "").trim()) warnings.push({ level: "error", moduleKey: module.key, message: `已启用${module.name}，请补充执行内容。` });
   });
+  const metricModule = planModule(plan, "metrics");
+  if (!metricModule?.fields?.metricItems?.some((item) => item.generateTodo)) warnings.push({ level: "error", moduleKey: "metrics", message: "请至少配置 1 个会生成患者待办的关键指标测量规则。" });
+  const alertModule = planModule(plan, "alerts");
+  if (!alertModule?.fields?.alertRules?.some((rule) => rule.enabled)) warnings.push({ level: "error", moduleKey: "alerts", message: "请至少保留 1 条启用状态的核心安全预警规则。" });
+  const followRule = planModule(plan, "followup")?.fields?.followupRule;
+  if (!followRule?.autoFollowup && !followRule?.noAutoReason) warnings.push({ level: "error", moduleKey: "followup", message: "不自动随访时需填写原因。" });
   const deviceDependent = plan.targets.some((item) => /AHI|ODI|CPAP|最低血氧|睡眠报告/.test(item));
   if (deviceDependent && !planModule(plan, "device")?.included) {
     warnings.push({ level: "warning", moduleKey: "device", message: "方案包含睡眠/低氧设备指标，建议启用设备监测方案。" });
@@ -668,7 +906,7 @@ function buildPatientPreview(plan) {
     title: plan.title,
     objective: plan.objective,
     visibleModules: plan.modules.filter((module) => module.included && module.patientVisible).map((module) => module.name),
-    dailyTasks: plan.tasks.length ? plan.tasks : plan.modules.filter((module) => module.included && module.patientVisible).map((module) => module.summary).slice(0, 4),
+    dailyTasks: (plan.taskRules || []).filter((rule) => rule.taskType !== "确认阅读").slice(0, 6).map((rule) => `${rule.title}（${rule.scheduleRule?.frequency || "按方案"}）`),
     followup: followup?.summary || "按医生设置时间完成随访",
     abnormalTips: alerts?.summary || "异常情况请按页面提示处理"
   };
@@ -1006,8 +1244,9 @@ function renderPlanDetail() {
         </div>
         <div class="audit-block">
           <span>患者执行负担</span>
-          <strong>${plan.modules.filter((module) => module.included && module.patientVisible).length} 项可见模块</strong>
-          <p>建议保持患者端任务清晰，设备采集项优先自动同步。</p>
+          <strong>${plan.taskRules.length} 条底层任务规则</strong>
+          <p>${taskLoadSummary(plan)}</p>
+          <div class="task-rule-preview">${plan.taskRules.slice(0, 6).map((rule) => `<p>${tag(rule.taskType, "blue")} ${escapeHtml(rule.title)}<small>${escapeHtml(rule.taskGroup || "-")} | ${escapeHtml(rule.priority)}</small></p>`).join("")}</div>
         </div>
         <div class="audit-block">
           <span>方案时间轴</span>
@@ -1048,10 +1287,55 @@ function renderModuleStructuredContent(module) {
       <div><span>量化目标</span><ul>${(module.fields.targets || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
     </div>`;
   }
+  if (module.key === "metrics") {
+    return `<table class="config-table structured-table">
+      <thead><tr><th>指标</th><th>场景</th><th>频率/时间</th><th>来源</th><th>目标</th><th>任务规则</th></tr></thead>
+      <tbody>${(module.fields.metricItems || []).map((item) => `<tr>
+        <td>${escapeHtml(item.metricName)}<small>${escapeHtml(item.metricCode)}</small></td>
+        <td>${renderMiniTags(item.scenes)}</td>
+        <td>${escapeHtml(item.frequency)}<small>${escapeHtml(item.timeWindow || "不限")}</small></td>
+        <td>${renderMiniTags(item.dataSources)}</td>
+        <td>${escapeHtml(item.targetRange)}</td>
+        <td>${item.generateTodo ? tag("生成待办", "blue") : tag("不生成", "gray")}${tag(item.priority, toneOf(item.priority))}<small>${escapeHtml(item.taskGroup)}</small></td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+  if (module.key === "alerts") {
+    return `<table class="config-table structured-table">
+      <thead><tr><th>预警对象</th><th>触发条件</th><th>等级</th><th>患者动作</th><th>医生动作</th><th>随访建议</th></tr></thead>
+      <tbody>${(module.fields.alertRules || []).map((rule) => `<tr>
+        <td>${escapeHtml(rule.metricName)}</td>
+        <td>${escapeHtml([rule.operator, rule.threshold].filter(Boolean).join(" "))}${rule.duration ? `<small>连续/持续 ${escapeHtml(rule.duration)}</small>` : ""}</td>
+        <td>${tag(rule.alertLevel, toneOf(rule.alertLevel === "紧急" ? "紧急" : rule.alertLevel === "重要" ? "重要" : "提醒"))}</td>
+        <td>${renderMiniTags(rule.patientActions)}</td>
+        <td>${renderMiniTags(rule.doctorActions)}</td>
+        <td>${rule.generateFollowupSuggestion ? tag("自动建议", "blue") : tag("不建议", "gray")}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+  if (module.key === "followup") {
+    const rule = module.fields.followupRule || {};
+    return `<div class="module-detail-grid">
+      <div><span>首次随访</span><strong>下发后第 ${escapeHtml(rule.firstFollowupAfterDays || "-")} 天</strong></div>
+      <div><span>随访频率/方式</span><strong>${escapeHtml(rule.frequencyRule || "-")}</strong><p>${renderMiniTags(rule.methods || [])}</p></div>
+      <div><span>随访重点</span><p>${renderMiniTags(rule.focusItems || [])}</p></div>
+      <div><span>患者准备材料</span><p>${renderMiniTags(rule.prepareItems || [])}</p></div>
+    </div>`;
+  }
   if (!rows.length) return "";
   return `<table class="config-table">
     <tbody>${rows.map((row) => `<tr>${String(row).split("|").map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
   </table>`;
+}
+
+function renderMiniTags(items = []) {
+  return `<span class="mini-tags">${items.map((item) => `<em>${escapeHtml(item)}</em>`).join("")}</span>`;
+}
+
+function taskLoadSummary(plan) {
+  const types = new Map();
+  plan.taskRules.forEach((rule) => types.set(rule.taskType, (types.get(rule.taskType) || 0) + 1));
+  return [...types.entries()].map(([type, count]) => `${type} ${count} 条`).join("；") || "暂无患者端待办规则";
 }
 
 function moduleEditorBody(module) {
@@ -1067,18 +1351,90 @@ function moduleEditorBody(module) {
     guidance: "每行一条：指导主题|患者可见内容"
   };
   const rows = (module.fields.rows || []).join("\n");
+  const structuredFields = structuredModuleEditor(module);
   const goalFields = module.key === "goals" ? `
     <label>阶段目标<textarea id="moduleStageGoal">${escapeHtml(module.fields.stageGoal || module.summary || "")}</textarea></label>
     <label>量化目标（一行一个）<textarea id="moduleTargets">${escapeHtml((module.fields.targets || []).join("\n"))}</textarea></label>` : "";
-  const rowFields = module.key === "goals" ? "" : `
+  const rowFields = module.key === "goals" || structuredFields ? "" : `
     <label>结构化配置<small>${rowTip[module.key] || "每行一条配置，字段用 | 分隔"}</small><textarea id="moduleRows">${escapeHtml(rows)}</textarea></label>`;
   return `<div class="form">
     <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"} ${module.recommendationReason}</p>
     ${goalFields}
+    ${structuredFields}
     ${rowFields}
     <label>医生端摘要<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
     <label>患者端展示文案<textarea id="modulePatient">${escapeHtml(module.fields?.patientInstruction || module.summary || "")}</textarea></label>
   </div>`;
+}
+
+function structuredModuleEditor(module) {
+  if (module.key === "metrics") {
+    return `<div class="rule-editor">
+      <div class="rule-editor-head"><strong>指标测量规则</strong><button class="btn" data-action="add-metric-rule">添加指标</button></div>
+      <div id="metricRuleList">${(module.fields.metricItems || []).map((item, index) => metricRuleEditor(item, index)).join("")}</div>
+    </div>`;
+  }
+  if (module.key === "alerts") {
+    return `<div class="rule-editor">
+      <div class="rule-editor-head"><strong>预警规则参数</strong><button class="btn" data-action="add-alert-rule">添加规则</button></div>
+      <div id="alertRuleList">${(module.fields.alertRules || []).map((rule, index) => alertRuleEditor(rule, index)).join("")}</div>
+    </div>`;
+  }
+  if (module.key === "followup") {
+    const rule = module.fields.followupRule || {};
+    return `<div class="rule-card single">
+      <label>首次随访时间<select data-field="followup.firstFollowupAfterDays">${[3, 7, 14, 30].map((day) => `<option value="${day}" ${Number(rule.firstFollowupAfterDays) === day ? "selected" : ""}>下发后第 ${day} 天</option>`).join("")}</select></label>
+      <label>随访频率<select data-field="followup.frequencyRule">${["每周", "每 2 周", "每月", "按预警触发", "不自动随访"].map((item) => `<option ${rule.frequencyRule === item ? "selected" : ""}>${item}</option>`).join("")}</select></label>
+      <label>随访方式<input data-field="followup.methods" value="${escapeAttr((rule.methods || []).join("、"))}"></label>
+      <label>随访重点<input data-field="followup.focusItems" value="${escapeAttr((rule.focusItems || []).join("、"))}"></label>
+      <label>患者准备材料<input data-field="followup.prepareItems" value="${escapeAttr((rule.prepareItems || []).join("、"))}"></label>
+      <label>不自动随访原因<input data-field="followup.noAutoReason" value="${escapeAttr(rule.noAutoReason || "")}" placeholder="选择不自动随访时填写"></label>
+    </div>`;
+  }
+  return "";
+}
+
+function metricRuleEditor(item, index) {
+  return `<div class="rule-card" data-rule-type="metric">
+    <label>指标<select data-field="metricName">${["空腹血糖", "餐后 2h 血糖", "血压", "SpO2", "呼吸频率", "睡眠时长", "最低血氧", "AHI", "CPAP 使用"].map((name) => `<option ${item.metricName === name ? "selected" : ""}>${name}</option>`).join("")}</select></label>
+    <label>场景<input data-field="scenes" value="${escapeAttr((item.scenes || []).join("、"))}"></label>
+    <label>频率<select data-field="frequency">${["每日", "每日夜间", "每周至少 2 次", "每周", "按异常复测"].map((value) => `<option ${item.frequency === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label>时间窗<input data-field="timeWindow" value="${escapeAttr(item.timeWindow || "")}" placeholder="如 06:00-09:00"></label>
+    <label>数据来源<input data-field="dataSources" value="${escapeAttr((item.dataSources || []).join("、"))}"></label>
+    <label>目标范围<input data-field="targetRange" value="${escapeAttr(item.targetRange || "")}"></label>
+    <label>任务分组<select data-field="taskGroup">${["晨间测量", "睡前测量", "睡眠监测", "日常记录"].map((value) => `<option ${item.taskGroup === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label>优先级<select data-field="priority">${["普通", "重要", "紧急"].map((value) => `<option ${item.priority === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label><input type="checkbox" data-field="generateTodo" ${item.generateTodo ? "checked" : ""}> 生成患者待办</label>
+    <label><input type="checkbox" data-field="allowBackfill" ${item.allowBackfill ? "checked" : ""}> 允许补记</label>
+    <label><input type="checkbox" data-field="allowUnableFeedback" ${item.allowUnableFeedback ? "checked" : ""}> 允许反馈无法完成</label>
+    <label class="wide">患者说明<textarea data-field="patientInstruction">${escapeHtml(item.patientInstruction || "")}</textarea></label>
+  </div>`;
+}
+
+function alertRuleEditor(rule) {
+  return `<div class="rule-card" data-rule-type="alert">
+    <label>预警指标<select data-field="metricName">${["空腹血糖", "餐后 2h 血糖", "血压", "SpO2", "最低血氧", "AHI", "CPAP 使用", "任务完成率"].map((name) => `<option ${rule.metricName === name ? "selected" : ""}>${name}</option>`).join("")}</select></label>
+    <label>操作符<select data-field="operator">${["<", "<=", ">", ">=", "连续异常"].map((value) => `<option ${rule.operator === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label>阈值<input data-field="threshold" value="${escapeAttr(rule.threshold || "")}" placeholder="如 90%"></label>
+    <label>连续/持续<input data-field="duration" value="${escapeAttr(rule.duration || "")}" placeholder="如 2 次 / 10 分钟"></label>
+    <label>预警等级<select data-field="alertLevel">${["一般", "重要", "紧急"].map((value) => `<option ${rule.alertLevel === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label>患者动作<input data-field="patientActions" value="${escapeAttr((rule.patientActions || []).join("、"))}"></label>
+    <label>医生动作<input data-field="doctorActions" value="${escapeAttr((rule.doctorActions || []).join("、"))}"></label>
+    <label><input type="checkbox" data-field="generateFollowupSuggestion" ${rule.generateFollowupSuggestion ? "checked" : ""}> 自动建议随访</label>
+    <label><input type="checkbox" data-field="enabled" ${rule.enabled ? "checked" : ""}> 启用规则</label>
+  </div>`;
+}
+
+function addMetricRuleEditor() {
+  const list = $("#metricRuleList");
+  if (!list) return;
+  list.insertAdjacentHTML("beforeend", metricRuleEditor(metricRowToConfig("空腹血糖|4.4-7.0 mmol/L|每日|手动记录/设备采集|按时完成血糖记录"), list.children.length));
+}
+
+function addAlertRuleEditor() {
+  const list = $("#alertRuleList");
+  if (!list) return;
+  list.insertAdjacentHTML("beforeend", alertRuleEditor(alertRowToConfig("空腹血糖|> 7.0 mmol/L 连续2次|提醒复测并记录症状|重要")));
 }
 
 function moduleSummaryFromFields(module) {
@@ -1253,9 +1609,48 @@ function patientConfirmPlan(id) {
   addTimeline(plan.patientId, "方案", `患者知晓并开始执行方案：${plan.title}`);
   state.advice = state.advice || [];
   state.advice.unshift({ id: uid("AD"), patientId: plan.patientId, type: "方案执行提醒", source: "管理方案", status: "未读", text: `${plan.title}已生效，请按方案完成记录和随访。`, createdAt: nowText() });
+  createPatientTasksFromPlan(plan);
   createFollowup(plan.patientId, null, true, plan.id);
   closeModal();
   persist("方案已进入执行中");
+}
+
+function createPatientTasksFromPlan(plan) {
+  state.patientTasks = state.patientTasks || [];
+  const version = Number(String(plan.version || "V1.0").replace(/\D/g, "")) || 1;
+  const existingKeys = new Set(state.patientTasks.filter((task) => task.relatedPlanId === plan.id && task.planVersion === version).map((task) => task.mergeKey + task.title));
+  (plan.taskRules || []).forEach((rule) => {
+    const key = rule.mergeKey + rule.title;
+    if (existingKeys.has(key)) return;
+    state.patientTasks.unshift({
+      id: uid("PT"),
+      patientId: plan.patientId,
+      taskType: rule.taskType,
+      sourceType: "management_plan",
+      sourceModule: rule.sourceModule,
+      sourceId: plan.id,
+      relatedPlanId: plan.id,
+      planVersion: version,
+      taskGroupId: rule.taskGroup,
+      mergeKey: rule.mergeKey,
+      diseaseCodes: rule.diseaseCodes,
+      title: rule.title,
+      patientInstruction: rule.patientInstruction,
+      taskPayload: rule.taskPayload,
+      scheduleRule: rule.scheduleRule,
+      scheduledAt: "按规则生成",
+      dueAt: rule.scheduleRule?.firstAfterDays ? `下发后第 ${rule.scheduleRule.firstAfterDays} 天` : rule.scheduleRule?.timeWindow || "当日",
+      priority: rule.priority,
+      status: "pending",
+      allowUnableFeedback: rule.allowUnableFeedback,
+      allowBackfill: rule.allowBackfill,
+      reminderRule: { miniProgram: true, homeTodo: true },
+      overdueRule: { remindPatient: true, notifyDoctor: rule.priority !== "普通" },
+      completionPolicy: { mode: rule.taskPayload?.dataSources?.includes("设备采集") ? "manual_or_device" : "manual" },
+      createdAt: nowText()
+    });
+  });
+  addTimeline(plan.patientId, "任务", `根据管理方案生成 ${plan.taskRules.length} 条患者端待办规则`);
 }
 
 function savePlanDraft(id) {
@@ -1282,6 +1677,16 @@ function savePlanModule(id, moduleKey) {
     module.fields.targets = $("#moduleTargets").value.split("\n").map((item) => item.trim()).filter(Boolean);
     plan.objective = module.fields.stageGoal;
     plan.targets = module.fields.targets;
+  } else if (module.key === "metrics") {
+    module.fields.metricItems = readMetricRules();
+    module.fields.rows = module.fields.metricItems.map((item) => `${item.metricName}|${item.targetRange}|${item.frequency}${item.timeWindow ? ` ${item.timeWindow}` : ""}|${item.dataSources.join("/")}|${item.patientInstruction}`);
+    plan.targets = module.fields.metricItems.map((item) => `${item.metricName} ${item.targetRange}`);
+  } else if (module.key === "alerts") {
+    module.fields.alertRules = readAlertRules();
+    module.fields.rows = module.fields.alertRules.map((rule) => `${rule.metricName}|${rule.operator} ${rule.threshold}${rule.duration ? ` 连续/持续${rule.duration}` : ""}|${rule.patientActions.join("、")}|${rule.alertLevel}`);
+  } else if (module.key === "followup") {
+    module.fields.followupRule = readFollowupRule();
+    module.fields.rows = [`计划随访|下发后第 ${module.fields.followupRule.firstFollowupAfterDays} 天|${module.fields.followupRule.focusItems.join("、")}|系统生成待随访`];
   } else {
     module.fields.rows = $("#moduleRows").value.split("\n").map((item) => item.trim()).filter(Boolean);
   }
@@ -1289,10 +1694,69 @@ function savePlanModule(id, moduleKey) {
   module.fields.patientInstruction = $("#modulePatient").value.trim();
   module.excludeReason = "";
   plan.updatedAt = nowText();
+  plan.taskRules = generatePlanTaskRules(plan);
   plan.patientPreview = buildPatientPreview(plan);
   plan.changeLogs.unshift({ time: plan.updatedAt, text: `编辑${module.name}` });
   closeModal();
   persist("模块已保存");
+}
+
+function splitList(value) {
+  return String(value || "").split(/[、,，]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function readMetricRules() {
+  return $$("#metricRuleList [data-rule-type='metric']").map((card) => {
+    const get = (field) => $(`[data-field="${field}"]`, card);
+    const metricName = get("metricName").value;
+    return {
+      metricCode: metricCodeOf(metricName),
+      metricName,
+      scenes: splitList(get("scenes").value),
+      frequency: get("frequency").value,
+      timeWindow: get("timeWindow").value.trim(),
+      dataSources: splitList(get("dataSources").value),
+      targetRange: get("targetRange").value.trim(),
+      taskGroup: get("taskGroup").value,
+      priority: get("priority").value,
+      generateTodo: get("generateTodo").checked,
+      allowBackfill: get("allowBackfill").checked,
+      allowUnableFeedback: get("allowUnableFeedback").checked,
+      patientInstruction: get("patientInstruction").value.trim()
+    };
+  });
+}
+
+function readAlertRules() {
+  return $$("#alertRuleList [data-rule-type='alert']").map((card) => {
+    const get = (field) => $(`[data-field="${field}"]`, card);
+    const metricName = get("metricName").value;
+    return {
+      metricCode: metricCodeOf(metricName),
+      metricName,
+      operator: get("operator").value,
+      threshold: get("threshold").value.trim(),
+      duration: get("duration").value.trim(),
+      alertLevel: get("alertLevel").value,
+      patientActions: splitList(get("patientActions").value),
+      doctorActions: splitList(get("doctorActions").value),
+      generateFollowupSuggestion: get("generateFollowupSuggestion").checked,
+      enabled: get("enabled").checked
+    };
+  });
+}
+
+function readFollowupRule() {
+  return {
+    firstFollowupAfterDays: Number($('[data-field="followup.firstFollowupAfterDays"]').value),
+    frequencyRule: $('[data-field="followup.frequencyRule"]').value,
+    methods: splitList($('[data-field="followup.methods"]').value),
+    focusItems: splitList($('[data-field="followup.focusItems"]').value),
+    prepareItems: splitList($('[data-field="followup.prepareItems"]').value),
+    autoFollowup: $('[data-field="followup.frequencyRule"]').value !== "不自动随访",
+    noAutoReason: $('[data-field="followup.noAutoReason"]').value.trim(),
+    patientInstruction: $("#modulePatient").value.trim()
+  };
 }
 
 function togglePlanModule(id, moduleKey) {
@@ -1536,6 +2000,8 @@ document.body.addEventListener("click", (event) => {
   }
   if (action === "save-plan-draft") savePlanDraft(target.dataset.id);
   if (action === "edit-plan-module") openPlanModuleEditor(target.dataset.id, target.dataset.module);
+  if (action === "add-metric-rule") addMetricRuleEditor();
+  if (action === "add-alert-rule") addAlertRuleEditor();
   if (action === "save-plan-module") savePlanModule(target.dataset.id, target.dataset.module);
   if (action === "toggle-plan-module") togglePlanModule(target.dataset.id, target.dataset.module);
   if (action === "confirm-toggle-plan-module") confirmTogglePlanModule(target.dataset.id, target.dataset.module);
