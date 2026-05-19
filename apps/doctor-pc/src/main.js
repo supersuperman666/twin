@@ -451,7 +451,13 @@ function ensurePlanShape(plan) {
     module.patientVisible = module.patientVisible ?? Boolean(meta.visible);
     module.included = module.included ?? module.type === "required";
     module.status = module.status || (module.included ? "completed" : "excluded");
-    module.fields = module.fields || {};
+    const defaults = defaultModuleFields(plan, module.key, module.summary);
+    module.fields = module.fields?.seedDisease && module.fields.seedDisease !== plan.disease
+      ? { ...defaults, patientInstruction: module.fields.patientInstruction || defaults.patientInstruction }
+      : { ...defaults, ...(module.fields || {}), seedDisease: plan.disease };
+    if (module.key === "metrics" && (module.fields.rows || []).some((row) => ["<", ">", "<=", ">=", "="].includes(String(row).split("|")[1]))) {
+      module.fields.rows = defaults.rows;
+    }
   });
   plan.patientPreview = plan.patientPreview || buildPatientPreview(plan);
   plan.changeLogs = plan.changeLogs || [{ time: plan.updatedAt, text: `${plan.source}创建方案` }];
@@ -466,20 +472,20 @@ function defaultPlanModules(plan) {
   const hasDevice = Boolean(patient?.profile?.devices?.length) || hasSleep;
   const symptoms = disease.includes("慢阻肺") ? "咳嗽、痰量、气促、胸闷等症状变化需及时记录。" : disease.includes("睡眠") ? "憋醒、晨起头痛、白天嗜睡、鼾声明显加重时记录症状。" : "出现头晕、心悸、乏力、低血糖疑似症状时记录症状。";
   return [
-    moduleTemplate("basic", true, `${patientName(plan.patientId)} / ${disease} / ${plan.period}，来源：${plan.source}。`),
-    moduleTemplate("goals", true, plan.objective),
-    moduleTemplate("metrics", true, (plan.targets || []).join("；") || `${disease}核心指标按医嘱记录。`),
-    moduleTemplate("symptoms", true, symptoms),
-    moduleTemplate("medication", hasMedication, hasMedication ? `${patient.profile.medication.join("；")}。患者端仅作为用药提醒和执行记录，不涉及处方开具。` : "未启用用药方案。"),
-    moduleTemplate("device", hasDevice, hasDevice ? `${patient?.profile?.devices?.join("；") || "关键设备"}保持绑定和同步，设备异常时提醒患者重新同步。` : "未启用设备监测。"),
-    moduleTemplate("lifestyle", true, disease.includes("糖尿病") ? "控制晚餐主食与含糖饮料，记录饮食备注。" : disease.includes("慢阻肺") ? "避免烟尘刺激，按耐受程度进行低强度活动。" : "规律作息，睡前避免饮酒和镇静类用药。"),
-    moduleTemplate("alerts", true, planAlertRules(disease).join("；")),
-    moduleTemplate("followup", true, `${plan.period}内至少 1 次计划随访；出现预警后可发起临时随访。`),
-    moduleTemplate("guidance", true, `请按方案完成记录；出现明显不适或紧急症状时及时线下就医。`)
+    moduleTemplate("basic", true, `${patientName(plan.patientId)} / ${disease} / ${plan.period}，来源：${plan.source}。`, plan),
+    moduleTemplate("goals", true, plan.objective, plan),
+    moduleTemplate("metrics", true, (plan.targets || []).join("；") || `${disease}核心指标按医嘱记录。`, plan),
+    moduleTemplate("symptoms", true, symptoms, plan),
+    moduleTemplate("medication", hasMedication, hasMedication ? `${patient.profile.medication.join("；")}。患者端仅作为用药提醒和执行记录，不涉及处方开具。` : "未启用用药方案。", plan),
+    moduleTemplate("device", hasDevice, hasDevice ? `${patient?.profile?.devices?.join("；") || "关键设备"}保持绑定和同步，设备异常时提醒患者重新同步。` : "未启用设备监测。", plan),
+    moduleTemplate("lifestyle", true, disease.includes("糖尿病") ? "控制晚餐主食与含糖饮料，记录饮食备注。" : disease.includes("慢阻肺") ? "避免烟尘刺激，按耐受程度进行低强度活动。" : "规律作息，睡前避免饮酒和镇静类用药。", plan),
+    moduleTemplate("alerts", true, planAlertRules(disease).join("；"), plan),
+    moduleTemplate("followup", true, `${plan.period}内至少 1 次计划随访；出现预警后可发起临时随访。`, plan),
+    moduleTemplate("guidance", true, `请按方案完成记录；出现明显不适或紧急症状时及时线下就医。`, plan)
   ];
 }
 
-function moduleTemplate(key, included, summary) {
+function moduleTemplate(key, included, summary, plan = null) {
   const meta = PLAN_MODULE_META[key];
   return {
     key,
@@ -490,8 +496,120 @@ function moduleTemplate(key, included, summary) {
     patientVisible: meta.visible,
     summary,
     recommendationReason: included ? "根据患者疾病标签、筛查风险、近期数据与设备情况生成，可由医生编辑确认。" : "本次方案未启用该模块。",
-    fields: { patientInstruction: summary }
+    fields: { ...defaultModuleFields(plan, key, summary), patientInstruction: summary }
   };
+}
+
+function defaultModuleFields(plan, key, summary = "") {
+  const disease = plan?.disease || "慢病";
+  const patient = plan ? patientById(plan.patientId) : null;
+  const targetRows = (plan?.targets || defaultTargets(disease)).map((item) => {
+    const [name, range] = parseTargetText(item);
+    return `${name || item}|${range}|${metricFrequency(disease, item)}|${metricSource(disease, item)}|患者按方案记录或设备自动同步`;
+  });
+  const medicationRows = (patient?.profile?.medication || ["二甲双胍 0.5g bid"]).map((item) => `${item}|按原方案提醒|患者记录已用/未用|不涉及处方开具`);
+  const deviceRows = (patient?.profile?.devices || (disease.includes("睡眠") ? ["睡眠监测仪", "CPAP"] : ["血氧仪"])).map((item) => `${item}|每日自动同步|设备采集|异常时提醒患者重新同步`);
+  const defaults = {
+    basic: {
+      seedDisease: disease,
+      rows: [`方案名称|${plan?.title || "慢病管理方案草稿"}`, `适用疾病|${disease}`, `管理周期|${plan?.period || "30 天"}`, `生成来源|${plan?.source || "医生创建"}`, `复盘方式|到期自动进入待复盘`],
+      patientInstruction: summary
+    },
+    goals: {
+      seedDisease: disease,
+      stageGoal: plan?.objective || summary,
+      targets: plan?.targets || defaultTargets(disease),
+      patientInstruction: summary
+    },
+    metrics: {
+      seedDisease: disease,
+      rows: targetRows,
+      note: "设备可采集的数据优先自动同步，无法采集或需要场景备注的数据支持患者手动记录。",
+      patientInstruction: "请按医生设置的时间和场景完成指标记录，设备数据会自动同步。"
+    },
+    symptoms: {
+      seedDisease: disease,
+      rows: symptomOptions(disease).map((item) => `${item}|出现时记录|严重程度、持续时间、诱因/备注|支持关联当次指标`),
+      patientInstruction: "出现不适时记录症状、持续时间和备注，便于医生判断指标异常原因。"
+    },
+    medication: {
+      seedDisease: disease,
+      rows: medicationRows,
+      patientInstruction: "请按提醒记录用药执行情况，如漏服或不适请备注。"
+    },
+    device: {
+      seedDisease: disease,
+      rows: deviceRows,
+      patientInstruction: "请保持设备绑定和同步，连续未同步时系统会提醒。"
+    },
+    lifestyle: {
+      seedDisease: disease,
+      rows: lifestyleAdvice(disease).map((item) => `${item}|每日/每周执行|患者备注完成情况|医生随访时复盘`),
+      patientInstruction: "请按生活方式建议执行，并在异常或未完成时备注原因。"
+    },
+    alerts: {
+      seedDisease: disease,
+      rows: alertRuleConfigs(disease),
+      patientInstruction: "指标或设备数据异常时，系统会提示复测、补充症状或等待医生处理。"
+    },
+    followup: {
+      seedDisease: disease,
+      rows: [`计划随访|${plan?.period || "30 天"}内至少 1 次|方案执行情况、指标完整性、患者反馈|系统生成待随访`, "临时随访|预警处理后|异常原因、症状变化、是否调整方案|医生主动发起"],
+      patientInstruction: "请按随访提醒配合医生完成反馈。"
+    },
+    guidance: {
+      seedDisease: disease,
+      rows: ["日常执行|按方案完成指标、症状、用药和设备同步", "异常处理|明显不适或紧急症状请及时线下就医", "备注要求|记录饮食、活动、睡眠、漏服等影响因素"],
+      patientInstruction: summary || "请按方案完成记录；出现明显不适或紧急症状时及时线下就医。"
+    }
+  };
+  return defaults[key] || { patientInstruction: summary };
+}
+
+function parseTargetText(item) {
+  const operatorMatch = String(item).match(/^(.+?)\s+([<>]=?|=|>=|<=).+$/);
+  if (operatorMatch) return [operatorMatch[1], String(item).slice(operatorMatch[1].length).trim()];
+  const numberMatch = String(item).match(/^(.+?)\s+(\d.*)$/);
+  if (numberMatch) return [numberMatch[1], numberMatch[2]];
+  return [item, "按医嘱目标"];
+}
+
+function metricFrequency(disease, item) {
+  if (/CPAP|睡眠|AHI|最低血氧/.test(item)) return "每日夜间";
+  if (disease.includes("糖尿病")) return item.includes("餐后") ? "每周至少 2 次" : "每日晨起";
+  if (disease.includes("慢阻肺")) return "每日 1 次";
+  if (disease.includes("高血压")) return "每日晨间";
+  return "按方案";
+}
+
+function metricSource(disease, item) {
+  if (/CPAP|AHI|最低血氧|睡眠/.test(item)) return "设备采集";
+  if (/SpO2|血氧/.test(item)) return "设备采集/手动录入";
+  return disease.includes("糖尿病") || disease.includes("高血压") ? "手动录入/设备采集" : "手动录入";
+}
+
+function symptomOptions(disease) {
+  if (disease.includes("睡眠")) return ["憋醒", "晨起头痛", "白天嗜睡", "鼾声加重"];
+  if (disease.includes("慢阻肺")) return ["咳嗽加重", "痰量/痰色变化", "气促", "胸闷"];
+  if (disease.includes("糖尿病")) return ["心慌", "出汗", "乏力", "头晕"];
+  if (disease.includes("高血压")) return ["头痛", "头晕", "胸闷", "心悸"];
+  return ["不适症状", "疼痛", "乏力"];
+}
+
+function lifestyleAdvice(disease) {
+  if (disease.includes("糖尿病")) return ["控制晚餐主食", "记录饮食备注", "保持规律活动"];
+  if (disease.includes("慢阻肺")) return ["避免烟尘刺激", "低强度呼吸训练", "观察活动后气促"];
+  if (disease.includes("睡眠")) return ["规律作息", "侧卧睡眠", "睡前避免饮酒"];
+  if (disease.includes("高血压")) return ["低盐饮食", "规律测压", "保持适度运动"];
+  return ["规律作息", "合理饮食", "适度活动"];
+}
+
+function alertRuleConfigs(disease) {
+  if (disease.includes("睡眠")) return ["最低血氧|< 90% 或连续下降|提醒复测并补充症状|重要预警", "AHI|>= 15 次/小时|建议医生复核睡眠报告|重要预警", "CPAP 使用|< 4 小时/晚|提醒依从性并纳入随访|提醒"];
+  if (disease.includes("糖尿病")) return ["空腹血糖|连续 2 次高于目标|提醒复测并记录饮食/用药|重要预警", "餐后 2h 血糖|> 10.0 mmol/L|提醒记录饮食备注|提醒", "疑似低血糖症状|患者主动记录|提示及时处理并通知医生|重要预警"];
+  if (disease.includes("慢阻肺")) return ["SpO2|低于目标或连续下降|提醒复测并补充气促症状|重要预警", "呼吸频率|< 12 或 > 20 次/分|提示复测并关注急性加重|提醒", "症状加重|咳痰气促加重|进入待随访队列|重要预警"];
+  if (disease.includes("高血压")) return ["血压|连续高于目标|提醒复测并记录症状|重要预警", "症状|头痛/胸闷/心悸|提示线下就医风险提醒|重要预警"];
+  return ["核心指标|连续异常|提醒复测并进入医生待处理|提醒"];
 }
 
 function planAlertRules(disease) {
@@ -916,9 +1034,61 @@ function planModuleCard(plan, module) {
     <div class="module-summary">
       <strong>医生端配置</strong>
       <p>${module.included ? escapeHtml(module.summary || "待补充") : escapeHtml(module.excludeReason || "未启用，该模块不会下发给患者。")}</p>
+      ${module.included ? renderModuleStructuredContent(module) : ""}
       ${module.patientVisible && module.included ? `<strong>患者端展示</strong><p>${escapeHtml(module.fields?.patientInstruction || module.summary || "待补充")}</p>` : ""}
     </div>
   </article>`;
+}
+
+function renderModuleStructuredContent(module) {
+  const rows = module.fields?.rows || [];
+  if (module.key === "goals") {
+    return `<div class="module-detail-grid">
+      <div><span>阶段目标</span><strong>${escapeHtml(module.fields.stageGoal || module.summary)}</strong></div>
+      <div><span>量化目标</span><ul>${(module.fields.targets || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+    </div>`;
+  }
+  if (!rows.length) return "";
+  return `<table class="config-table">
+    <tbody>${rows.map((row) => `<tr>${String(row).split("|").map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>`;
+}
+
+function moduleEditorBody(module) {
+  const rowTip = {
+    basic: "每行一条：字段|内容",
+    metrics: "每行一条：指标|目标范围|测量频次|数据来源|患者任务",
+    symptoms: "每行一条：症状|记录时机|记录字段|关联逻辑",
+    medication: "每行一条：药品/治疗|提醒规则|患者记录|备注",
+    device: "每行一条：设备|同步要求|来源|异常处理",
+    lifestyle: "每行一条：建议|执行频次|患者记录|复盘方式",
+    alerts: "每行一条：对象|触发规则|系统动作|预警级别",
+    followup: "每行一条：随访类型|时间规则|随访重点|生成方式",
+    guidance: "每行一条：指导主题|患者可见内容"
+  };
+  const rows = (module.fields.rows || []).join("\n");
+  const goalFields = module.key === "goals" ? `
+    <label>阶段目标<textarea id="moduleStageGoal">${escapeHtml(module.fields.stageGoal || module.summary || "")}</textarea></label>
+    <label>量化目标（一行一个）<textarea id="moduleTargets">${escapeHtml((module.fields.targets || []).join("\n"))}</textarea></label>` : "";
+  const rowFields = module.key === "goals" ? "" : `
+    <label>结构化配置<small>${rowTip[module.key] || "每行一条配置，字段用 | 分隔"}</small><textarea id="moduleRows">${escapeHtml(rows)}</textarea></label>`;
+  return `<div class="form">
+    <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"} ${module.recommendationReason}</p>
+    ${goalFields}
+    ${rowFields}
+    <label>医生端摘要<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
+    <label>患者端展示文案<textarea id="modulePatient">${escapeHtml(module.fields?.patientInstruction || module.summary || "")}</textarea></label>
+  </div>`;
+}
+
+function moduleSummaryFromFields(module) {
+  if (module.key === "goals") return module.fields.stageGoal || module.summary || "";
+  const rows = module.fields.rows || [];
+  if (!rows.length) return module.summary || "";
+  if (module.key === "metrics") return `配置 ${rows.length} 个指标测量项：${rows.map((row) => row.split("|")[0]).join("、")}`;
+  if (module.key === "alerts") return `配置 ${rows.length} 条预警规则：${rows.map((row) => row.split("|")[0]).join("、")}`;
+  if (module.key === "followup") return `配置 ${rows.length} 类随访：${rows.map((row) => row.split("|")[0]).join("、")}`;
+  return rows.map((row) => row.split("|").slice(0, 2).join("：")).join("；");
 }
 
 function renderFollowups() {
@@ -1099,11 +1269,7 @@ function savePlanDraft(id) {
 function openPlanModuleEditor(id, moduleKey) {
   const plan = state.plans.find((item) => item.id === id);
   const module = planModule(plan, moduleKey);
-  openModal(`编辑${module.name}`, `<div class="form">
-    <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"} ${module.recommendationReason}</p>
-    <label>医生端配置<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
-    <label>患者端展示文案<textarea id="modulePatient">${escapeHtml(module.fields?.patientInstruction || module.summary || "")}</textarea></label>
-  </div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-plan-module" data-id="${id}" data-module="${moduleKey}">保存</button>`);
+  openModal(`编辑${module.name}`, moduleEditorBody(module), `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-plan-module" data-id="${id}" data-module="${moduleKey}">保存</button>`);
 }
 
 function savePlanModule(id, moduleKey) {
@@ -1111,7 +1277,15 @@ function savePlanModule(id, moduleKey) {
   const module = planModule(plan, moduleKey);
   module.included = true;
   module.status = "completed";
-  module.summary = $("#moduleSummary").value.trim();
+  if (module.key === "goals") {
+    module.fields.stageGoal = $("#moduleStageGoal").value.trim();
+    module.fields.targets = $("#moduleTargets").value.split("\n").map((item) => item.trim()).filter(Boolean);
+    plan.objective = module.fields.stageGoal;
+    plan.targets = module.fields.targets;
+  } else {
+    module.fields.rows = $("#moduleRows").value.split("\n").map((item) => item.trim()).filter(Boolean);
+  }
+  module.summary = $("#moduleSummary").value.trim() || moduleSummaryFromFields(module);
   module.fields.patientInstruction = $("#modulePatient").value.trim();
   module.excludeReason = "";
   plan.updatedAt = nowText();

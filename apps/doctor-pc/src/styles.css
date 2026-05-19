@@ -1095,7 +1095,7 @@ button:disabled {
 }
 
 .modal {
-  width: 500px;
+  width: min(720px, calc(100vw - 48px));
   overflow: hidden;
   border-radius: 12px;
   background: #fff;
@@ -1179,6 +1179,11 @@ button:disabled {
   gap: 6px;
   color: var(--sub);
   font-weight: 700;
+}
+
+.form small {
+  color: var(--weak);
+  font-weight: 500;
 }
 
 .form label:has(input[type="checkbox"]) {
@@ -1360,6 +1365,58 @@ button:disabled {
 
 .module-summary strong {
   color: var(--text);
+}
+
+.module-detail-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.module-detail-grid div {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.module-detail-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--weak);
+  font-size: 12px;
+}
+
+.module-detail-grid ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--sub);
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.config-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--sub);
+  vertical-align: top;
+}
+
+.config-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.config-table td:first-child {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .audit-panel {
