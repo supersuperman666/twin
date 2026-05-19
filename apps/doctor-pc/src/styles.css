@@ -1205,6 +1205,231 @@ button:disabled {
   gap: 10px;
 }
 
+.plan-status-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-status-tabs .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-status-tabs small {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--sub);
+  background: rgba(15, 23, 42, 0.06);
+  font-size: 11px;
+}
+
+.plan-table td:first-child {
+  max-width: 380px;
+}
+
+.mini-progress {
+  width: 120px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.mini-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.plan-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.plan-hero h2 {
+  margin: 8px 0 4px;
+  font-size: 22px;
+}
+
+.plan-hero p {
+  margin: 0;
+  color: var(--sub);
+}
+
+.plan-editor {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+
+.plan-anchor,
+.audit-panel {
+  position: sticky;
+  top: 88px;
+}
+
+.plan-anchor {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.plan-anchor strong {
+  margin-bottom: 4px;
+}
+
+.plan-anchor a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.plan-anchor a:hover {
+  background: #f2f6ff;
+}
+
+.plan-anchor a.muted {
+  color: var(--weak);
+}
+
+.plan-anchor small {
+  color: var(--weak);
+  font-size: 11px;
+}
+
+.plan-module-list {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-module-card {
+  padding: 16px;
+}
+
+.plan-module-card.disabled {
+  background: #fbfcfe;
+}
+
+.plan-module-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.plan-module-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+}
+
+.plan-module-head p,
+.module-summary p,
+.audit-block p,
+.preview-panel p {
+  margin: 6px 0 0;
+  color: var(--sub);
+}
+
+.module-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.module-summary strong {
+  color: var(--text);
+}
+
+.audit-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.audit-block {
+  display: grid;
+  gap: 7px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.audit-block:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.audit-block span {
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.audit-block strong {
+  font-size: 18px;
+}
+
+.audit-block .error {
+  color: var(--danger);
+}
+
+.audit-block .warning {
+  color: var(--warning);
+}
+
+.audit-block .ok {
+  color: var(--success);
+}
+
+.warning-list {
+  display: grid;
+  gap: 8px;
+}
+
+.warning-list p {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--danger);
+  background: #fff1f0;
+}
+
+.preview-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.preview-panel h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.preview-section {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
 .toast {
   position: fixed;
   right: 24px;

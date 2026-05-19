@@ -7,6 +7,10 @@ let patientFilter = "all";
 let detailTab = "overview";
 let searchQuery = "";
 let filtersCollapsed = true;
+let planMode = "list";
+let selectedPlanId = state.plans[0]?.id;
+let planStatusFilter = "全部";
+let planSearchQuery = "";
 let paginationState = {
   patients: { page: 1, pageSize: 20, jump: "" },
   alerts: { page: 1, pageSize: 20, jump: "" },
@@ -50,6 +54,21 @@ const plansOf = (patientId) => state.plans.filter((item) => item.patientId === p
 const followupsOf = (patientId) => state.followups.filter((item) => item.patientId === patientId);
 const adviceOf = (patientId) => state.advice?.filter((item) => item.patientId === patientId) || [];
 
+const PLAN_STATUSES = ["全部", "待医生确认", "草稿", "已下发待患者确认", "执行中", "待调整", "患者有疑问", "患者反馈无法执行", "待复盘", "已停用", "已完成"];
+const REQUIRED_PLAN_MODULES = ["basic", "goals", "metrics", "alerts", "followup", "guidance"];
+const PLAN_MODULE_META = {
+  basic: { name: "方案基础信息", type: "required", visible: true },
+  goals: { name: "管理目标", type: "required", visible: true },
+  metrics: { name: "指标测量方案", type: "required", visible: true },
+  symptoms: { name: "症状记录方案", type: "conditional", visible: true },
+  medication: { name: "用药方案", type: "conditional", visible: true },
+  device: { name: "设备监测方案", type: "conditional", visible: false },
+  lifestyle: { name: "生活方式方案", type: "conditional", visible: true },
+  alerts: { name: "预警规则", type: "required", visible: false },
+  followup: { name: "随访计划", type: "required", visible: true },
+  guidance: { name: "患者指导", type: "required", visible: true }
+};
+
 function persist(message) {
   saveState(state);
   render();
@@ -81,9 +100,16 @@ function toneOf(value) {
     需关注: "orange",
     需干预: "red",
     待医生确认: "orange",
+    草稿: "gray",
     已下发待患者确认: "blue",
     执行中: "green",
     需调整: "orange",
+    待调整: "orange",
+    患者有疑问: "orange",
+    患者反馈无法执行: "red",
+    待复盘: "blue",
+    已停用: "gray",
+    已驳回: "gray",
     待随访: "blue",
     逾期: "red",
     已完成: "green",
@@ -95,6 +121,7 @@ function toneOf(value) {
 }
 
 function render() {
+  normalizePlanData();
   const [title, subTitle] = viewMeta[currentView];
   pageTitle.textContent = title;
   pageSubTitle.textContent = subTitle;
@@ -163,7 +190,7 @@ function matchesPlan(patient, value) {
   const plans = plansOf(patient.id);
   if (value === "无方案") return plans.length === 0;
   if (value === "待患者知晓") return plans.some((plan) => plan.status === "已下发待患者确认");
-  if (value === "待调整") return plans.some((plan) => plan.status === "需调整");
+  if (value === "待调整") return plans.some((plan) => ["需调整", "待调整"].includes(plan.status));
   return plans.some((plan) => plan.status === value);
 }
 
@@ -290,7 +317,7 @@ function listTotal(scope) {
   const totals = {
     patients: () => filteredPatients().length,
     alerts: () => state.alerts.length,
-    plans: () => state.plans.length,
+    plans: () => filteredPlans().length,
     followups: () => state.followups.length
   };
   return totals[scope]?.() || 0;
@@ -395,6 +422,138 @@ function currentAppliedFilters() {
 
 function escapeAttr(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+}
+
+function escapeHtml(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function normalizePlanData() {
+  state.plans.forEach((plan) => ensurePlanShape(plan));
+  if (!selectedPlanId || !state.plans.some((plan) => plan.id === selectedPlanId)) selectedPlanId = state.plans[0]?.id;
+}
+
+function ensurePlanShape(plan) {
+  if (plan.status === "需调整") plan.status = "待调整";
+  plan.title = plan.title || `${plan.disease || "慢病"}管理方案`;
+  plan.source = plan.source || "医生创建";
+  plan.version = plan.version || "V1.0";
+  plan.period = plan.period || (plan.disease === "睡眠呼吸暂停" ? "14 天" : "30 天");
+  plan.targets = plan.targets || [];
+  plan.tasks = plan.tasks || [];
+  plan.objective = plan.objective || "阶段管理目标待完善";
+  plan.updatedAt = plan.updatedAt || nowText();
+  plan.modules = plan.modules?.length ? plan.modules : defaultPlanModules(plan);
+  plan.modules.forEach((module) => {
+    const meta = PLAN_MODULE_META[module.key] || {};
+    module.name = module.name || meta.name || module.key;
+    module.type = module.type || meta.type || "conditional";
+    module.patientVisible = module.patientVisible ?? Boolean(meta.visible);
+    module.included = module.included ?? module.type === "required";
+    module.status = module.status || (module.included ? "completed" : "excluded");
+    module.fields = module.fields || {};
+  });
+  plan.patientPreview = plan.patientPreview || buildPatientPreview(plan);
+  plan.changeLogs = plan.changeLogs || [{ time: plan.updatedAt, text: `${plan.source}创建方案` }];
+  return plan;
+}
+
+function defaultPlanModules(plan) {
+  const patient = patientById(plan.patientId);
+  const disease = plan.disease || patient?.diseases?.[0] || "慢病";
+  const hasSleep = disease.includes("睡眠") || plan.targets.some((item) => /AHI|ODI|CPAP|最低血氧|睡眠/.test(item));
+  const hasMedication = Boolean(patient?.profile?.medication?.length);
+  const hasDevice = Boolean(patient?.profile?.devices?.length) || hasSleep;
+  const symptoms = disease.includes("慢阻肺") ? "咳嗽、痰量、气促、胸闷等症状变化需及时记录。" : disease.includes("睡眠") ? "憋醒、晨起头痛、白天嗜睡、鼾声明显加重时记录症状。" : "出现头晕、心悸、乏力、低血糖疑似症状时记录症状。";
+  return [
+    moduleTemplate("basic", true, `${patientName(plan.patientId)} / ${disease} / ${plan.period}，来源：${plan.source}。`),
+    moduleTemplate("goals", true, plan.objective),
+    moduleTemplate("metrics", true, (plan.targets || []).join("；") || `${disease}核心指标按医嘱记录。`),
+    moduleTemplate("symptoms", true, symptoms),
+    moduleTemplate("medication", hasMedication, hasMedication ? `${patient.profile.medication.join("；")}。患者端仅作为用药提醒和执行记录，不涉及处方开具。` : "未启用用药方案。"),
+    moduleTemplate("device", hasDevice, hasDevice ? `${patient?.profile?.devices?.join("；") || "关键设备"}保持绑定和同步，设备异常时提醒患者重新同步。` : "未启用设备监测。"),
+    moduleTemplate("lifestyle", true, disease.includes("糖尿病") ? "控制晚餐主食与含糖饮料，记录饮食备注。" : disease.includes("慢阻肺") ? "避免烟尘刺激，按耐受程度进行低强度活动。" : "规律作息，睡前避免饮酒和镇静类用药。"),
+    moduleTemplate("alerts", true, planAlertRules(disease).join("；")),
+    moduleTemplate("followup", true, `${plan.period}内至少 1 次计划随访；出现预警后可发起临时随访。`),
+    moduleTemplate("guidance", true, `请按方案完成记录；出现明显不适或紧急症状时及时线下就医。`)
+  ];
+}
+
+function moduleTemplate(key, included, summary) {
+  const meta = PLAN_MODULE_META[key];
+  return {
+    key,
+    name: meta.name,
+    type: meta.type,
+    included,
+    status: included ? "completed" : "excluded",
+    patientVisible: meta.visible,
+    summary,
+    recommendationReason: included ? "根据患者疾病标签、筛查风险、近期数据与设备情况生成，可由医生编辑确认。" : "本次方案未启用该模块。",
+    fields: { patientInstruction: summary }
+  };
+}
+
+function planAlertRules(disease) {
+  if (disease.includes("睡眠")) return ["最低血氧 < 90% 或 AHI 升高触发预警", "CPAP 使用 < 4 小时/晚触发依从性提醒"];
+  if (disease.includes("糖尿病")) return ["空腹血糖连续高于目标触发预警", "疑似低血糖症状需提醒患者复测"];
+  if (disease.includes("慢阻肺")) return ["SpO2 低于目标或呼吸频率异常触发预警", "咳嗽痰量气促加重触发急性加重风险提醒"];
+  if (disease.includes("高血压")) return ["血压连续高于目标触发预警", "头晕胸闷等症状需提醒复测"];
+  return ["核心指标连续异常触发预警"];
+}
+
+function planModule(plan, key) {
+  return ensurePlanShape(plan).modules.find((module) => module.key === key);
+}
+
+function validatePlan(plan) {
+  ensurePlanShape(plan);
+  const warnings = [];
+  const required = plan.modules.filter((module) => module.type === "required");
+  required.forEach((module) => {
+    if (!module.included) warnings.push({ level: "error", moduleKey: module.key, message: `${module.name}为必填模块，不能关闭。` });
+    if (!String(module.summary || "").trim()) warnings.push({ level: "error", moduleKey: module.key, message: `请补充${module.name}。` });
+  });
+  plan.modules.filter((module) => module.type === "conditional" && module.included).forEach((module) => {
+    if (!String(module.summary || "").trim()) warnings.push({ level: "error", moduleKey: module.key, message: `已启用${module.name}，请补充执行内容。` });
+  });
+  const deviceDependent = plan.targets.some((item) => /AHI|ODI|CPAP|最低血氧|睡眠报告/.test(item));
+  if (deviceDependent && !planModule(plan, "device")?.included) {
+    warnings.push({ level: "warning", moduleKey: "device", message: "方案包含睡眠/低氧设备指标，建议启用设备监测方案。" });
+  }
+  const completed = required.filter((module) => module.included && String(module.summary || "").trim()).length;
+  return {
+    canPublish: warnings.every((item) => item.level !== "error"),
+    requiredCompleted: completed,
+    requiredTotal: required.length,
+    warnings
+  };
+}
+
+function filteredPlans() {
+  const query = planSearchQuery.trim().toLowerCase();
+  return state.plans
+    .map((plan) => ensurePlanShape(plan))
+    .filter((plan) => planStatusFilter === "全部" || plan.status === planStatusFilter)
+    .filter((plan) => {
+      if (!query) return true;
+      const patient = patientById(plan.patientId);
+      return [plan.title, plan.id, plan.disease, patient?.name, patient?.id, patient?.phone]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    });
+}
+
+function buildPatientPreview(plan) {
+  const followup = plan.modules.find((module) => module.key === "followup");
+  const alerts = plan.modules.find((module) => module.key === "alerts");
+  return {
+    title: plan.title,
+    objective: plan.objective,
+    visibleModules: plan.modules.filter((module) => module.included && module.patientVisible).map((module) => module.name),
+    dailyTasks: plan.tasks.length ? plan.tasks : plan.modules.filter((module) => module.included && module.patientVisible).map((module) => module.summary).slice(0, 4),
+    followup: followup?.summary || "按医生设置时间完成随访",
+    abnormalTips: alerts?.summary || "异常情况请按页面提示处理"
+  };
 }
 
 function patientRow(patient) {
@@ -619,20 +778,145 @@ function alertCard(alert) {
 }
 
 function renderPlans() {
-  const { pageItems } = paginateItems("plans", state.plans);
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>方案管理</strong><span>待确认方案优先处理</span></div><div class="card-list">${pageItems.map(planCard).join("")}</div>${renderPagination("plans", state.plans.length)}</section>`;
+  if (planMode === "detail" && selectedPlanId) {
+    renderPlanDetail();
+    return;
+  }
+  const plans = filteredPlans();
+  const { pageItems } = paginateItems("plans", plans);
+  app.innerHTML = `<section class="page-stack">
+    <div class="toolbar compact-toolbar">
+      <div class="global-search">
+        <span>⌕</span>
+        <input value="${escapeAttr(planSearchQuery)}" data-action="plan-search" placeholder="搜索方案名称 / 患者姓名 / 患者ID">
+        ${planSearchQuery ? `<button data-action="clear-plan-search">清空</button>` : ""}
+      </div>
+      <div class="toolbar-actions">
+        <span class="sync-time">方案支持前端 Mock 流程闭环</span>
+        <button class="btn primary" data-action="open-create-plan">新建管理方案</button>
+      </div>
+    </div>
+    <div class="plan-status-tabs">${PLAN_STATUSES.map((status) => `<button class="chip ${planStatusFilter === status ? "active" : ""}" data-action="set-plan-status" data-status="${status}">${status}<small>${status === "全部" ? state.plans.length : state.plans.filter((plan) => ensurePlanShape(plan).status === status).length}</small></button>`).join("")}</div>
+    <section class="panel table-panel">
+      ${pageItems.length ? `<table class="table plan-table">
+        <thead><tr><th>方案</th><th>患者</th><th>疾病/来源</th><th>状态</th><th>完整度</th><th>最近更新</th><th>操作</th></tr></thead>
+        <tbody>${pageItems.map(planRow).join("")}</tbody>
+      </table>${renderPagination("plans", plans.length)}` : `<div class="empty"><strong>暂无匹配方案</strong><p>请调整搜索关键词或状态筛选。</p></div>`}
+    </section>
+  </section>`;
 }
 
 function planCard(plan) {
+  ensurePlanShape(plan);
+  const validation = validatePlan(plan);
   return `<article class="flow-card ${plan.status === "执行中" ? "active-plan" : ""}">
     <div class="card-top"><div><h3>${plan.title}</h3><p>${patientName(plan.patientId)} | ${plan.disease} | ${plan.source} | ${plan.updatedAt}</p></div>${tag(plan.status, toneOf(plan.status))}</div>
     <p>${plan.objective}</p>
     <div class="pill-list">${plan.targets.map((item) => `<span>${item}</span>`).join("")}</div>
     <div class="task-list">${plan.tasks.map((item) => `<div>${item}</div>`).join("")}</div>
     <div class="actions">
-      <button class="btn primary" data-action="approve-plan" data-id="${plan.id}" ${plan.status !== "待医生确认" ? "disabled" : ""}>确认下发</button>
+      <button class="btn primary" data-action="edit-plan" data-id="${plan.id}">${plan.status === "待医生确认" ? "审核方案" : "查看方案"}</button>
+      <button class="btn" data-action="preview-plan" data-id="${plan.id}">患者端预览</button>
+      <button class="btn" data-action="approve-plan" data-id="${plan.id}" ${!validation.canPublish || !["待医生确认", "草稿", "待调整"].includes(plan.status) ? "disabled" : ""}>确认下发</button>
       <button class="btn" data-action="view-patient" data-patient="${plan.patientId}">患者详情</button>
       <button class="btn" data-action="create-followup" data-patient="${plan.patientId}" data-plan="${plan.id}">建随访</button>
+    </div>
+  </article>`;
+}
+
+function planRow(plan) {
+  ensurePlanShape(plan);
+  const patient = patientById(plan.patientId);
+  const validation = validatePlan(plan);
+  const includedModules = plan.modules.filter((module) => module.included).length;
+  return `<tr>
+    <td><strong>${plan.title}</strong><small>${plan.objective}</small></td>
+    <td><strong>${patient?.name || "-"}</strong><small>${patient?.sex || ""} ${patient?.age || ""}岁 | ${patient?.phone || ""}</small></td>
+    <td>${tag(plan.disease, "blue")}<small>${plan.source} | ${plan.version}</small></td>
+    <td>${tag(plan.status, toneOf(plan.status))}</td>
+    <td><div class="mini-progress"><span style="width:${Math.round(validation.requiredCompleted / validation.requiredTotal * 100)}%"></span></div><small>${validation.requiredCompleted}/${validation.requiredTotal} 必填模块，已启用 ${includedModules} 项</small></td>
+    <td>${plan.updatedAt}<small>${plan.changeLogs?.[0]?.text || "最近更新"}</small></td>
+    <td><div class="row-actions">
+      <button class="btn primary" data-action="edit-plan" data-id="${plan.id}">${plan.status === "待医生确认" ? "审核" : "查看"}</button>
+      <button class="btn" data-action="preview-plan" data-id="${plan.id}">预览</button>
+      <button class="btn" data-action="view-patient" data-patient="${plan.patientId}">患者</button>
+    </div></td>
+  </tr>`;
+}
+
+function renderPlanDetail() {
+  const plan = state.plans.find((item) => item.id === selectedPlanId);
+  if (!plan) {
+    planMode = "list";
+    renderPlans();
+    return;
+  }
+  ensurePlanShape(plan);
+  const patient = patientById(plan.patientId);
+  const validation = validatePlan(plan);
+  app.innerHTML = `<section class="page-stack">
+    <button class="back-link" data-action="back-plan-list">← 返回方案列表</button>
+    <section class="plan-hero panel">
+      <div>
+        <div class="tag-row">${tag(plan.status, toneOf(plan.status))}${tag(plan.disease, "blue")}${tag(plan.source, "gray")}</div>
+        <h2>${plan.title}</h2>
+        <p>${patient?.name || "-"} | ${patient?.sex || ""} ${patient?.age || ""}岁 | ${patient?.phone || ""} | ${plan.period}</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn" data-action="preview-plan" data-id="${plan.id}">患者可见预览</button>
+        <button class="btn" data-action="save-plan-draft" data-id="${plan.id}">保存草稿</button>
+        <button class="btn primary" data-action="approve-plan" data-id="${plan.id}" ${!validation.canPublish || !["待医生确认", "草稿", "待调整"].includes(plan.status) ? "disabled" : ""}>确认下发</button>
+      </div>
+    </section>
+    <section class="plan-editor">
+      <aside class="plan-anchor panel">
+        <strong>方案结构</strong>
+        ${plan.modules.map((module) => `<a href="#plan-${module.key}" class="${module.included ? "" : "muted"}">${module.name}<small>${module.type === "required" ? "必填" : module.included ? "已启用" : "未启用"}</small></a>`).join("")}
+      </aside>
+      <div class="plan-module-list">
+        ${plan.modules.map((module) => planModuleCard(plan, module)).join("")}
+      </div>
+      <aside class="audit-panel panel">
+        <div class="audit-block">
+          <span>必填完整度</span>
+          <strong>${validation.requiredCompleted}/${validation.requiredTotal}</strong>
+          <div class="mini-progress"><span style="width:${Math.round(validation.requiredCompleted / validation.requiredTotal * 100)}%"></span></div>
+        </div>
+        <div class="audit-block">
+          <span>发布校验</span>
+          ${validation.warnings.length ? validation.warnings.map((item) => `<p class="${item.level}">${item.level === "error" ? "阻断" : "提醒"}：${item.message}</p>`).join("") : `<p class="ok">已满足下发条件。</p>`}
+        </div>
+        <div class="audit-block">
+          <span>患者执行负担</span>
+          <strong>${plan.modules.filter((module) => module.included && module.patientVisible).length} 项可见模块</strong>
+          <p>建议保持患者端任务清晰，设备采集项优先自动同步。</p>
+        </div>
+        <div class="audit-block">
+          <span>方案时间轴</span>
+          ${(plan.changeLogs || []).map((item) => `<p>${item.time} ${item.text}</p>`).join("")}
+        </div>
+      </aside>
+    </section>
+  </section>`;
+}
+
+function planModuleCard(plan, module) {
+  const required = module.type === "required";
+  return `<article class="plan-module-card panel ${module.included ? "" : "disabled"}" id="plan-${module.key}">
+    <div class="plan-module-head">
+      <div>
+        <h3>${module.name}${required ? tag("必填", "blue") : tag(module.included ? "已启用" : "未启用", module.included ? "green" : "gray")}</h3>
+        <p>${module.recommendationReason}</p>
+      </div>
+      <div class="row-actions">
+        ${required ? "" : `<button class="btn" data-action="toggle-plan-module" data-id="${plan.id}" data-module="${module.key}">${module.included ? "关闭模块" : "启用模块"}</button>`}
+        <button class="btn primary" data-action="edit-plan-module" data-id="${plan.id}" data-module="${module.key}">${module.included ? "编辑" : "查看"}</button>
+      </div>
+    </div>
+    <div class="module-summary">
+      <strong>医生端配置</strong>
+      <p>${module.included ? escapeHtml(module.summary || "待补充") : escapeHtml(module.excludeReason || "未启用，该模块不会下发给患者。")}</p>
+      ${module.patientVisible && module.included ? `<strong>患者端展示</strong><p>${escapeHtml(module.fields?.patientInstruction || module.summary || "待补充")}</p>` : ""}
     </div>
   </article>`;
 }
@@ -687,31 +971,105 @@ function saveAlert(id) {
   persist("预警已处理");
 }
 
-function createPlan(patientId, alertId, silent = false) {
+function openCreatePlanModal() {
+  const patientOptions = state.patients.map((patient) => `<option value="${patient.id}">${patient.name}（${patient.diseases.join("、")}）</option>`).join("");
+  openModal("新建管理方案", `<div class="form">
+    <label>选择患者<select id="newPlanPatient">${patientOptions}</select></label>
+    <label>确诊疾病<select id="newPlanDisease"><option>糖尿病</option><option>慢阻肺</option><option>睡眠呼吸暂停</option><option>高血压</option></select></label>
+    <label>方案周期<select id="newPlanPeriod"><option>14 天</option><option selected>30 天</option><option>90 天</option></select></label>
+    <label>创建方式<select id="newPlanSource"><option>医生从 0-1 创建</option><option>基于系统推荐生成</option><option>基于随访结论调整</option></select></label>
+    <label>阶段目标<textarea id="newPlanObjective">围绕患者当前风险和核心指标，建立可执行的阶段管理目标。</textarea></label>
+  </div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-new-plan">创建草稿</button>`);
+}
+
+function saveNewPlan() {
+  const patientId = $("#newPlanPatient").value;
+  const disease = $("#newPlanDisease").value;
+  const plan = buildPlanDraft(patientId, {
+    disease,
+    source: $("#newPlanSource").value,
+    status: "草稿",
+    objective: $("#newPlanObjective").value,
+    period: $("#newPlanPeriod").value
+  });
+  state.plans.unshift(plan);
+  patientById(patientId).activePlanId = plan.id;
+  addTimeline(patientId, "方案", `创建管理方案草稿：${plan.title}`);
+  selectedPlanId = plan.id;
+  planMode = "detail";
+  closeModal();
+  persist("已创建管理方案草稿");
+}
+
+function buildPlanDraft(patientId, options = {}) {
   const patient = patientById(patientId);
-  const alert = state.alerts.find((item) => item.id === alertId);
+  const disease = options.disease || patient?.diseases?.[0] || "慢病";
   const plan = {
     id: uid("PL"),
     patientId,
-    disease: patient.diseases[0],
-    title: `${patient.diseases[0]}管理方案草稿`,
+    disease,
+    title: options.title || `${disease}管理方案草稿`,
+    source: options.source || "医生创建",
+    status: options.status || "待医生确认",
+    objective: options.objective || "阶段管理目标待完善",
+    targets: defaultTargets(disease),
+    tasks: defaultTasks(disease),
+    period: options.period || (disease.includes("睡眠") ? "14 天" : "30 天"),
+    updatedAt: nowText(),
+    version: "V1.0"
+  };
+  ensurePlanShape(plan);
+  return plan;
+}
+
+function defaultTargets(disease) {
+  if (disease.includes("睡眠")) return ["睡眠时长 >= 6 小时", "最低血氧 >= 90%", "AHI < 15 次/小时", "CPAP 使用 >= 4 小时/晚"];
+  if (disease.includes("糖尿病")) return ["空腹血糖 4.4-7.0 mmol/L", "餐后 2h 血糖 < 10.0 mmol/L", "每周记录 >= 5 天"];
+  if (disease.includes("慢阻肺")) return ["静息 SpO2 >= 92%", "呼吸频率 12-20 次/分", "CAT 评分较上次不升高"];
+  if (disease.includes("高血压")) return ["平均血压 < 130/80 mmHg", "每周记录 >= 5 天", "异常血压 0 次"];
+  return ["核心指标达到目标范围", "记录完整率提升"];
+}
+
+function defaultTasks(disease) {
+  if (disease.includes("睡眠")) return ["每日同步睡眠报告", "每晚佩戴 CPAP", "出现憋醒/晨起头痛时记录症状"];
+  if (disease.includes("糖尿病")) return ["每日记录空腹血糖", "每周至少 2 次餐后 2h 血糖", "记录饮食备注"];
+  if (disease.includes("慢阻肺")) return ["每日记录血氧", "每周完成 CAT 评估", "咳嗽/痰量变化时记录症状"];
+  if (disease.includes("高血压")) return ["每日晨间血压", "每周复盘饮食运动", "按月随访"];
+  return ["按方案记录核心指标", "出现症状时补充症状记录", "按时完成随访"];
+}
+
+function createPlan(patientId, alertId, silent = false) {
+  const alert = state.alerts.find((item) => item.id === alertId);
+  const patient = patientById(patientId);
+  const plan = buildPlanDraft(patientId, {
+    disease: patient?.diseases?.[0],
     source: alert ? "预警处理生成" : "医生创建",
     status: "待医生确认",
-    objective: alert ? `围绕“${alert.title}”形成阶段管理目标` : "阶段管理目标待完善",
-    targets: ["核心指标达到目标范围", "记录完整率提升", "异常情况及时反馈"],
-    tasks: ["按方案记录核心指标", "出现症状时补充症状记录", "按时完成随访"],
-    updatedAt: nowText()
-  };
+    objective: alert ? `围绕“${alert.title}”形成阶段管理目标` : "阶段管理目标待完善"
+  });
   state.plans.unshift(plan);
   patient.activePlanId = plan.id;
   addTimeline(patientId, "方案", `创建方案草稿：${plan.title}`);
+  selectedPlanId = plan.id;
+  planMode = "detail";
   if (!silent) persist("已创建方案草稿");
 }
 
 function approvePlan(id) {
   const plan = state.plans.find((item) => item.id === id);
+  if (!["待医生确认", "草稿", "待调整"].includes(plan.status)) {
+    showToast("当前方案状态不可重复下发");
+    return;
+  }
+  const validation = validatePlan(plan);
+  if (!validation.canPublish) {
+    openModal("方案暂不可下发", `<div class="modal-tip">请先补齐阻断项。</div><div class="warning-list">${validation.warnings.map((item) => `<p>${item.message}</p>`).join("")}</div>`, `<button class="btn primary" data-action="close-modal">知道了</button>`);
+    return;
+  }
   plan.status = "已下发待患者确认";
   plan.updatedAt = nowText();
+  plan.patientPreview = buildPatientPreview(plan);
+  plan.changeLogs.unshift({ time: plan.updatedAt, text: "医生确认并下发给患者" });
   addTimeline(plan.patientId, "方案", `医生确认并下发方案：${plan.title}`);
   openModal("患者知晓确认", `<p>方案已下发给患者，待患者确认已知晓并开始执行。</p><div class="summary-box">${plan.title}</div>`, `<button class="btn" data-action="close-modal">稍后</button><button class="btn primary" data-action="patient-confirm-plan" data-id="${id}">标记已确认</button>`);
   saveState(state);
@@ -721,10 +1079,91 @@ function patientConfirmPlan(id) {
   const plan = state.plans.find((item) => item.id === id);
   plan.status = "执行中";
   plan.updatedAt = nowText();
+  plan.changeLogs.unshift({ time: plan.updatedAt, text: "患者确认已知晓并开始执行" });
   addTimeline(plan.patientId, "方案", `患者知晓并开始执行方案：${plan.title}`);
+  state.advice = state.advice || [];
+  state.advice.unshift({ id: uid("AD"), patientId: plan.patientId, type: "方案执行提醒", source: "管理方案", status: "未读", text: `${plan.title}已生效，请按方案完成记录和随访。`, createdAt: nowText() });
   createFollowup(plan.patientId, null, true, plan.id);
   closeModal();
   persist("方案已进入执行中");
+}
+
+function savePlanDraft(id) {
+  const plan = state.plans.find((item) => item.id === id);
+  if (plan.status === "待医生确认") plan.status = "草稿";
+  plan.updatedAt = nowText();
+  plan.changeLogs.unshift({ time: plan.updatedAt, text: "医生保存草稿" });
+  persist("方案草稿已保存");
+}
+
+function openPlanModuleEditor(id, moduleKey) {
+  const plan = state.plans.find((item) => item.id === id);
+  const module = planModule(plan, moduleKey);
+  openModal(`编辑${module.name}`, `<div class="form">
+    <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"} ${module.recommendationReason}</p>
+    <label>医生端配置<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
+    <label>患者端展示文案<textarea id="modulePatient">${escapeHtml(module.fields?.patientInstruction || module.summary || "")}</textarea></label>
+  </div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-plan-module" data-id="${id}" data-module="${moduleKey}">保存</button>`);
+}
+
+function savePlanModule(id, moduleKey) {
+  const plan = state.plans.find((item) => item.id === id);
+  const module = planModule(plan, moduleKey);
+  module.included = true;
+  module.status = "completed";
+  module.summary = $("#moduleSummary").value.trim();
+  module.fields.patientInstruction = $("#modulePatient").value.trim();
+  module.excludeReason = "";
+  plan.updatedAt = nowText();
+  plan.patientPreview = buildPatientPreview(plan);
+  plan.changeLogs.unshift({ time: plan.updatedAt, text: `编辑${module.name}` });
+  closeModal();
+  persist("模块已保存");
+}
+
+function togglePlanModule(id, moduleKey) {
+  const plan = state.plans.find((item) => item.id === id);
+  const module = planModule(plan, moduleKey);
+  if (module.type === "required") return;
+  if (!module.included) {
+    module.included = true;
+    module.status = "completed";
+    module.excludeReason = "";
+    plan.updatedAt = nowText();
+    plan.changeLogs.unshift({ time: plan.updatedAt, text: `启用${module.name}` });
+    persist(`已启用${module.name}`);
+    return;
+  }
+  openModal(`关闭${module.name}`, `<div class="form">
+    <p class="modal-tip">关闭后该模块不会下发给患者，历史记录仍保留在方案时间轴中。</p>
+    <label>关闭原因<textarea id="moduleExcludeReason">本阶段暂不需要患者执行该模块。</textarea></label>
+  </div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn danger" data-action="confirm-toggle-plan-module" data-id="${id}" data-module="${moduleKey}">确认关闭</button>`);
+}
+
+function confirmTogglePlanModule(id, moduleKey) {
+  const plan = state.plans.find((item) => item.id === id);
+  const module = planModule(plan, moduleKey);
+  module.included = false;
+  module.status = "excluded";
+  module.excludeReason = $("#moduleExcludeReason").value.trim();
+  plan.updatedAt = nowText();
+  plan.patientPreview = buildPatientPreview(plan);
+  plan.changeLogs.unshift({ time: plan.updatedAt, text: `关闭${module.name}` });
+  closeModal();
+  persist(`已关闭${module.name}`);
+}
+
+function showPlanPreview(id) {
+  const plan = state.plans.find((item) => item.id === id);
+  const preview = buildPatientPreview(plan);
+  openModal("患者可见内容预览", `<div class="preview-panel">
+    <h3>${preview.title}</h3>
+    <p>${preview.objective}</p>
+    <div class="preview-section"><strong>患者将看到的模块</strong><div class="pill-list">${preview.visibleModules.map((item) => `<span>${item}</span>`).join("")}</div></div>
+    <div class="preview-section"><strong>执行任务</strong>${preview.dailyTasks.map((item) => `<p>${escapeHtml(item)}</p>`).join("")}</div>
+    <div class="preview-section"><strong>随访提醒</strong><p>${escapeHtml(preview.followup)}</p></div>
+    <div class="preview-section"><strong>异常提示</strong><p>${escapeHtml(preview.abnormalTips)}</p></div>
+  </div>`, `<button class="btn" data-action="close-modal">关闭</button><button class="btn primary" data-action="approve-plan" data-id="${id}" ${["待医生确认", "草稿", "待调整"].includes(plan.status) ? "" : "disabled"}>确认下发</button>`);
 }
 
 function createFollowup(patientId, alertId, silent = false, planId = null) {
@@ -793,6 +1232,7 @@ document.body.addEventListener("click", (event) => {
 
   if (target.dataset.viewLink) {
     currentView = target.dataset.viewLink;
+    if (currentView === "plans") planMode = "list";
     closeModal();
     render();
     return;
@@ -851,6 +1291,11 @@ document.body.addEventListener("click", (event) => {
     resetPage("patients");
     render();
   }
+  if (action === "clear-plan-search") {
+    planSearchQuery = "";
+    resetPage("plans");
+    render();
+  }
   if (action === "page-prev" || action === "page-next" || action === "page-go") {
     const scope = target.dataset.pageScope;
     const pager = paginationState[scope];
@@ -897,6 +1342,30 @@ document.body.addEventListener("click", (event) => {
   }
   if (action === "handle-alert") handleAlert(target.dataset.id);
   if (action === "save-alert") saveAlert(target.dataset.id);
+  if (action === "open-create-plan") openCreatePlanModal();
+  if (action === "save-new-plan") saveNewPlan();
+  if (action === "set-plan-status") {
+    planStatusFilter = target.dataset.status;
+    planMode = "list";
+    resetPage("plans");
+    render();
+  }
+  if (action === "edit-plan") {
+    selectedPlanId = target.dataset.id;
+    planMode = "detail";
+    currentView = "plans";
+    render();
+  }
+  if (action === "back-plan-list") {
+    planMode = "list";
+    render();
+  }
+  if (action === "save-plan-draft") savePlanDraft(target.dataset.id);
+  if (action === "edit-plan-module") openPlanModuleEditor(target.dataset.id, target.dataset.module);
+  if (action === "save-plan-module") savePlanModule(target.dataset.id, target.dataset.module);
+  if (action === "toggle-plan-module") togglePlanModule(target.dataset.id, target.dataset.module);
+  if (action === "confirm-toggle-plan-module") confirmTogglePlanModule(target.dataset.id, target.dataset.module);
+  if (action === "preview-plan") showPlanPreview(target.dataset.id);
   if (action === "create-plan") createPlan(target.dataset.patient, target.dataset.alert);
   if (action === "approve-plan") approvePlan(target.dataset.id);
   if (action === "patient-confirm-plan") patientConfirmPlan(target.dataset.id);
@@ -940,6 +1409,19 @@ document.body.addEventListener("input", (event) => {
     }
     return;
   }
+  const planSearchTarget = event.target.closest('[data-action="plan-search"]');
+  if (planSearchTarget) {
+    planSearchQuery = planSearchTarget.value;
+    planMode = "list";
+    resetPage("plans");
+    render();
+    const input = document.querySelector('[data-action="plan-search"]');
+    if (input) {
+      input.focus();
+      input.setSelectionRange(planSearchQuery.length, planSearchQuery.length);
+    }
+    return;
+  }
   const jumpTarget = event.target.closest('[data-action="page-jump-input"]');
   if (jumpTarget) {
     const scope = jumpTarget.dataset.pageScope;
@@ -970,6 +1452,7 @@ document.body.addEventListener("keydown", (event) => {
 
 $$(".nav-item").forEach((item) => item.addEventListener("click", () => {
   currentView = item.dataset.view;
+  if (currentView === "plans") planMode = "list";
   render();
 }));
 
