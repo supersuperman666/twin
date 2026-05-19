@@ -6,13 +6,18 @@ let selectedPatientId = state.patients[0]?.id;
 let patientFilter = "all";
 let detailTab = "overview";
 let searchQuery = "";
-let filtersCollapsed = false;
+let filtersCollapsed = true;
 let patientFilters = {
+  important: "全部",
   risk: "全部",
+  diseaseRisk: "全部",
   disease: "全部",
   todo: "全部",
+  plan: "全部",
+  followup: "全部",
+  data: "全部",
   relation: "全部",
-  data: "全部"
+  device: "全部"
 };
 
 const app = document.querySelector("#app");
@@ -118,6 +123,77 @@ function hasDataIssue(patient) {
   return patient.dataStatus.includes("异常") || patient.dataStatus.includes("未同步");
 }
 
+function completionValue(patient) {
+  return Number(String(patient.analysis?.completeness || "100").replace("%", "")) || 0;
+}
+
+function matchesDiseaseRisk(patient, value) {
+  if (value === "全部") return true;
+  if (value === "待医生确认") return hasPendingDiseaseRisk(patient);
+  const disease = value.replace("风险", "");
+  return patient.screening?.risks?.some((risk) => risk.disease === disease);
+}
+
+function matchesDisease(patient, value) {
+  if (value === "全部") return true;
+  if (value === "多病共管") return patient.diseases.length > 1;
+  return patient.diseases.includes(value);
+}
+
+function matchesTodo(patient, value) {
+  if (value === "全部") return true;
+  const hasAlert = alertsOf(patient.id).some((a) => a.status === "待处理");
+  const hasPlan = plansOf(patient.id).some((plan) => plan.status === "待医生确认");
+  const hasFollowup = followupsOf(patient.id).some((f) => ["待随访", "逾期"].includes(f.status));
+  if (value === "有预警") return hasAlert;
+  if (value === "待确认方案") return hasPlan;
+  if (value === "今日待随访") return hasFollowup;
+  if (value === "数据缺失") return hasDataIssue(patient);
+  return true;
+}
+
+function matchesPlan(patient, value) {
+  if (value === "全部") return true;
+  const plans = plansOf(patient.id);
+  if (value === "无方案") return plans.length === 0;
+  if (value === "待患者知晓") return plans.some((plan) => plan.status === "已下发待患者确认");
+  if (value === "待调整") return plans.some((plan) => plan.status === "需调整");
+  return plans.some((plan) => plan.status === value);
+}
+
+function matchesFollowup(patient, value) {
+  if (value === "全部") return true;
+  const followups = followupsOf(patient.id);
+  if (value === "无随访") return followups.length === 0;
+  if (value === "今日待随访") return followups.some((followup) => ["待随访", "逾期"].includes(followup.status));
+  if (value === "逾期随访") return followups.some((followup) => followup.status === "逾期");
+  if (value === "近期已随访") return followups.some((followup) => followup.status === "已完成");
+  return true;
+}
+
+function matchesDataStatus(patient, value) {
+  if (value === "全部") return true;
+  if (value === "正常") return !hasDataIssue(patient) && completionValue(patient) >= 80;
+  if (value === "关键指标缺失") return patient.dataStatus.includes("缺失") || completionValue(patient) < 80;
+  if (value === "设备未同步") return patient.dataStatus.includes("未同步");
+  if (value === "记录完整率低") return completionValue(patient) < 80;
+  return true;
+}
+
+function matchesRelation(patient, value) {
+  if (value === "全部") return true;
+  return patient.relation === value.replace("患者", "");
+}
+
+function matchesDeviceStatus(patient, value) {
+  if (value === "全部") return true;
+  const devices = patient.profile?.devices || [];
+  if (value === "关键设备已绑定") return devices.length > 0 && !patient.dataStatus.includes("未同步") && !patient.dataStatus.includes("异常");
+  if (value === "关键设备未绑定") return devices.length === 0;
+  if (value === "设备同步异常") return patient.dataStatus.includes("未同步") || patient.dataStatus.includes("异常");
+  return true;
+}
+
 function filteredPatients() {
   const matchers = {
     all: () => true,
@@ -136,16 +212,16 @@ function filteredPatients() {
       return [patient.name, patient.id, patient.phone].some((value) => String(value).toLowerCase().includes(query));
     })
     .filter((patient) => {
+      if (patientFilters.important === "仅看重点关注" && !patient.important) return false;
       if (patientFilters.risk !== "全部" && patient.riskLevel !== patientFilters.risk) return false;
-      if (patientFilters.disease !== "全部" && !patient.diseases.includes(patientFilters.disease)) return false;
-      if (patientFilters.relation !== "全部" && !patient.relation.includes(patientFilters.relation)) return false;
-      if (patientFilters.data === "数据缺失" && !hasDataIssue(patient)) return false;
-      if (patientFilters.data === "正常" && hasDataIssue(patient)) return false;
-      if (patientFilters.todo === "有预警" && !alertsOf(patient.id).some((a) => a.status === "待处理")) return false;
-      if (patientFilters.todo === "疾病待确认" && !hasPendingDiseaseRisk(patient)) return false;
-      if (patientFilters.todo === "待确认方案" && !plansOf(patient.id).some((plan) => plan.status === "待医生确认")) return false;
-      if (patientFilters.todo === "今日待随访" && !followupsOf(patient.id).some((f) => ["待随访", "逾期"].includes(f.status))) return false;
-      if (patientFilters.todo === "数据缺失" && !hasDataIssue(patient)) return false;
+      if (!matchesDiseaseRisk(patient, patientFilters.diseaseRisk)) return false;
+      if (!matchesDisease(patient, patientFilters.disease)) return false;
+      if (!matchesTodo(patient, patientFilters.todo)) return false;
+      if (!matchesPlan(patient, patientFilters.plan)) return false;
+      if (!matchesFollowup(patient, patientFilters.followup)) return false;
+      if (!matchesDataStatus(patient, patientFilters.data)) return false;
+      if (!matchesRelation(patient, patientFilters.relation)) return false;
+      if (!matchesDeviceStatus(patient, patientFilters.device)) return false;
       return true;
     });
 }
@@ -166,29 +242,24 @@ function renderPatients() {
           <button class="btn primary" data-action="add-patient">添加患者</button>
         </div>
       </div>
-      <div class="stat-grid seven">
+      <div class="stat-grid with-more">
         ${patientStats().map(([key, label, value, note]) => `
           <button class="stat-card ${patientFilter === key ? "active" : ""}" data-action="filter-patients" data-filter="${key}">
             <span>${label}<i class="help-icon" title="${escapeAttr(note)}">?</i></span><strong>${value}</strong>
           </button>`).join("")}
+        <button class="stat-card more-filter-card ${filtersCollapsed ? "" : "active"}" data-action="toggle-filters">
+          <span>更多筛选<i class="help-icon" title="展开完整筛选条件，支持疾病、方案、随访、数据和设备状态组合筛选。">?</i></span>
+          <strong>${advancedFilterCount()}</strong>
+          <small>${filtersCollapsed ? "展开筛选" : "收起筛选"}</small>
+        </button>
       </div>
+      ${filtersCollapsed ? "" : renderAdvancedFilters()}
       <div class="filter-summary">
         <strong>当前结果：${patients.length} 位患者</strong>
         ${appliedFilters.map((item) => `<button class="filter-token" data-action="remove-filter" data-filter-key="${item.key}">${item.label} ×</button>`).join("")}
         ${appliedFilters.length || searchQuery || patientFilter !== "all" ? `<button class="link" data-action="clear-all-filters">清空筛选</button>` : ""}
       </div>
-      <section class="layout-list">
-        <aside class="filter-panel ${filtersCollapsed ? "collapsed" : ""}">
-          <button class="collapse-btn" data-action="toggle-filters">${filtersCollapsed ? "筛选" : "收起"}</button>
-          <div class="filter-content">
-            <h3>筛选条件</h3>
-            ${filterBlock("风险状态", "risk", ["全部", "稳定", "需关注", "需干预"])}
-            ${filterBlock("确诊疾病", "disease", ["全部", "糖尿病", "慢阻肺", "睡眠呼吸暂停", "高血压"])}
-            ${filterBlock("待处理事项", "todo", ["全部", "有预警", "疾病待确认", "待确认方案", "今日待随访", "数据缺失"])}
-            ${filterBlock("医患关系", "relation", ["全部", "主责医生", "协作医生"])}
-            ${filterBlock("数据状态", "data", ["全部", "正常", "数据缺失"])}
-          </div>
-        </aside>
+      <section class="layout-list no-side">
         <div class="panel table-panel">
           <div class="panel-hd">
             <strong>患者列表</strong>
@@ -213,8 +284,33 @@ function renderPatients() {
     </section>`;
 }
 
+function renderAdvancedFilters() {
+  return `<section class="advanced-filter-panel panel">
+    <div class="panel-hd">
+      <strong>更多筛选</strong>
+      <button class="link" data-action="clear-all-filters">清空全部条件</button>
+    </div>
+    <div class="advanced-filter-grid">
+      ${filterBlock("重点关注", "important", ["全部", "仅看重点关注"])}
+      ${filterBlock("风险状态", "risk", ["全部", "稳定", "需关注", "需干预"])}
+      ${filterBlock("疾病风险", "diseaseRisk", ["全部", "糖尿病风险", "慢阻肺风险", "睡眠呼吸暂停风险", "高血压风险", "待医生确认"])}
+      ${filterBlock("确诊疾病", "disease", ["全部", "糖尿病", "慢阻肺", "睡眠呼吸暂停", "高血压", "多病共管"])}
+      ${filterBlock("待处理事项", "todo", ["全部", "有预警", "待确认方案", "今日待随访", "数据缺失"])}
+      ${filterBlock("方案状态", "plan", ["全部", "无方案", "待医生确认", "待患者知晓", "执行中", "待调整"])}
+      ${filterBlock("随访状态", "followup", ["全部", "无随访", "今日待随访", "逾期随访", "近期已随访"])}
+      ${filterBlock("数据状态", "data", ["全部", "正常", "关键指标缺失", "设备未同步", "记录完整率低"])}
+      ${filterBlock("医患关系", "relation", ["全部", "主责医生患者", "协作医生患者"])}
+      ${filterBlock("设备状态", "device", ["全部", "关键设备已绑定", "关键设备未绑定", "设备同步异常"])}
+    </div>
+  </section>`;
+}
+
 function filterBlock(title, key, options) {
   return `<div class="filter-block"><span>${title}</span><div>${options.map((item) => `<button class="chip ${patientFilters[key] === item ? "active" : ""}" data-action="set-filter" data-filter-key="${key}" data-filter-value="${item}">${item}</button>`).join("")}</div></div>`;
+}
+
+function advancedFilterCount() {
+  return Object.values(patientFilters).filter((value) => value !== "全部").length;
 }
 
 function currentAppliedFilters() {
@@ -658,7 +754,18 @@ document.body.addEventListener("click", (event) => {
   if (action === "clear-all-filters") {
     patientFilter = "all";
     searchQuery = "";
-    patientFilters = { risk: "全部", disease: "全部", todo: "全部", relation: "全部", data: "全部" };
+    patientFilters = {
+      important: "全部",
+      risk: "全部",
+      diseaseRisk: "全部",
+      disease: "全部",
+      todo: "全部",
+      plan: "全部",
+      followup: "全部",
+      data: "全部",
+      relation: "全部",
+      device: "全部"
+    };
     render();
   }
   if (action === "clear-search") {

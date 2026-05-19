@@ -286,6 +286,10 @@ button:disabled {
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+.stat-grid.with-more {
+  grid-template-columns: repeat(7, minmax(128px, 1fr)) minmax(124px, 0.72fr);
+}
+
 .stat-card {
   min-height: 78px;
   padding: 12px;
@@ -314,6 +318,21 @@ button:disabled {
   display: block;
   margin: 7px 0 0;
   font-size: 24px;
+}
+
+.more-filter-card {
+  border-style: dashed;
+  background: #fbfdff;
+}
+
+.more-filter-card strong {
+  font-size: 20px;
+}
+
+.more-filter-card small {
+  margin-top: 3px;
+  justify-content: flex-start;
+  font-size: 12px;
 }
 
 .help-icon {
@@ -354,6 +373,10 @@ button:disabled {
   grid-template-columns: 236px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.layout-list.no-side {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .layout-list:has(.filter-panel.collapsed) {
@@ -402,6 +425,22 @@ button:disabled {
 
 .filter-panel h3 {
   margin: 0 0 14px;
+}
+
+.advanced-filter-panel {
+  overflow: visible;
+}
+
+.advanced-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(168px, 1fr));
+  gap: 14px 16px;
+  padding: 16px;
+}
+
+.advanced-filter-grid .filter-block {
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .filter-block {
