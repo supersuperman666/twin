@@ -1339,6 +1339,122 @@ flowchart TD
 
 以下模板为系统默认草稿，正式内容需医生审核确认。模板不直接自动调整处方药剂量，不替代诊断和治疗决策。
 
+模板落地原则：
+
+- P0 阶段采用“内置模板配置 + 医生端关键字段可编辑”的方式实现，不先建设复杂模板管理后台。
+- 模板必须配置到可生成患者方案、患者待办、提醒、随访和预警的字段级别。
+- 模板只提供默认建议，医生确认下发后才成为患者当前执行方案。
+- 模板字段分为通用字段和模块字段，通用字段用于匹配疾病、风险和周期，模块字段用于生成具体测量、记录、用药、设备、随访和预警规则。
+
+#### 15.5.0 管理方案模板配置表
+
+模板主配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 模板编码 | string | 是 | 如 diabetes_medium、copd_high |
+| 模板名称 | string | 是 | 医生端展示名称 |
+| 适用疾病 | enum/list | 是 | 糖尿病、慢阻肺、睡眠呼吸障碍、高血压、多病共管 |
+| 适用风险等级 | enum | 是 | 低/中/高/危急 |
+| 适用人群 | list | 否 | 初诊、已确诊、设备已绑定、依从性差、近期预警等 |
+| 方案周期 | number + unit | 是 | 如 7 天、14 天、30 天、90 天 |
+| 是否默认启用 | boolean | 是 | 系统初始化时是否可被自动匹配 |
+| 患者端总说明 | text | 是 | 下发给患者时展示的通俗说明 |
+| 医生端说明 | text | 否 | 解释模板适用边界和注意事项 |
+| 版本号 | string | 是 | 用于模板迭代和历史追溯 |
+| 状态 | enum | 是 | 启用/停用 |
+
+管理目标配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 阶段目标 | text | 是 | 面向医生的阶段管理目标 |
+| 患者端目标文案 | text | 是 | 面向患者的通俗目标说明 |
+| 量化目标指标 | enum | 是 | 如空腹血糖、SpO2、AHI、家庭收缩压 |
+| 目标类型 | enum | 是 | 上限、下限、区间、完成率、次数 |
+| 目标值/目标范围 | object | 是 | 含数值、单位、上下限 |
+| 达成周期 | number + unit | 是 | 如 7 天、14 天、30 天 |
+| 是否默认启用 | boolean | 是 | 生成草稿时是否默认选中 |
+| 是否允许医生修改 | boolean | 是 | 医生可按个体情况调整 |
+| 患者端是否可见 | boolean | 是 | 是否展示在患者端方案目标中 |
+
+指标测量方案配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 指标编码 | enum | 是 | blood_glucose、blood_pressure、spo2、resp_rate、weight、sleep_report 等 |
+| 指标名称 | string | 是 | 医生端和患者端展示名称 |
+| 测量场景 | enum/list | 否 | 空腹、餐后 2h、睡前、静息、活动后、晨起等 |
+| 测量频率 | enum/object | 是 | 每日、每周、隔日、按需、连续 N 天 |
+| 推荐时间 | list | 否 | 如 07:00、早餐后 2h、睡前 |
+| 目标范围 | object | 否 | 用于正常/偏高/偏低判断 |
+| 数据来源 | enum/list | 是 | 手动录入、设备采集、二者均可 |
+| 是否生成待办 | boolean | 是 | 是否进入患者端今日待完成 |
+| 是否允许患者补录 | boolean | 是 | 设备失败或漏记时是否可手动补录 |
+| 患者端说明 | text | 是 | 如“早餐前记录一次血糖” |
+
+症状记录方案配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 症状组 | enum | 是 | 糖尿病症状、呼吸症状、睡眠症状、血压相关症状 |
+| 症状项 | list | 是 | 如头晕、出汗、咳嗽、气促、夜间憋醒、头痛等 |
+| 记录频率 | enum | 是 | 每日、出现时记录、随访前记录 |
+| 是否记录严重程度 | boolean | 是 | 支持轻/中/重或 0-10 分 |
+| 是否记录持续时间 | boolean | 否 | 如持续 2 小时 |
+| 是否支持备注 | boolean | 是 | 患者个性化补充 |
+| 是否触发预警 | boolean | 是 | 异常症状是否进入预警判断 |
+| 患者端说明 | text | 是 | 说明何时需要记录症状 |
+
+用药方案配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 药品名称 | string | 否 | 模板可为空，由医生下发时填写 |
+| 用药来源 | enum | 是 | 既有处方、线下医嘱、出院记录、专科方案、患者自述、随访确认 |
+| 单次剂量/用量 | string | 否 | 如 1 片、2 吸、0.5g |
+| 服用频次 | string | 否 | 如每日 1 次、每日 2 次 |
+| 服用时间 | list | 否 | 早餐后、晚餐后、睡前 |
+| 是否关键用药 | boolean | 是 | 关键用药漏服可进入随访关注 |
+| 是否生成提醒 | boolean | 是 | 是否进入患者端用药提醒 |
+| 漏服处理说明 | text | 否 | 患者端展示，避免自行补药风险 |
+| 患者端说明 | text | 是 | 通俗说明，不写处方决策语言 |
+
+设备监测方案配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 设备类型 | enum | 是 | 血糖仪、血压计、血氧仪、睡眠设备、CPAP |
+| 是否推荐绑定 | boolean | 是 | 是否在患者端提示添加设备 |
+| 必须设备采集指标 | list | 否 | 如 AHI、ODI、睡眠阶段、CPAP 使用时长 |
+| 支持手动补录指标 | list | 否 | 如睡眠时长、入睡时间、起床时间 |
+| 同步频率 | enum | 是 | 每次测量后、每日、睡眠报告后 |
+| 同步失败提醒 | boolean | 是 | 是否提醒患者重新同步或手动补录 |
+| 设备管理入口 | boolean | 是 | 患者端是否展示添加设备入口 |
+
+随访计划配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 首次随访时间 | number + unit | 是 | 方案下发后第几天 |
+| 随访频率 | enum/object | 是 | 每周、每 2 周、每月、按预警触发 |
+| 随访方式 | enum/list | 是 | 小程序问卷、电话、视频、线下、医生记录 |
+| 随访重点 | list | 是 | 指标达标、症状变化、用药依从性、设备同步、生活方式 |
+| 是否预警触发额外随访 | boolean | 是 | 触发重要/紧急预警后是否建议随访 |
+| 患者准备材料 | list | 否 | 如近 7 天血糖、睡眠报告、用药记录 |
+
+预警规则配置：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| 预警指标 | enum | 是 | 血糖、血压、SpO2、AHI、症状、用药执行率等 |
+| 触发条件 | object | 是 | 单次异常、连续 N 次异常、持续时长、完成率不足 |
+| 预警等级 | enum | 是 | 一般、重要、紧急 |
+| 患者端动作 | list | 是 | 复测、记录症状、联系医生、线下就医提示 |
+| 医生端动作 | list | 是 | 查看详情、发起随访、调整方案、标记已处理 |
+| 是否自动生成随访建议 | boolean | 是 | 是否在医生端提示创建随访 |
+| 是否允许医生修改 | boolean | 是 | 医生下发方案前可个体化调整 |
+
 #### 15.5.1 糖尿病管理方案模板
 
 | 风险等级 | 管理目标 | 指标测量方案/症状记录方案 | 用药方案/生活方式方案 | 预警规则 | 随访计划 |
@@ -2300,6 +2416,9 @@ stateDiagram-v2
 | `disease_code` | string | diabetes/copd/sleep_apnea/hypertension/multi_disease |
 | `risk_level` | string | low/medium/high/urgent |
 | `template_name` | string | 模板名称 |
+| `applicable_population` | json | 适用人群，如初诊、已确诊、设备已绑定、依从性差、近期预警 |
+| `plan_period` | object | 默认方案周期，含数值和单位 |
+| `is_default_enabled` | boolean | 是否可被系统初始化自动匹配 |
 | `stage_goal` | object | 默认阶段目标 |
 | `metric_targets` | object | 默认量化目标，按疾病预置核心目标项 |
 | `metric_measurement_plan` | json | 指标测量方案模板 |
@@ -2310,8 +2429,22 @@ stateDiagram-v2
 | `alert_rules` | json | 默认预警规则 |
 | `followup_rule` | object | 默认随访规则 |
 | `patient_description` | text | 患者端说明模板 |
+| `doctor_description` | text | 医生端适用边界和注意事项 |
+| `editable_fields` | json | 医生端允许修改的字段清单 |
+| `required_fields` | json | 下发前必须完成的字段清单 |
+| `task_generation_rules` | json | 从模板生成患者端待办、提醒和依从性统计的规则 |
 | `version` | string | 模板版本 |
 | `status` | string | active/inactive |
+
+模板 JSON 结构要求：
+
+- `metric_targets`：至少包含 `metric_code`、`target_type`、`target_value`、`unit`、`period`、`default_enabled`、`doctor_editable`、`patient_visible`。
+- `metric_measurement_plan`：至少包含 `metric_code`、`measure_scenes`、`frequency_rule`、`recommended_times`、`target_range`、`data_sources`、`generate_todo`、`allow_manual_supplement`、`patient_instruction`。
+- `symptom_record_plan`：至少包含 `symptom_group`、`symptom_items`、`frequency_rule`、`severity_enabled`、`duration_enabled`、`remark_enabled`、`alert_enabled`、`patient_instruction`。
+- `medication_plan`：至少包含 `drug_name`、`medication_source`、`dose`、`frequency`、`times`、`is_key_medication`、`generate_reminder`、`missed_dose_instruction`、`patient_instruction`；模板可留空药品名称，由医生下发时补齐。
+- `device_monitoring_plan`：至少包含 `device_type`、`recommend_bind`、`device_required_metrics`、`manual_supplement_metrics`、`sync_frequency`、`sync_failed_reminder`、`device_entry_enabled`。
+- `followup_rule`：至少包含 `first_followup_after`、`frequency_rule`、`followup_methods`、`focus_items`、`alert_extra_followup_enabled`、`patient_prepare_items`。
+- `alert_rules`：至少包含 `metric_code`、`trigger_condition`、`alert_level`、`patient_actions`、`doctor_actions`、`generate_followup_suggestion`、`doctor_editable`。
 
 ### 21.9 patient_management_plan
 
