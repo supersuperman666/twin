@@ -261,10 +261,6 @@ function renderPatients() {
       </div>
       <section class="layout-list no-side">
         <div class="panel table-panel">
-          <div class="panel-hd">
-            <strong>患者列表</strong>
-            <span>${patients.length} 位患者</span>
-          </div>
           ${patients.length ? `<table class="table patient-table">
             <thead>
               <tr>
