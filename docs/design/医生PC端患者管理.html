@@ -702,6 +702,215 @@
       background: #f8fafc;
       border-top: 1px solid var(--line);
     }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .module-main {
+      display: grid;
+      gap: 16px;
+    }
+
+    .module-side {
+      position: sticky;
+      top: 82px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .sub-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .seg-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mini-card-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .metric-card .label {
+      color: var(--text-sub);
+      font-size: 12px;
+    }
+
+    .metric-card .value {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .card-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    }
+
+    .flow-card.urgent {
+      border-left: 4px solid var(--danger);
+    }
+
+    .flow-card.important {
+      border-left: 4px solid var(--warning);
+    }
+
+    .flow-card.active-plan {
+      border-left: 4px solid var(--primary);
+    }
+
+    .flow-card.done {
+      border-left: 4px solid var(--success);
+      background: #fbfffd;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .card-desc {
+      margin: 8px 0 0;
+      color: var(--text-sub);
+      line-height: 1.55;
+    }
+
+    .evidence-list {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .evidence-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--surface-soft);
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .timeline-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .empty {
+      padding: 28px;
+      text-align: center;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      color: var(--text-weak);
+      background: var(--surface);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      text-align: left;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .form-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-field label {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 700;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .form-field textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      min-width: 240px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: #fff;
+      background: #0f172a;
+      box-shadow: var(--shadow);
+      z-index: 80;
+      transform: translateY(16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -713,14 +922,14 @@
       </div>
       <div class="nav-group">
         <div class="nav-title">工作台</div>
-        <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>首页</div>
-        <div class="nav-item active"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M17 16h4"/></svg></span>患者管理</div>
-        <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.6 18a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></span>预警中心</div>
-        <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>随访管理</div>
+        <div class="nav-item" data-view="dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>首页</div>
+        <div class="nav-item active" data-view="patients"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M17 16h4"/></svg></span>患者管理</div>
+        <div class="nav-item" data-view="alerts"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.6 18a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></span>预警中心</div>
+        <div class="nav-item" data-view="followups"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>随访管理</div>
       </div>
       <div class="nav-group">
         <div class="nav-title">管理</div>
-        <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="m3 6 .8.8L5.5 5"/><path d="m3 12 .8.8 1.7-1.8"/><path d="m3 18 .8.8 1.7-1.8"/></svg></span>管理方案</div>
+        <div class="nav-item" data-view="plans"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="m3 6 .8.8L5.5 5"/><path d="m3 12 .8.8 1.7-1.8"/><path d="m3 18 .8.8 1.7-1.8"/></svg></span>管理方案</div>
         <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h6"/><path d="m8 12 2 2 4-4"/><path d="M8 17h8"/></svg></span>任务管理</div>
         <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 7h4"/><path d="M12 17h.01"/><path d="M4 8v8"/><path d="M20 8v8"/></svg></span>设备与报告</div>
         <div class="nav-item"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="7" width="3" height="9" rx="1"/><rect x="17" y="9" width="3" height="7" rx="1"/></svg></span>数据看板</div>
@@ -1245,6 +1454,275 @@
     });
 
     render();
+  </script>
+  <script>
+    (() => {
+      const patientData = [
+        { id: "P20260518001", name: "周明", sex: "男", age: 67, phone: "138****4831", bindAt: "2026-05-18 09:42", focus: true, risk: "高风险", score: 62, diseaseRisk: ["慢阻肺风险", "睡眠呼吸障碍风险"], confirmed: ["慢阻肺", "高血压"], planId: "PL001", followId: "F001", data: "今日已记录", task: 63, metrics: { glucose: "6.8", bp: "152/94", spo2: "87%", sleep: "AHI 28.6" } },
+        { id: "P20260517008", name: "李岚", sex: "女", age: 58, phone: "136****7290", bindAt: "2026-05-17 16:11", focus: false, risk: "中风险", score: 78, diseaseRisk: ["糖尿病风险"], confirmed: ["糖尿病"], planId: "PL002", followId: "F002", data: "今日已记录", task: 86, metrics: { glucose: "8.2", bp: "128/82", spo2: "96%", sleep: "7.1h" } },
+        { id: "P20260516012", name: "陈建国", sex: "男", age: 72, phone: "139****6027", bindAt: "2026-05-16 10:25", focus: true, risk: "高风险", score: 55, diseaseRisk: ["睡眠呼吸障碍风险"], confirmed: ["睡眠呼吸障碍"], planId: "PL003", followId: "F003", data: "设备未同步", task: 42, metrics: { glucose: "--", bp: "136/84", spo2: "92%", sleep: "残余AHI 18" } },
+        { id: "P20260515006", name: "王秀梅", sex: "女", age: 64, phone: "135****1186", bindAt: "2026-05-15 14:03", focus: false, risk: "低风险", score: 91, diseaseRisk: [], confirmed: ["高血压"], planId: "PL004", followId: "F004", data: "今日未完成", task: 70, metrics: { glucose: "--", bp: "132/78", spo2: "97%", sleep: "6.8h" } },
+        { id: "P20260514002", name: "赵强", sex: "男", age: 61, phone: "137****9051", bindAt: "2026-05-14 08:57", focus: false, risk: "中风险", score: 73, diseaseRisk: ["糖尿病风险", "慢阻肺风险"], confirmed: [], planId: null, followId: null, data: "连续缺失", task: 18, metrics: { glucose: "缺失", bp: "缺失", spo2: "缺失", sleep: "--" } }
+      ];
+
+      const alertData = [
+        { id: "A001", patientId: "P20260518001", level: "紧急", status: "待医生处理", title: "静息血氧 87%，伴胸闷", time: "今日 10:18", rule: "静息 SpO2 < 88% 或伴明显气促", evidence: ["静息 SpO2 87%", "患者备注：胸闷气促", "昨晚最低血氧 84%"], actions: ["建议复测", "创建随访", "调整管理方案"] },
+        { id: "A002", patientId: "P20260517008", level: "重要", status: "待医生处理", title: "空腹血糖连续偏高", time: "今日 08:05", rule: "空腹血糖连续 3 天高于目标", evidence: ["8.2 / 7.9 / 8.1 mmol/L", "昨晚加餐备注", "用药打卡完整"], actions: ["补充饮食备注", "创建随访"] },
+        { id: "A003", patientId: "P20260516012", level: "重要", status: "待医生处理", title: "CPAP 连续 3 天未同步", time: "昨日 21:00", rule: "设备数据连续缺失", evidence: ["CPAP 3 天未同步", "上次残余 AHI 18", "随访逾期 1 天"], actions: ["检查设备", "创建随访"] },
+        { id: "A004", patientId: "P20260515006", level: "提醒", status: "患者待完成", title: "今日血压任务未完成", time: "今日 12:00", rule: "计划任务到时未完成", evidence: ["晨起血压未记录", "近 7 天达标"], actions: ["提醒患者"] },
+        { id: "A005", patientId: "P20260514002", level: "重要", status: "待医生处理", title: "关键记录连续 3 天缺失", time: "今日 09:00", rule: "关键任务连续未完成", evidence: ["血糖缺失", "血氧缺失", "未绑定设备"], actions: ["补充记录", "生成方案草稿"] }
+      ];
+
+      const planData = [
+        { id: "PL001", patientId: "P20260518001", name: "慢阻肺高风险 14 天管理方案", status: "待医生确认", version: 1, source: "系统草稿", target: "未来 14 天降低低氧风险，追踪睡眠呼吸事件", modules: ["每日 SpO2 2 次", "症状每日记录", "睡眠报告每周 3 次", "3 天内预警后随访"], changes: ["新增夜间低氧预警", "新增睡眠报告准备材料"], patientAck: "未下发" },
+        { id: "PL002", patientId: "P20260517008", name: "糖尿病中风险 30 天管理方案", status: "执行中", version: 2, source: "医生确认", target: "提升空腹血糖达标率，减少波动", modules: ["空腹血糖每日", "餐后 2h 每周 3 天", "用药打卡", "2 周后随访"], changes: ["上版增加餐后血糖记录"], patientAck: "已确认 05.17 18:32" },
+        { id: "PL003", patientId: "P20260516012", name: "睡眠呼吸障碍高风险 14 天管理方案", status: "需调整", version: 3, source: "随访后调整", target: "提升 CPAP 使用依从性，降低残余 AHI", modules: ["CPAP 同步每日", "睡眠报告连续 7 天", "ESS 量表", "1 周后复盘"], changes: ["设备同步不足，建议生成新版本"], patientAck: "执行中" },
+        { id: "PL004", patientId: "P20260515006", name: "高血压低风险 30 天管理方案", status: "执行中", version: 1, source: "医生确认", target: "维持家庭血压达标", modules: ["晨起/睡前血压每周 3 天", "用药打卡", "4 周常规随访"], changes: ["初始方案"], patientAck: "已确认 05.10 20:11" }
+      ];
+
+      const followData = [
+        { id: "F001", patientId: "P20260518001", type: "预警后随访", status: "待医生处理", planId: "PL001", time: "今日 15:30", method: "电话", prepare: 67, purpose: "复盘低氧预警与睡眠报告", conclusion: "" },
+        { id: "F002", patientId: "P20260517008", type: "计划内随访", status: "待患者准备", planId: "PL002", time: "05.22 10:00", method: "小程序问卷", prepare: 72, purpose: "复盘 7 天血糖与用药", conclusion: "" },
+        { id: "F003", patientId: "P20260516012", type: "方案复盘", status: "已逾期", planId: "PL003", time: "昨日 16:00", method: "电话", prepare: 38, purpose: "复盘 CPAP 依从性", conclusion: "" },
+        { id: "F004", patientId: "P20260515006", type: "计划内随访", status: "待患者准备", planId: "PL004", time: "06.02 09:30", method: "小程序问卷", prepare: 80, purpose: "常规血压复盘", conclusion: "" }
+      ];
+
+      const timelineData = [
+        { patientId: "P20260518001", type: "预警", time: "今日 10:18", title: "触发紧急预警", text: "静息血氧 87%，患者备注胸闷气促。" },
+        { patientId: "P20260518001", type: "方案", time: "今日 10:22", title: "生成方案草稿", text: "系统生成慢阻肺高风险 14 天管理方案，待医生确认。" },
+        { patientId: "P20260518001", type: "随访", time: "今日 10:25", title: "创建预警后随访", text: "计划今日 15:30 电话随访，准备材料完成 67%。" },
+        { patientId: "P20260517008", type: "预警", time: "今日 08:05", title: "触发重要预警", text: "空腹血糖连续 3 天高于医生目标。" },
+        { patientId: "P20260517008", type: "方案", time: "05.17", title: "患者确认执行", text: "糖尿病中风险 30 天管理方案进入执行中。" },
+        { patientId: "P20260516012", type: "随访", time: "昨日", title: "随访逾期", text: "CPAP 方案复盘随访逾期 1 天。" },
+        { patientId: "P20260516012", type: "方案", time: "05.12", title: "方案需调整", text: "睡眠报告完成率不足 60%，建议生成新版本。" },
+        { patientId: "P20260515006", type: "方案", time: "05.10", title: "方案下发", text: "高血压低风险 30 天管理方案。" },
+        { patientId: "P20260514002", type: "预警", time: "今日 09:00", title: "数据缺失预警", text: "血糖、血氧关键记录连续缺失。" }
+      ];
+
+      const app = { view: "patients", selectedId: "P20260518001", quick: "全部患者", search: "", timelineType: "全部" };
+      const contentNode = document.querySelector(".content");
+      const titleNode = document.querySelector(".page-title");
+      const patientOf = id => patientData.find(p => p.id === id);
+      const planOf = p => planData.find(plan => plan.id === p?.planId);
+      const followOf = p => followData.find(f => f.id === p?.followId);
+      const openAlerts = () => alertData.filter(a => a.status !== "已处理");
+      const alertOf = p => openAlerts().find(a => a.patientId === p?.id) || alertData.find(a => a.patientId === p?.id);
+      const riskTag = risk => risk === "高风险" ? "red" : risk === "中风险" ? "amber" : "green";
+      const levelTag = level => level === "紧急" ? "red" : level === "重要" ? "amber" : "blue";
+      const statusTag = status => /紧急|逾期|需调整|待医生/.test(status) ? "red" : /待患者|重要|待确认/.test(status) ? "amber" : /执行中|已完成|已处理/.test(status) ? "green" : "blue";
+
+      function addEvent(patientId, type, title, text) {
+        timelineData.unshift({ patientId, type, time: "刚刚", title, text });
+      }
+
+      function toast(text) {
+        let el = document.querySelector(".toast");
+        if (!el) {
+          el = document.createElement("div");
+          el.className = "toast";
+          document.body.appendChild(el);
+        }
+        el.textContent = text;
+        el.classList.add("show");
+        setTimeout(() => el.classList.remove("show"), 2200);
+      }
+
+      function showModal(title, body, onConfirm, confirmText = "确认") {
+        const modal = document.createElement("div");
+        modal.className = "drawer-mask show";
+        modal.innerHTML = `<div class="modal" style="width:640px;"><div class="modal-hd"><span>${title}</span><button class="action-link" data-close>关闭</button></div><div class="modal-body" style="text-align:left;">${body}</div><div class="modal-ft"><button class="btn" data-close>取消</button><button class="btn primary" data-confirm>${confirmText}</button></div></div>`;
+        document.body.appendChild(modal);
+        modal.querySelectorAll("[data-close]").forEach(btn => btn.onclick = () => modal.remove());
+        modal.querySelector("[data-confirm]").onclick = () => {
+          onConfirm(modal);
+          modal.remove();
+          render();
+        };
+      }
+
+      function shell(title, html) {
+        titleNode.textContent = title;
+        document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === app.view));
+        contentNode.innerHTML = html;
+      }
+
+      function statCards(items) {
+        return `<div class="stats">${items.map(([name, value, note]) => `<button class="stat-card" data-stat="${name}"><div class="stat-title">${name}</div><div class="stat-value">${value}</div><div class="stat-note">${note || "点击查看"}</div></button>`).join("")}</div>`;
+      }
+
+      function timeline(patientId) {
+        const events = timelineData.filter(e => e.patientId === patientId && (app.timelineType === "全部" || e.type === app.timelineType));
+        return `<div class="timeline-filter">${["全部", "方案", "随访", "预警"].map(t => `<button class="chip ${app.timelineType === t ? "active" : ""}" data-timeline="${t}">${t}</button>`).join("")}</div><div class="timeline">${events.length ? events.map(e => `<div class="event"><div class="event-time">${e.time}</div><div class="event-main"><b>${e.title}</b><span>${e.text}</span></div></div>`).join("") : `<div class="empty">暂无时间轴事件</div>`}</div>`;
+      }
+
+      function patientCell(p) {
+        return `<div class="patient-name"><button class="star ${p.focus ? "on" : ""}" data-star="${p.id}">★</button><span>${p.name}</span><span class="tag ${riskTag(p.risk)}">${p.risk}</span></div><div class="patient-meta">${p.sex} · ${p.age}岁 · ${p.phone}</div><div class="patient-meta">绑定 ${p.bindAt}</div>`;
+      }
+
+      function patientRows() {
+        const rows = patientData.filter(p => !app.search || [p.name, p.phone, p.id].some(v => v.includes(app.search)));
+        return rows.map(p => {
+          const plan = planOf(p);
+          const follow = followOf(p);
+          const alert = alertOf(p);
+          return `<tr class="${p.id === app.selectedId ? "active" : ""}" data-id="${p.id}"><td class="patient-cell">${patientCell(p)}</td><td>${p.confirmed.map(i => `<span class="tag blue">${i}</span>`).join("")}${p.diseaseRisk.map(i => `<span class="tag gray">${i}</span>`).join("") || `<span class="tag gray">待确认</span>`}</td><td><div class="status-text"><b>任务完成 ${p.task}%</b><span>${p.data}</span><div class="progress"><span style="width:${p.task}%"></span></div></div></td><td><div class="metric-line"><span>血糖 <b>${p.metrics.glucose}</b></span><span>血压 <b>${p.metrics.bp}</b></span><span>SpO2 <b>${p.metrics.spo2}</b></span><span>睡眠 <b>${p.metrics.sleep}</b></span></div></td><td><div class="status-text"><b>${plan?.status || "无方案"}</b><span>${follow ? `${follow.time} ${follow.type}` : "未安排"}</span></div></td><td>${alert ? `<span class="tag ${levelTag(alert.level)}">${alert.level}</span><div class="status-text" style="margin-top:4px;"><b>${alert.title}</b><span>${alert.time}</span></div>` : `<span class="tag green">无待处理</span>`}</td><td><button class="action-link" data-view-patient="${p.id}">查看详情</button></td></tr>`;
+        }).join("");
+      }
+
+      function detailPanel(p) {
+        const plan = planOf(p);
+        const follow = followOf(p);
+        const alert = alertOf(p);
+        return `<div class="patient-head"><div class="head-main"><div><div class="head-name">${p.name}</div><div class="head-meta">${p.sex} · ${p.age}岁 · ${p.phone}</div><div style="margin-top:10px;"><span class="tag ${riskTag(p.risk)}">${p.risk}</span>${p.confirmed.map(i => `<span class="tag blue">${i}</span>`).join("")}</div></div><div class="score"><div class="score-inner">${p.score}<small>健康分</small></div></div></div></div><div class="tabs"><button class="tab active">总览</button><button class="tab" data-nav="plans">方案</button><button class="tab" data-nav="followups">随访</button><button class="tab" data-nav="alerts">预警</button></div><div class="detail-section"><div class="section-title"><span>当前状态</span><button class="btn ghost" data-nav="dashboard" style="height:30px;">患者360</button></div><div class="summary-grid"><div class="summary-card"><div class="summary-label">方案状态</div><div class="summary-value" style="font-size:15px;">${plan?.status || "无方案"}</div></div><div class="summary-card"><div class="summary-label">下次随访</div><div class="summary-value" style="font-size:15px;">${follow ? follow.time : "未安排"}</div></div><div class="summary-card"><div class="summary-label">今日任务</div><div class="summary-value">${p.task}%</div></div><div class="summary-card"><div class="summary-label">最新预警</div><div class="summary-value" style="font-size:15px;">${alert ? `<span class="tag ${levelTag(alert.level)}">${alert.level}</span>` : `<span class="tag green">无</span>`}</div></div></div></div><div class="detail-section"><div class="section-title">患者管理时间轴</div>${timeline(p.id)}</div><div class="detail-section"><div class="section-title">快捷动作</div><div style="display:flex;flex-wrap:wrap;gap:8px;"><button class="btn primary" data-alert-action="${alert?.id || ""}">处理预警</button><button class="btn" data-create-follow="${p.id}">创建随访</button><button class="btn" data-plan-action="${plan?.id || ""}">审核/调整方案</button></div></div>`;
+      }
+
+      function renderPatients() {
+        const selected = patientOf(app.selectedId) || patientData[0];
+        shell("患者管理", `<div class="toolbar"><div class="search"><input id="searchInput2" type="search" value="${app.search}" placeholder="搜索姓名 / 手机号 / 患者ID / 设备号"></div><div><button class="btn" data-refresh>刷新</button><button class="btn primary" id="addPatientBtn2">＋ 添加患者</button></div></div>${statCards([["全部患者", patientData.length, "当前管理患者"], ["高风险", patientData.filter(p => p.risk === "高风险").length, "优先关注"], ["今日随访", followData.filter(f => f.time.includes("今日")).length, "计划内/预警后"], ["待确认方案", planData.filter(p => p.status === "待医生确认").length, "医生审核"], ["待处理预警", openAlerts().length, "需处理"]])}<div class="workbench"><aside class="panel"><div class="panel-hd"><span>筛选条件</span><button class="action-link" data-clear>清空</button></div><div class="filters"><div class="filter-block"><span class="filter-label">P0 范围</span><div class="seg"><button class="chip active">规则预警</button><button class="chip active">医生确认方案</button><button class="chip active">结构化随访</button></div></div><div class="filter-block"><span class="filter-label">不做</span><div class="seg"><button class="chip">问诊</button><button class="chip">视频</button><button class="chip">IM</button></div></div></div></aside><section class="panel list-panel"><div class="panel-hd"><span>患者列表</span><span style="color:var(--text-weak);font-weight:500;">${patientData.length} 位患者，mock 数据闭环</span></div><table class="table"><thead><tr><th>患者</th><th>疾病标签</th><th>今日状态</th><th>关键指标</th><th>方案/随访</th><th>最新预警</th><th>操作</th></tr></thead><tbody>${patientRows()}</tbody></table></section><aside class="panel detail">${detailPanel(selected)}</aside></div>`);
+      }
+
+      function renderAlertCard(a) {
+        const p = patientOf(a.patientId);
+        return `<article class="flow-card ${a.level === "紧急" ? "urgent" : a.level === "重要" ? "important" : ""}"><div class="card-top"><div><h3 class="card-title">${a.title}</h3><p class="card-desc">${p.name} · ${p.confirmed.join("、") || p.diseaseRisk.join("、")} · ${a.rule}</p></div><span class="tag ${levelTag(a.level)}">${a.level}</span></div><div class="evidence-list">${a.evidence.map((e, i) => `<div class="evidence-item"><span>证据 ${i + 1}</span><b>${e}</b></div>`).join("")}</div><div class="action-row">${a.status === "已处理" ? `<span class="tag green">已处理</span>` : `<button class="btn primary" data-alert-action="${a.id}">处理预警</button><button class="btn" data-create-follow="${p.id}" data-alert-id="${a.id}">转随访</button><button class="btn" data-create-plan="${p.id}" data-alert-id="${a.id}">生成方案草稿</button>`}<button class="btn ghost" data-select="${p.id}">查看患者</button></div></article>`;
+      }
+
+      function renderAlerts() {
+        shell("预警中心", `${statCards([["待处理预警", openAlerts().length, "规则预警"], ["紧急预警", openAlerts().filter(a => a.level === "紧急").length, "优先处理"], ["已处理", alertData.filter(a => a.status === "已处理").length, "完成闭环"], ["可转随访", openAlerts().filter(a => a.actions.includes("创建随访")).length, "医生确认"]])}<div class="module-grid"><section class="module-main card-list">${alertData.map(renderAlertCard).join("")}</section><aside class="module-side">${sidePanel()}</aside></div>`);
+      }
+
+      function renderPlanCard(plan) {
+        const p = patientOf(plan.patientId);
+        return `<article class="flow-card ${plan.status === "执行中" ? "active-plan" : plan.status === "需调整" ? "important" : ""}"><div class="card-top"><div><h3 class="card-title">${plan.name}</h3><p class="card-desc">${p.name} · v${plan.version} · ${plan.source} · 目标：${plan.target}</p></div><span class="tag ${statusTag(plan.status)}">${plan.status}</span></div><div class="evidence-list">${plan.modules.map(m => `<div class="evidence-item"><span>方案项</span><b>${m}</b></div>`).join("")}</div><p class="card-desc">关键变更：${plan.changes.join("；")}｜患者确认：${plan.patientAck}</p><div class="action-row">${plan.status === "待医生确认" ? `<button class="btn primary" data-approve-plan="${plan.id}">确认下发</button><button class="btn" data-edit-plan="${plan.id}">修改后下发</button><button class="btn ghost" data-reject-plan="${plan.id}">驳回草稿</button>` : plan.status === "需调整" ? `<button class="btn primary" data-adjust-plan="${plan.id}">生成新版本草稿</button>` : `<button class="btn" data-review-plan="${plan.id}">进入复盘</button>`}<button class="btn ghost" data-select="${p.id}">查看时间轴</button></div></article>`;
+      }
+
+      function renderPlans() {
+        shell("管理方案", `${statCards([["待确认方案", planData.filter(p => p.status === "待医生确认").length, "医生审核"], ["执行中", planData.filter(p => p.status === "执行中").length, "患者确认"], ["需调整", planData.filter(p => p.status === "需调整").length, "随访/预警后"], ["今日变更", timelineData.filter(t => t.type === "方案" && t.time === "刚刚").length, "mock 回写"]])}<div class="module-grid"><section class="module-main card-list">${planData.map(renderPlanCard).join("")}${patientData.filter(p => !p.planId).map(p => `<div class="empty">${p.name} 暂无方案 <button class="btn primary" data-create-plan="${p.id}" style="margin-left:12px;">生成草稿</button></div>`).join("")}</section><aside class="module-side">${sidePanel()}</aside></div>`);
+      }
+
+      function renderFollowCard(f) {
+        const p = patientOf(f.patientId);
+        return `<article class="flow-card ${f.status === "已完成" ? "done" : f.status === "已逾期" ? "urgent" : ""}"><div class="card-top"><div><h3 class="card-title">${f.type} · ${p.name}</h3><p class="card-desc">${f.time} · ${f.method} · ${f.purpose}</p></div><span class="tag ${statusTag(f.status)}">${f.status}</span></div><div class="evidence-list"><div class="evidence-item"><span>准备材料</span><b>${f.prepare}%</b></div><div class="evidence-item"><span>关联方案</span><b>${planOf(p)?.name || "无"}</b></div><div class="evidence-item"><span>结论</span><b>${f.conclusion || "待填写"}</b></div></div><div class="action-row">${f.status === "已完成" ? `<button class="btn" data-select="${p.id}">查看记录</button>` : `<button class="btn primary" data-complete-follow="${f.id}">记录随访</button><button class="btn" data-reschedule-follow="${f.id}">改期</button><button class="btn ghost" data-cancel-follow="${f.id}">取消</button>`}</div></article>`;
+      }
+
+      function renderFollowups() {
+        shell("随访管理", `${statCards([["今日待随访", followData.filter(f => f.time.includes("今日")).length, "开始随访"], ["逾期随访", followData.filter(f => f.status === "已逾期").length, "需处理"], ["待患者准备", followData.filter(f => f.status === "待患者准备").length, "材料完成度"], ["已完成", followData.filter(f => f.status === "已完成").length, "闭环记录"]])}<div class="module-grid"><section class="module-main card-list">${followData.map(renderFollowCard).join("")}</section><aside class="module-side">${sidePanel()}</aside></div>`);
+      }
+
+      function sidePanel() {
+        const p = patientOf(app.selectedId) || patientData[0];
+        return `<section class="flow-card"><h3 class="card-title">当前患者</h3><p class="card-desc">${p.name} · ${p.risk} · 健康分 ${p.score}</p><div class="evidence-list"><div class="evidence-item"><span>方案</span><b>${planOf(p)?.status || "无方案"}</b></div><div class="evidence-item"><span>随访</span><b>${followOf(p)?.status || "未安排"}</b></div><div class="evidence-item"><span>预警</span><b>${openAlerts().filter(a => a.patientId === p.id).length} 条待处理</b></div></div></section><section class="flow-card"><h3 class="card-title">患者时间轴</h3>${timeline(p.id)}</section>`;
+      }
+
+      function renderDashboard() {
+        shell("患者 360 总览", `<div class="mini-card-grid"><div class="metric-card"><div class="label">待处理预警</div><div class="value">${openAlerts().length}</div></div><div class="metric-card"><div class="label">待确认方案</div><div class="value">${planData.filter(p => p.status === "待医生确认").length}</div></div><div class="metric-card"><div class="label">今日随访</div><div class="value">${followData.filter(f => f.time.includes("今日")).length}</div></div><div class="metric-card"><div class="label">高风险患者</div><div class="value">${patientData.filter(p => p.risk === "高风险").length}</div></div></div><div class="module-grid" style="margin-top:16px;"><section class="module-main card-list">${patientData.slice(0,4).map(p => `<div class="flow-card"><div class="card-top"><div><h3 class="card-title">${p.name}</h3><p class="card-desc">${p.confirmed.join("、") || p.diseaseRisk.join("、")} · ${p.data}</p></div><span class="tag ${riskTag(p.risk)}">${p.risk}</span></div><div class="action-row"><button class="btn primary" data-select="${p.id}" data-nav="patients">查看患者</button></div></div>`).join("")}</section><aside class="module-side">${sidePanel()}</aside></div>`);
+      }
+
+      function approvePlan(id, edited = false) {
+        const plan = planData.find(p => p.id === id);
+        const patient = patientOf(plan.patientId);
+        plan.status = "已下发待患者确认";
+        plan.version += edited ? 1 : 0;
+        plan.patientAck = "待患者确认";
+        plan.changes.unshift(edited ? "医生修改后下发" : "医生整体采纳系统草稿");
+        addEvent(patient.id, "方案", "医生确认下发", `${plan.name} 已下发至患者端，等待患者确认执行。`);
+        showModal("模拟患者确认执行", `<p style="line-height:1.7;">方案已推送到患者端。为跑通前端闭环，可模拟患者点击“我已知晓并开始执行”。</p>`, () => {
+          plan.status = "执行中";
+          plan.patientAck = "已确认 刚刚";
+          patient.task = Math.max(patient.task, 68);
+          addEvent(patient.id, "方案", "患者确认执行", `${plan.name} 进入执行中，已生成今日待办和计划内随访。`);
+          saveFollowup(patient.id, "计划内随访", "7 天后 10:00", "小程序问卷");
+          toast("方案已进入执行中，待办和随访已生成");
+        }, "模拟确认");
+      }
+
+      function createPlan(patientId, alertId, silent = false) {
+        const p = patientOf(patientId);
+        const id = `PL${Date.now()}`;
+        const disease = p.confirmed[0] || "多病共管";
+        const plan = { id, patientId, name: `${disease}中风险 14 天管理方案`, status: "待医生确认", version: 1, source: alertId ? "预警后生成" : "医生创建", target: "提升关键指标记录完整度，降低近期异常风险", modules: ["关键指标每日记录", "症状出现时记录", "7 天后随访", "核心安全预警"], changes: ["系统根据当前风险生成草稿"], patientAck: "未下发" };
+        planData.unshift(plan);
+        p.planId = id;
+        addEvent(patientId, "方案", "生成方案草稿", `${plan.name} 已生成，待医生审核确认。`);
+        if (!silent) toast("已生成管理方案草稿，等待医生审核确认");
+      }
+
+      function saveFollowup(patientId, type, time, method) {
+        const id = `F${Date.now()}`;
+        followData.unshift({ id, patientId, type, status: "待患者准备", planId: patientOf(patientId).planId, time, method, prepare: 0, purpose: `${type}：复盘异常证据和方案执行`, conclusion: "" });
+        patientOf(patientId).followId = id;
+        addEvent(patientId, "随访", "创建随访", `${type}已创建，计划 ${time}，方式 ${method}。`);
+        toast("随访已创建，并生成患者端准备任务");
+      }
+
+      function handleAlert(id) {
+        const alert = alertData.find(a => a.id === id);
+        if (!alert) return toast("当前患者暂无待处理预警");
+        const p = patientOf(alert.patientId);
+        showModal("处理预警", `<div class="form-grid"><div class="form-field full"><label>处理意见</label><textarea id="opinion">已查看证据，建议患者立即复测并补充症状；必要时线下就医。</textarea></div><div class="form-field"><label>后续动作</label><select id="nextAction"><option>创建随访</option><option>发送医嘱与指导</option><option>调整管理方案</option><option>关闭预警</option></select></div><div class="form-field"><label>患者</label><input value="${p.name}" disabled></div></div>`, modal => {
+          const next = modal.querySelector("#nextAction").value;
+          alert.status = "已处理";
+          addEvent(p.id, "预警", "预警已处理", `${alert.title}：${next}。`);
+          if (next === "创建随访") saveFollowup(p.id, "预警后随访", "明日 10:00", "电话");
+          if (next === "调整管理方案") createPlan(p.id, alert.id, true);
+          toast("预警已处理，后续动作已写入时间轴");
+        }, "保存处理");
+      }
+
+      function showFollowModal(patientId) {
+        const p = patientOf(patientId);
+        showModal("创建随访", `<div class="form-grid"><div class="form-field"><label>随访类型</label><select id="followType"><option>预警后随访</option><option>计划内随访</option><option>方案复盘</option><option>临时随访</option></select></div><div class="form-field"><label>计划时间</label><input id="followTime" value="明日 10:00"></div><div class="form-field"><label>方式</label><select id="followMethod"><option>电话</option><option>小程序问卷</option><option>线下</option><option>医生端记录</option></select></div><div class="form-field"><label>患者</label><input value="${p.name}" disabled></div><div class="form-field full"><label>患者端说明</label><textarea>请在随访前完成记录和报告同步，医生将复盘当前管理方案执行情况。</textarea></div></div>`, modal => saveFollowup(p.id, modal.querySelector("#followType").value, modal.querySelector("#followTime").value, modal.querySelector("#followMethod").value), "确认创建");
+      }
+
+      function completeFollow(id) {
+        const f = followData.find(item => item.id === id);
+        showModal("记录随访结论", `<div class="form-grid"><div class="form-field"><label>指标判断</label><select><option>稳定</option><option>改善</option><option>恶化</option><option>资料不足</option></select></div><div class="form-field"><label>医生结论</label><select id="conclusion"><option>继续当前方案</option><option>调整管理方案</option><option>资料不足</option><option>需要复诊/转诊</option><option>结束本阶段</option></select></div><div class="form-field full"><label>患者端建议</label><textarea>请继续按方案完成记录，若出现明显不适及时线下就医。</textarea></div></div>`, modal => {
+          const conclusion = modal.querySelector("#conclusion").value;
+          f.status = conclusion === "调整管理方案" ? "已转方案调整" : "已完成";
+          f.conclusion = conclusion;
+          f.prepare = Math.max(f.prepare, 90);
+          addEvent(f.patientId, "随访", "随访已完成", `${f.type} 结论：${conclusion}。`);
+          if (conclusion === "调整管理方案") createPlan(f.patientId, null, true);
+          if (conclusion === "资料不足") addEvent(f.patientId, "随访", "生成补充任务", "已生成补充记录/报告上传任务。");
+          toast("随访结论已保存，后续动作已生成");
+        }, "保存结论");
+      }
+
+      function bindActions() {
+        document.querySelectorAll("[data-nav]").forEach(el => el.onclick = () => { app.view = el.dataset.nav; render(); });
+        document.querySelectorAll("[data-select],[data-view-patient]").forEach(el => el.onclick = event => { event.stopPropagation(); app.selectedId = el.dataset.select || el.dataset.viewPatient; if (el.dataset.nav) app.view = el.dataset.nav; render(); });
+        document.querySelectorAll("[data-id]").forEach(row => row.onclick = event => { if (!event.target.dataset.star) { app.selectedId = row.dataset.id; render(); } });
+        document.querySelectorAll("[data-star]").forEach(btn => btn.onclick = event => { event.stopPropagation(); const p = patientOf(btn.dataset.star); p.focus = !p.focus; render(); });
+        document.querySelectorAll("[data-timeline]").forEach(btn => btn.onclick = () => { app.timelineType = btn.dataset.timeline; render(); });
+        document.querySelectorAll("[data-alert-action]").forEach(btn => btn.onclick = () => handleAlert(btn.dataset.alertAction));
+        document.querySelectorAll("[data-create-follow]").forEach(btn => btn.onclick = () => showFollowModal(btn.dataset.createFollow));
+        document.querySelectorAll("[data-create-plan]").forEach(btn => btn.onclick = () => { createPlan(btn.dataset.createPlan, btn.dataset.alertId); render(); });
+        document.querySelectorAll("[data-approve-plan]").forEach(btn => btn.onclick = () => approvePlan(btn.dataset.approvePlan));
+        document.querySelectorAll("[data-edit-plan]").forEach(btn => btn.onclick = () => approvePlan(btn.dataset.editPlan, true));
+        document.querySelectorAll("[data-reject-plan]").forEach(btn => btn.onclick = () => { const plan = planData.find(p => p.id === btn.dataset.rejectPlan); plan.status = "已驳回"; addEvent(plan.patientId, "方案", "驳回方案草稿", `${plan.name} 已驳回，原因：资料不足或不适用。`); toast("方案草稿已驳回并留痕"); render(); });
+        document.querySelectorAll("[data-adjust-plan]").forEach(btn => btn.onclick = () => { const old = planData.find(p => p.id === btn.dataset.adjustPlan); createPlan(old.patientId, null, true); planData[0].name = `${old.name} 新版本草稿`; planData[0].version = old.version + 1; toast("已生成新版本草稿"); render(); });
+        document.querySelectorAll("[data-review-plan]").forEach(btn => btn.onclick = () => toast("已进入方案复盘，展示目标完成率与关键变更摘要"));
+        document.querySelectorAll("[data-complete-follow]").forEach(btn => btn.onclick = () => completeFollow(btn.dataset.completeFollow));
+        document.querySelectorAll("[data-reschedule-follow]").forEach(btn => btn.onclick = () => { const f = followData.find(item => item.id === btn.dataset.rescheduleFollow); f.status = "已改期"; f.time = "3 天后 10:00"; addEvent(f.patientId, "随访", "随访已改期", `${f.type} 改期至 ${f.time}，原因：患者准备材料不足。`); toast("随访已改期并同步患者端"); render(); });
+        document.querySelectorAll("[data-cancel-follow]").forEach(btn => btn.onclick = () => { const f = followData.find(item => item.id === btn.dataset.cancelFollow); f.status = "已取消"; addEvent(f.patientId, "随访", "随访已取消", `${f.type} 已取消，原因已留痕。`); toast("随访已取消并留痕"); render(); });
+        const search = document.getElementById("searchInput2");
+        if (search) search.oninput = event => { app.search = event.target.value; render(); };
+        document.querySelector("[data-clear]")?.addEventListener("click", () => { app.search = ""; render(); });
+        document.getElementById("addPatientBtn2")?.addEventListener("click", () => document.getElementById("qrModal").classList.add("show"));
+      }
+
+      function render() {
+        if (app.view === "dashboard") renderDashboard();
+        else if (app.view === "alerts") renderAlerts();
+        else if (app.view === "plans") renderPlans();
+        else if (app.view === "followups") renderFollowups();
+        else renderPatients();
+        document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === app.view));
+        bindActions();
+      }
+
+      document.querySelectorAll(".nav-item[data-view]").forEach(item => item.addEventListener("click", () => { app.view = item.dataset.view; render(); }));
+      render();
+    })();
   </script>
 </body>
 </html>
