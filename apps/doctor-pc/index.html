@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字孪生医生工作台</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">DT</span>
+        <div>
+          <strong>数字孪生</strong>
+          <small>医生工作台</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">工作台</button>
+        <button class="nav-item" data-view="patients">患者管理</button>
+        <button class="nav-item" data-view="alerts">预警中心</button>
+        <button class="nav-item" data-view="plans">方案管理</button>
+        <button class="nav-item" data-view="followups">随访计划</button>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">工作台</h1>
+          <p id="pageSubTitle">预警、方案、随访闭环处理</p>
+        </div>
+        <div class="doctor">
+          <span class="doctor-avatar">林</span>
+          <div>
+            <strong>林医生</strong>
+            <small>慢病管理中心</small>
+          </div>
+        </div>
+      </header>
+      <section id="app" class="content"></section>
+    </main>
+  </div>
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
