@@ -1969,6 +1969,13 @@ flowchart TD
 
 执行任务是系统底层模型，不作为医生端管理方案页面的一级业务文案。医生端展示为“指标测量方案、症状记录方案、用药方案、设备监测方案、随访计划”等；患者端展示为“今日待完成、今日记录、用药提醒、随访准备”。底层统一生成标准任务实例，执行结果回流到医生端，用于评估依从性、风险分、随访准备完成度和方案效果。
 
+管理方案更新后的适配结论：
+
+- 当前任务模块能够承接管理方案的执行闭环，但需要补齐任务类型枚举、任务组、来源模块、合并规则和完成结果字段。
+- 医生端仍不直接展示“任务模块”作为一级业务模块，医生配置的是测量方案、症状记录方案、用药方案、设备监测方案、随访计划和预警规则。
+- 患者端不提供“跳过任务”。患者可反馈“无法完成”，但任务不消失，状态进入无法完成或逾期，并回流医生端处理。
+- P0 必须支持从管理方案模板自动生成患者端待办，包括指标记录、症状记录、用药/治疗执行、设备绑定/同步、睡眠报告、随访准备、复测、确认阅读。
+
 ### 17.1 业务定位
 
 | 来源 | 底层生成 | 患者端展示示例 |
@@ -2002,6 +2009,7 @@ flowchart TD
 | 生活方式 | 饮食、运动、限盐、戒烟、睡眠卫生 | 慢病长期管理 |
 | 设备任务 | 添加设备、同步设备、检查连接状态 | 设备数据采集 |
 | 确认阅读 | 确认已知晓方案、医嘱与指导或风险提示 | 医患沟通留痕 |
+| 评估量表 | CAT、mMRC、ESS、STOP-Bang、低血糖风险等问卷 | 筛查、随访、方案复盘 |
 
 ### 17.3 任务可编辑字段
 
@@ -2013,7 +2021,9 @@ flowchart TD
 | 任务类型 | select | 是 | 底层枚举：指标记录/用药/症状/随访准备等 |
 | 适用疾病 | multi-select | 可选 | diabetes/copd/sleep_apnea/hypertension |
 | 任务来源 | auto | 是 | 管理方案/随访/预警/医嘱与指导/设备 |
+| 来源模块 | auto | 是 | 管理目标/指标测量/症状记录/用药方案/设备监测/随访计划/预警规则 |
 | 关联对象 | selector | 可选 | 关联方案、随访、预警、医嘱与指导 |
+| 任务分组 | auto/custom | 可选 | 如晨间测量、睡前测量、随访准备，用于患者端合并展示 |
 | 执行频率 | select/custom | 是 | 一次性、每日、每周、自定义周期 |
 | 执行时间 | time/multi-time | 可选 | 晨起、餐前、餐后 2h、睡前、自定义 |
 | 开始/结束日期 | date range | 是 | 任务有效期 |
@@ -2030,6 +2040,7 @@ flowchart TD
 | 医生内部备注 | textarea | 否 | 患者不可见 |
 | 提醒方式 | checkbox | 可选 | 小程序订阅消息、首页提示、随访提醒 |
 | 逾期处理 | rule | 可选 | 逾期提醒、推送医生、生成数据缺失预警 |
+| 合并规则 | rule | 可选 | 同时间段、同指标、同随访材料是否合并为任务组 |
 | 优先级 | select | 是 | 普通、重要、紧急 |
 
 ### 17.4 不同任务的专属字段
@@ -2045,8 +2056,12 @@ flowchart TD
 | CPAP 任务 | 使用时长目标、漏气关注、残余 AHI 关注、设备同步要求 |
 | 症状评估 | 症状项、严重程度、持续时间、是否关联指标 |
 | 睡眠报告 | 报告日期、数据来源、是否要求设备同步、报告关键项 |
+| 报告上传 | 报告类型、报告日期、图片/文件要求、是否关联随访 |
 | 随访准备 | 需要准备的数据范围、问卷、报告、备注、截止时间 |
 | 生活方式 | 任务内容、完成标准、频次、是否允许自评 |
+| 设备任务 | 设备类型、操作类型、设备号、同步指标、同步截止时间 |
+| 确认阅读 | 确认内容类型、确认对象、是否需要已读回执 |
+| 评估量表 | 量表类型、题目版本、完成截止时间、是否参与风险分 |
 
 ### 17.5 任务生成规则
 
@@ -2054,8 +2069,11 @@ flowchart TD
 
 - 按方案周期和频率生成任务实例。
 - 每天只生成当天及未来短周期任务，避免一次性生成过多历史数据。
+- 方案下发后，先生成确认阅读任务；患者确认“已知晓并开始执行”后，再按计划生效时间生成周期性任务。
 - 方案变更后，新任务按新版本生成，旧任务保留执行结果。
 - 方案停用后，未开始任务取消，已完成任务保留。
+- 管理方案模板中的 `task_generation_rules` 必须转换为 `patient_task` 实例，不能仅停留在模板 JSON。
+- 同一方案版本生成的任务必须记录 `related_plan_id` 和 `plan_version`，便于后续复盘和回滚。
 
 随访计划生成任务：
 
@@ -2070,6 +2088,7 @@ flowchart TD
 - 预警后任务优先级默认为重要或紧急。
 - 紧急预警任务不替代线下就医提示。
 - 复测完成后回写预警详情，支持医生继续处理或关闭预警。
+- 预警任务不能被患者跳过；患者反馈无法完成后仍保留医生待处理状态。
 
 医嘱与指导生成待办：
 
@@ -2095,6 +2114,8 @@ flowchart TD
 - 医生端可查看每个子任务完成状态。
 - 任务组完成率按子任务计算。
 - 重要/紧急子任务未完成时，任务组不能显示全部完成。
+- 任务组合并仅影响患者端展示，不改变底层子任务记录；每个子任务仍独立计算完成率、逾期和来源。
+- 合并后的任务组需要保留 `merge_key`，例如 `morning_measurement_2026-05-19`。
 
 ### 17.7 患者端待完成事项交互
 
@@ -2122,7 +2143,7 @@ flowchart TD
 
 - 完成事项。
 - 补记事项。
-- 反馈无法完成原因，事项不消失，仍按待完成或逾期处理。
+- 反馈无法完成原因，事项不消失，仍按无法完成或逾期处理，并回流医生端。
 - 查看事项来源。
 - 查看医生说明。
 - 异常值提交后自动提示是否补充症状或备注。
@@ -2133,6 +2154,7 @@ flowchart TD
 - 紧急预警待办反馈无法完成后，应推送医生端并保留待处理状态。
 - 用药/治疗待办只允许记录实际执行情况，不允许患者修改方案药品和剂量。
 - 设备自动采集完成后，患者可补充备注。
+- 患者不能删除、跳过或关闭医生下发的任务；关闭只能由医生端完成。
 
 ### 17.8 医生端执行情况管理
 
@@ -2196,6 +2218,31 @@ stateDiagram-v2
 - 紧急预警复测任务完成后，回写预警处理证据。
 - 随访准备任务完成度影响医生端随访列表排序。
 - 任务执行结果进入干预效果评估，用于判断管理方案是否有效。
+
+### 17.11 与管理方案模板的字段映射
+
+| 管理方案模板字段 | 生成任务类型 | 关键映射 |
+| --- | --- | --- |
+| `metric_measurement_plan` | 指标记录/复测任务 | 指标编码、测量场景、频率、推荐时间、目标范围、数据来源 |
+| `symptom_record_plan` | 症状评估 | 症状组、症状项、严重程度、持续时间、备注、预警开关 |
+| `medication_plan` | 用药/治疗执行 | 药品、剂量、频次、服用时间、关键用药、漏服处理说明 |
+| `device_monitoring_plan` | 设备任务/睡眠报告/CPAP 任务 | 设备类型、绑定入口、同步频率、必须设备采集指标 |
+| `followup_rule` | 随访准备 | 首次随访时间、准备材料、问卷、报告、患者说明 |
+| `alert_rules` | 复测任务/确认阅读/随访准备 | 触发条件、预警等级、患者动作、医生动作 |
+| `patient_description` | 确认阅读 | 方案说明、风险提示、患者确认回执 |
+
+P0 必须支持的任务生成结果：
+
+| 方案模块 | P0 是否必须生成任务 | 说明 |
+| --- | --- | --- |
+| 管理目标 | 否 | 作为任务判断目标，不单独生成待办；但方案下发需生成确认阅读 |
+| 指标测量方案 | 是 | 生成血糖、血压、SpO2、呼吸频率等记录任务 |
+| 症状记录方案 | 是 | 生成症状记录或随访前症状问卷 |
+| 用药方案 | 是 | 生成用药提醒和执行打卡，定位为用药管理与提醒 |
+| 设备监测方案 | 是 | 生成添加设备、同步设备、睡眠报告、CPAP 同步任务 |
+| 生活方式方案 | 是 | 生成运动、饮食、戒烟、睡眠卫生等轻量待办 |
+| 随访计划 | 是 | 生成随访提醒和准备任务 |
+| 预警规则 | 是 | 异常后生成复测、确认阅读或随访建议任务 |
 
 ## 18. 设备与报告
 
@@ -2525,17 +2572,20 @@ stateDiagram-v2
 | --- | --- | --- |
 | `id` | string | 任务模板 ID |
 | `template_code` | string | 模板编码 |
-| `task_type` | string | metric_record/medication/symptom/sleep_report/followup_prepare/recheck/lifestyle/device/acknowledge |
+| `task_type` | string | metric_record/medication_execution/treatment_execution/symptom_record/sleep_report/report_upload/followup_prepare/recheck/lifestyle/device_bind/device_sync/assessment_scale/acknowledge |
 | `disease_codes` | json | 适用疾病 |
 | `risk_level` | string | low/medium/high/urgent |
+| `source_module` | string | metric_measurement/symptom_record/medication/device_monitoring/followup/alert/patient_description |
 | `title_template` | string | 任务标题模板 |
 | `patient_instruction_template` | text | 患者端说明模板 |
 | `default_frequency` | object | 默认频率 |
 | `default_time_windows` | json | 默认执行时间 |
 | `default_due_rule` | object | 默认截止规则 |
+| `default_merge_rule` | object | 默认合并规则 |
 | `required_fields` | json | 完成任务需要的字段 |
-| `allow_unable_feedback` | boolean | 是否允许反馈无法完成 |
+| `allow_unable_feedback` | boolean | 是否允许反馈无法完成；不等于允许跳过 |
 | `allow_backfill` | boolean | 是否允许补记 |
+| `completion_policy` | object | 完成判定规则，如手动提交、设备同步、阅读确认 |
 | `priority` | string | normal/important/urgent |
 | `version` | string | 模板版本 |
 | `status` | string | active/inactive |
@@ -2548,10 +2598,15 @@ stateDiagram-v2
 | `patient_id` | string | 患者 ID |
 | `task_type` | string | 任务类型 |
 | `source_type` | string | management_plan/followup/alert/order_guidance/device/screening |
+| `source_module` | string | 来源模块，如指标测量方案、用药方案、设备监测方案 |
 | `source_id` | string | 来源对象 ID |
 | `related_plan_id` | string | 关联方案 |
+| `plan_version` | number | 生成任务时的方案版本 |
 | `related_followup_id` | string | 关联随访 |
 | `related_alert_id` | string | 关联预警 |
+| `task_group_id` | string | 任务组 ID，用于患者端合并展示 |
+| `parent_task_id` | string | 父任务 ID，任务组或复合任务使用 |
+| `merge_key` | string | 合并键，如 morning_measurement_日期 |
 | `disease_codes` | json | 适用疾病 |
 | `title` | string | 患者端标题 |
 | `patient_instruction` | text | 患者端说明 |
@@ -2561,12 +2616,17 @@ stateDiagram-v2
 | `due_at` | datetime | 截止时间 |
 | `priority` | string | normal/important/urgent |
 | `status` | string | pending/completed/unable/overdue/closed/invalidated |
-| `allow_unable_feedback` | boolean | 是否允许反馈无法完成 |
+| `allow_unable_feedback` | boolean | 是否允许反馈无法完成；患者不能跳过或关闭任务 |
 | `allow_backfill` | boolean | 是否允许补记 |
 | `unable_reason` | text | 无法完成原因 |
+| `reminder_rule` | object | 提醒规则 |
+| `overdue_rule` | object | 逾期处理规则 |
+| `completion_policy` | object | 完成判定规则 |
 | `completed_at` | datetime | 完成时间 |
 | `completed_by_source` | string | manual/device/system |
+| `device_id` | string | 设备采集或同步任务对应设备 ID |
 | `result_record_id` | string | 关联生成的记录 ID |
+| `result_summary` | object | 完成结果摘要，用于医生端列表快速展示 |
 | `doctor_note` | text | 医生内部备注 |
 | `created_at` | datetime | 创建时间 |
 
