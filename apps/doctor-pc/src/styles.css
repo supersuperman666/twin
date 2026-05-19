@@ -177,8 +177,12 @@ button:disabled {
 .toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 16px;
+}
+
+.compact-toolbar {
+  padding: 0;
 }
 
 .toolbar h2 {
@@ -193,6 +197,44 @@ button:disabled {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.global-search {
+  width: min(560px, 56vw);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.global-search span {
+  color: var(--weak);
+  font-size: 18px;
+}
+
+.global-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.global-search button {
+  border: 0;
+  color: var(--primary);
+  background: transparent;
+  font-weight: 700;
+}
+
+.sync-time {
+  color: var(--weak);
+  font-size: 12px;
 }
 
 .btn {
@@ -240,9 +282,13 @@ button:disabled {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.stat-grid.seven {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .stat-card {
-  min-height: 94px;
-  padding: 14px;
+  min-height: 78px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--card);
@@ -257,14 +303,50 @@ button:disabled {
 
 .stat-card span,
 .stat-card small {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   color: var(--sub);
 }
 
 .stat-card strong {
   display: block;
-  margin: 8px 0 4px;
-  font-size: 26px;
+  margin: 7px 0 0;
+  font-size: 24px;
+}
+
+.help-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--weak);
+  background: #f2f4f7;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.filter-summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-summary strong {
+  margin-right: 4px;
+}
+
+.filter-token {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid #b9d7ff;
+  border-radius: 999px;
+  color: var(--primary);
+  background: #f0f7ff;
 }
 
 .layout-list {
@@ -272,6 +354,10 @@ button:disabled {
   grid-template-columns: 236px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+
+.layout-list:has(.filter-panel.collapsed) {
+  grid-template-columns: 48px minmax(0, 1fr);
 }
 
 .filter-panel,
@@ -286,6 +372,32 @@ button:disabled {
   position: sticky;
   top: 88px;
   padding: 16px;
+  min-height: 520px;
+  transition: width 0.18s ease, padding 0.18s ease;
+}
+
+.filter-panel.collapsed {
+  padding: 10px 6px;
+}
+
+.filter-panel.collapsed .filter-content {
+  display: none;
+}
+
+.collapse-btn {
+  height: 28px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--sub);
+  background: #fff;
+  font-size: 12px;
+}
+
+.filter-panel.collapsed .collapse-btn {
+  width: 34px;
+  height: 96px;
+  writing-mode: vertical-rl;
 }
 
 .filter-panel h3 {
@@ -360,7 +472,7 @@ button:disabled {
 
 .table th,
 .table td {
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: middle;
@@ -389,6 +501,14 @@ button:disabled {
   gap: 8px;
   align-items: flex-start;
   min-width: 180px;
+}
+
+.patient-table tbody tr {
+  height: 82px;
+}
+
+.patient-table tbody tr:hover {
+  background: #f8fbff;
 }
 
 .star {
