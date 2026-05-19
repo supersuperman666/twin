@@ -1283,7 +1283,7 @@ P0 必须保留：
   -> 无草稿则创建推荐方案草稿；有草稿则更新推荐项并保留医生修改
   -> 医生查看推荐原因、证据摘要、方案模块和患者可见内容预览
   -> 医生选择整体采纳 / 局部修改 / 驳回推荐 / 改为空白方案
-  -> 下发前校验管理目标、关键测量项、预警规则、随访计划、患者端说明
+  -> 下发前校验管理目标、关键测量项、预警规则、随访计划、患者指导
   -> 医生确认下发
   -> 患者端展示方案确认页
   -> 患者确认“已知晓并开始执行”
@@ -1400,8 +1400,8 @@ flowchart TD
 用药方案
 设备监测方案
 生活方式方案
-随访计划
 预警规则
+随访计划
 患者指导
 ```
 
@@ -1886,7 +1886,8 @@ flowchart TD
 | 风险等级 | select | 是 | low/medium/high/urgent，可按疾病分别标记 |
 | 方案周期 | select/date | 是 | 7/14/30/90 天或自定义 |
 | 方案来源 | auto | 是 | 系统草稿/医生创建/模板创建/历史复制/随访调整/预警调整 |
-| 患者端说明 | textarea | 是 | 面向患者的简明说明，可由系统根据方案自动生成后医生编辑 |
+| 计划开始日期 | date | 是 | 默认今日或患者确认次日 |
+| 患者端摘要 | textarea | 是 | 面向患者的 30-120 字简明说明，可由系统根据方案自动生成后医生编辑 |
 | 医生内部备注 | textarea | 否 | 患者不可见 |
 
 #### 15.7.2 方案模块交互与必填规则
@@ -2281,7 +2282,7 @@ P0 暂不开发：
 | 字段 | 类型 | 必填 | 默认值/规则 |
 | --- | --- | --- | --- |
 | 预警指标 | select | 是 | 血糖、血压、SpO2、AHI、任务完成率等 |
-| 触发条件 | rule builder | 是 | 单次异常、连续 N 次、持续时长、完成率不足 |
+| 触发条件 | 内置规则参数编辑器 | 是 | P0 仅支持编辑阈值、连续次数、持续时长、完成率等内置参数，不支持自定义规则引擎 |
 | 预警等级 | select | 是 | 一般、重要、紧急 |
 | 患者端动作 | multi-select | 是 | 复测、记录症状、联系医生、线下就医提示 |
 | 医生端动作 | multi-select | 是 | 查看详情、创建随访、调整方案、关闭预警 |
@@ -2321,7 +2322,8 @@ P0 暂不开发：
 | active | 患者已确认知晓并开始执行 |
 | patient_question | 患者反馈有疑问 |
 | patient_unable | 患者反馈暂时无法执行 |
-| adjusting | 基于执行中方案生成的新版本调整草稿 |
+| adjusting | 基于执行中方案生成的新版本调整草稿，待医生编辑下发 |
+| review_due | 到期或触发复评，待医生复盘 |
 | stopped | 医生停用 |
 | completed | 阶段完成 |
 
@@ -2337,6 +2339,7 @@ P0 暂不开发：
 | patient_question | 查看患者反馈 | 发送医生建议、调整方案 |
 | patient_unable | 查看无法执行原因 | 调整方案、停用方案、发送医生建议 |
 | adjusting | 编辑新版本 | 保存草稿、确认下发 |
+| review_due | 方案复盘 | 继续当前方案、调整方案、结束本阶段 |
 | stopped | 查看历史 | 复制为新方案 |
 | completed | 查看复盘 | 复制为新方案 |
 
@@ -2349,6 +2352,7 @@ pending_doctor -> rejected: 医生驳回推荐
 pending_patient -> active: 患者确认已知晓并开始执行
 pending_patient -> draft: 医生撤回下发
 active -> adjusting: 医生选择调整方案
+active -> review_due: 到期或触发复评
 active -> stopped: 医生停用方案
 active -> completed: 医生结束本阶段
 active -> patient_question: 患者反馈有疑问
@@ -2357,6 +2361,9 @@ patient_question -> adjusting: 医生决定调整
 patient_question -> active: 医生处理后继续执行
 patient_unable -> adjusting: 医生决定调整
 patient_unable -> stopped: 医生停用
+review_due -> active: 医生复盘后继续当前方案
+review_due -> adjusting: 医生复盘后调整方案
+review_due -> completed: 医生复盘后结束本阶段
 adjusting -> pending_patient: 新版本确认下发
 ```
 
@@ -2594,7 +2601,8 @@ workload = {
 | 执行中 | 患者已确认知晓并开始执行 |
 | 患者有疑问 | 患者反馈疑问，需主责医生处理 |
 | 患者反馈无法执行 | 患者反馈暂时无法执行，需主责医生处理 |
-| 待复盘 | 到期或触发复评 |
+| 待调整 | 基于执行中方案生成的新版本调整草稿，待医生编辑下发 |
+| 待复盘 | 到期或触发复评，待医生判断继续、调整或结束 |
 | 已完成 | 阶段结束 |
 | 已停用 | 不再执行，保留历史 |
 
@@ -3532,7 +3540,7 @@ P0 必须支持的任务生成结果：
 | `risk_level` | string | 当前方案对应风险等级 |
 | `plan_name` | string | 方案名称 |
 | `plan_version` | number | 患者方案版本 |
-| `status` | string | draft/pending_doctor/published_pending_patient/executing/patient_question/patient_unable/review_due/completed/stopped |
+| `status` | string | draft/pending_doctor/rejected/pending_patient/active/patient_question/patient_unable/adjusting/review_due/stopped/completed |
 | `start_date` | date | 计划生效日期 |
 | `end_date` | date | 结束日期 |
 | `planned_effective_at` | datetime | 医生设置的计划生效时间，可为空 |
