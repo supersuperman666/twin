@@ -7,6 +7,12 @@ let patientFilter = "all";
 let detailTab = "overview";
 let searchQuery = "";
 let filtersCollapsed = true;
+let paginationState = {
+  patients: { page: 1, pageSize: 20, jump: "" },
+  alerts: { page: 1, pageSize: 20, jump: "" },
+  plans: { page: 1, pageSize: 20, jump: "" },
+  followups: { page: 1, pageSize: 20, jump: "" }
+};
 let patientFilters = {
   important: "全部",
   risk: "全部",
@@ -226,8 +232,73 @@ function filteredPatients() {
     });
 }
 
+function resetPage(scope) {
+  if (paginationState[scope]) paginationState[scope].page = 1;
+}
+
+function getPager(scope, total) {
+  const pager = paginationState[scope];
+  const pageSize = Number(pager.pageSize) || 20;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (pager.page > totalPages) pager.page = totalPages;
+  if (pager.page < 1) pager.page = 1;
+  const start = total ? (pager.page - 1) * pageSize + 1 : 0;
+  const end = Math.min(total, pager.page * pageSize);
+  return { ...pager, pageSize, totalPages, start, end };
+}
+
+function paginateItems(scope, items) {
+  const pager = getPager(scope, items.length);
+  const startIndex = (pager.page - 1) * pager.pageSize;
+  return {
+    pager,
+    pageItems: items.slice(startIndex, startIndex + pager.pageSize)
+  };
+}
+
+function pageNumbers(current, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pages = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(totalPages - 1, current + 1);
+  if (start > 2) pages.push("...");
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < totalPages - 1) pages.push("...");
+  pages.push(totalPages);
+  return pages;
+}
+
+function renderPagination(scope, total) {
+  const pager = getPager(scope, total);
+  return `<div class="pagination" data-pagination="${scope}">
+    <span class="page-total">第 ${pager.start}-${pager.end} 条/总共 ${total} 条</span>
+    <button class="page-arrow" data-action="page-prev" data-page-scope="${scope}" ${pager.page <= 1 ? "disabled" : ""}>‹</button>
+    <div class="page-numbers">
+      ${pageNumbers(pager.page, pager.totalPages).map((page) => page === "..."
+        ? `<span class="page-ellipsis">...</span>`
+        : `<button class="page-number ${pager.page === page ? "active" : ""}" data-action="page-go" data-page-scope="${scope}" data-page="${page}">${page}</button>`).join("")}
+    </div>
+    <button class="page-arrow" data-action="page-next" data-page-scope="${scope}" ${pager.page >= pager.totalPages ? "disabled" : ""}>›</button>
+    <select class="page-size" data-action="page-size" data-page-scope="${scope}">
+      ${[10, 20, 50, 100].map((size) => `<option value="${size}" ${pager.pageSize === size ? "selected" : ""}>${size} 条/页</option>`).join("")}
+    </select>
+    <label class="page-jump">跳至 <input value="${escapeAttr(pager.jump)}" data-action="page-jump-input" data-page-scope="${scope}" inputmode="numeric"> 页</label>
+  </div>`;
+}
+
+function listTotal(scope) {
+  const totals = {
+    patients: () => filteredPatients().length,
+    alerts: () => state.alerts.length,
+    plans: () => state.plans.length,
+    followups: () => state.followups.length
+  };
+  return totals[scope]?.() || 0;
+}
+
 function renderPatients() {
-  const patients = filteredPatients();
+  const allPatients = filteredPatients();
+  const { pageItems: patients } = paginateItems("patients", allPatients);
   const appliedFilters = currentAppliedFilters();
   app.innerHTML = `
     <section class="page-stack">
@@ -255,7 +326,7 @@ function renderPatients() {
       </div>
       ${filtersCollapsed ? "" : renderAdvancedFilters()}
       <div class="filter-summary">
-        <strong>当前结果：${patients.length} 位患者</strong>
+        <strong>当前结果：${allPatients.length} 位患者</strong>
         ${appliedFilters.map((item) => `<button class="filter-token" data-action="remove-filter" data-filter-key="${item.key}">${item.label} ×</button>`).join("")}
         ${appliedFilters.length || searchQuery || patientFilter !== "all" ? `<button class="link" data-action="clear-all-filters">清空筛选</button>` : ""}
       </div>
@@ -274,7 +345,7 @@ function renderPatients() {
               </tr>
             </thead>
             <tbody>${patients.map(patientRow).join("")}</tbody>
-          </table>` : `<div class="empty"><strong>暂无匹配患者</strong><p>请调整搜索关键词或清空筛选条件。</p><button class="btn" data-action="clear-all-filters">清空筛选</button></div>`}
+          </table>${renderPagination("patients", allPatients.length)}` : `<div class="empty"><strong>暂无匹配患者</strong><p>请调整搜索关键词或清空筛选条件。</p><button class="btn" data-action="clear-all-filters">清空筛选</button></div>`}
         </div>
       </section>
     </section>`;
@@ -532,7 +603,8 @@ function renderAdvice(patient) {
 }
 
 function renderAlerts() {
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>预警中心</strong><span>${state.alerts.filter((item) => item.status === "待处理").length} 条待处理</span></div><div class="card-list">${state.alerts.map(alertCard).join("")}</div></section>`;
+  const { pageItems } = paginateItems("alerts", state.alerts);
+  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>预警中心</strong><span>${state.alerts.filter((item) => item.status === "待处理").length} 条待处理</span></div><div class="card-list">${pageItems.map(alertCard).join("")}</div>${renderPagination("alerts", state.alerts.length)}</section>`;
 }
 
 function alertCard(alert) {
@@ -547,7 +619,8 @@ function alertCard(alert) {
 }
 
 function renderPlans() {
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>方案管理</strong><span>待确认方案优先处理</span></div><div class="card-list">${state.plans.map(planCard).join("")}</div></section>`;
+  const { pageItems } = paginateItems("plans", state.plans);
+  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>方案管理</strong><span>待确认方案优先处理</span></div><div class="card-list">${pageItems.map(planCard).join("")}</div>${renderPagination("plans", state.plans.length)}</section>`;
 }
 
 function planCard(plan) {
@@ -565,7 +638,8 @@ function planCard(plan) {
 }
 
 function renderFollowups() {
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>随访计划</strong><span>待随访与逾期优先</span></div><div class="card-list">${state.followups.map(followupCard).join("")}</div></section>`;
+  const { pageItems } = paginateItems("followups", state.followups);
+  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>随访计划</strong><span>待随访与逾期优先</span></div><div class="card-list">${pageItems.map(followupCard).join("")}</div>${renderPagination("followups", state.followups.length)}</section>`;
 }
 
 function followupCard(followup) {
@@ -730,14 +804,20 @@ document.body.addEventListener("click", (event) => {
     state = resetState();
     selectedPatientId = state.patients[0].id;
     patientFilter = "all";
+    Object.values(paginationState).forEach((pager) => {
+      pager.page = 1;
+      pager.jump = "";
+    });
     persist("数据已刷新");
   }
   if (action === "filter-patients") {
     patientFilter = patientFilter === target.dataset.filter ? "all" : target.dataset.filter;
+    resetPage("patients");
     render();
   }
   if (action === "set-filter") {
     patientFilters[target.dataset.filterKey] = target.dataset.filterValue;
+    resetPage("patients");
     render();
   }
   if (action === "remove-filter") {
@@ -745,6 +825,7 @@ document.body.addEventListener("click", (event) => {
     if (key === "quick") patientFilter = "all";
     else if (key === "search") searchQuery = "";
     else patientFilters[key] = "全部";
+    resetPage("patients");
     render();
   }
   if (action === "clear-all-filters") {
@@ -762,10 +843,20 @@ document.body.addEventListener("click", (event) => {
       relation: "全部",
       device: "全部"
     };
+    resetPage("patients");
     render();
   }
   if (action === "clear-search") {
     searchQuery = "";
+    resetPage("patients");
+    render();
+  }
+  if (action === "page-prev" || action === "page-next" || action === "page-go") {
+    const scope = target.dataset.pageScope;
+    const pager = paginationState[scope];
+    if (action === "page-prev") pager.page -= 1;
+    if (action === "page-next") pager.page += 1;
+    if (action === "page-go") pager.page = Number(target.dataset.page);
     render();
   }
   if (action === "toggle-filters") {
@@ -837,15 +928,44 @@ document.body.addEventListener("click", (event) => {
 });
 
 document.body.addEventListener("input", (event) => {
-  const target = event.target.closest('[data-action="patient-search"]');
-  if (!target) return;
-  searchQuery = target.value;
-  render();
-  const input = document.querySelector('[data-action="patient-search"]');
-  if (input) {
-    input.focus();
-    input.setSelectionRange(searchQuery.length, searchQuery.length);
+  const searchTarget = event.target.closest('[data-action="patient-search"]');
+  if (searchTarget) {
+    searchQuery = searchTarget.value;
+    resetPage("patients");
+    render();
+    const input = document.querySelector('[data-action="patient-search"]');
+    if (input) {
+      input.focus();
+      input.setSelectionRange(searchQuery.length, searchQuery.length);
+    }
+    return;
   }
+  const jumpTarget = event.target.closest('[data-action="page-jump-input"]');
+  if (jumpTarget) {
+    const scope = jumpTarget.dataset.pageScope;
+    paginationState[scope].jump = jumpTarget.value.replace(/\D/g, "");
+  }
+});
+
+document.body.addEventListener("change", (event) => {
+  const target = event.target.closest('[data-action="page-size"]');
+  if (!target) return;
+  const scope = target.dataset.pageScope;
+  paginationState[scope].pageSize = Number(target.value);
+  paginationState[scope].page = 1;
+  render();
+});
+
+document.body.addEventListener("keydown", (event) => {
+  const target = event.target.closest('[data-action="page-jump-input"]');
+  if (!target || event.key !== "Enter") return;
+  const scope = target.dataset.pageScope;
+  const pager = paginationState[scope];
+  const pageSize = Number(pager.pageSize) || 20;
+  const totalPages = Math.max(1, Math.ceil(listTotal(scope) / pageSize));
+  pager.page = Math.min(Math.max(Number(target.value) || 1, 1), totalPages);
+  pager.jump = "";
+  render();
 });
 
 $$(".nav-item").forEach((item) => item.addEventListener("click", () => {
