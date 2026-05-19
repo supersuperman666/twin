@@ -13,11 +13,11 @@ const toast = document.querySelector("#toast");
 const modalRoot = document.querySelector("#modalRoot");
 
 const viewMeta = {
-  patients: ["患者管理", "默认首页：筛患者、找患者、进入单患者深度分析"],
+  patients: ["患者管理", "查看患者状态，处理预警、方案与随访事项"],
   alerts: ["预警中心", "按异常事件集中处理预警，并形成随访或方案调整闭环"],
-  plans: ["方案管理", "集中确认系统草稿、维护执行中方案和患者知晓状态"],
+  plans: ["方案管理", "审核待确认方案，维护执行中方案和患者知晓状态"],
   followups: ["随访计划", "按时间任务管理待随访、逾期随访和随访结论"],
-  detail: ["患者详情", "单患者深度分析、健康档案、筛查、数据分析和管理闭环"]
+  detail: ["患者详情", "查看患者档案、筛查、数据分析和管理记录"]
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -94,7 +94,7 @@ function patientStats() {
     ["all", "全部患者", state.patients.length, "当前授权患者"],
     ["important", "重点关注", state.patients.filter((p) => p.important).length, "医生标记重点"],
     ["alerts", "待处理预警", state.patients.filter((p) => alertsOf(p.id).some((a) => a.status === "待处理")).length, "需进入预警处理"],
-    ["plans", "待确认方案", state.patients.filter((p) => plansOf(p.id).some((plan) => plan.status === "待医生确认")).length, "系统草稿待审核"],
+    ["plans", "待确认方案", state.patients.filter((p) => plansOf(p.id).some((plan) => plan.status === "待医生确认")).length, "需医生审核"],
     ["followups", "今日待随访", state.patients.filter((p) => followupsOf(p.id).some((f) => ["待随访", "逾期"].includes(f.status))).length, "含逾期随访"],
     ["missing", "数据缺失", state.patients.filter((p) => p.dataStatus.includes("异常") || p.dataStatus.includes("未同步")).length, "关键数据缺失"]
   ];
@@ -119,10 +119,9 @@ function renderPatients() {
       <div class="toolbar">
         <div>
           <h2>患者管理</h2>
-          <p>列表只负责找患者和定位待处理状态，深度判断进入患者详情。</p>
+          <p>按患者查看风险状态、待处理事项和最近健康动态。</p>
         </div>
         <div class="toolbar-actions">
-          <button class="btn" data-action="reset">重置 Mock</button>
           <button class="btn primary" data-action="add-patient">添加患者</button>
         </div>
       </div>
@@ -138,7 +137,6 @@ function renderPatients() {
           ${filterBlock("风险状态", ["全部", "稳定", "需关注", "需干预"])}
           ${filterBlock("确诊疾病", ["全部", "糖尿病", "慢阻肺", "睡眠呼吸暂停", "高血压"])}
           ${filterBlock("待处理事项", ["全部", "有预警", "待确认方案", "今日待随访", "数据缺失"])}
-          <p class="hint">P0 不做保存常用筛选，统计卡承担快捷筛选。</p>
         </aside>
         <div class="panel table-panel">
           <div class="panel-hd">
@@ -264,7 +262,7 @@ function renderOverview(patient) {
       </section>
       <section class="panel">
         <div class="panel-hd"><strong>当前执行方案</strong><button class="link" data-action="detail-tab" data-tab="plans">查看</button></div>
-        <div class="info-block"><h3>${activePlan?.title || "暂无方案"}</h3><p>${activePlan?.objective || "可从管理方案 Tab 创建"}</p>${activePlan ? tag(activePlan.status, toneOf(activePlan.status)) : ""}</div>
+        <div class="info-block"><h3>${activePlan?.title || "暂无方案"}</h3><p>${activePlan?.objective || "暂无当前执行方案"}</p>${activePlan ? tag(activePlan.status, toneOf(activePlan.status)) : ""}</div>
       </section>
     </div>
     <div class="metric-grid">${patient.analysis.metrics.map((item) => metricCard(item.label, item.value, item.state)).join("")}</div>
@@ -327,7 +325,7 @@ function renderAnalysis(patient) {
     </section>
     <div class="content-grid">
       <section class="panel chart-panel">
-        <div class="panel-hd"><strong>疾病专题趋势</strong><span>示意趋势图</span></div>
+        <div class="panel-hd"><strong>疾病专题趋势</strong><span>近 30 天</span></div>
         <div class="chart-lines">
           <span style="height:52%"></span><span style="height:68%"></span><span style="height:45%"></span><span style="height:72%"></span><span style="height:58%"></span><span style="height:80%"></span><span style="height:62%"></span>
         </div>
@@ -462,7 +460,7 @@ function createPlan(patientId, alertId, silent = false) {
     title: `${patient.diseases[0]}管理方案草稿`,
     source: alert ? "预警处理生成" : "医生创建",
     status: "待医生确认",
-    objective: alert ? `围绕“${alert.title}”形成阶段管理目标` : "医生从 0-1 创建阶段管理目标",
+    objective: alert ? `围绕“${alert.title}”形成阶段管理目标` : "阶段管理目标待完善",
     targets: ["核心指标达到目标范围", "记录完整率提升", "异常情况及时反馈"],
     tasks: ["按方案记录核心指标", "出现症状时补充症状记录", "按时完成随访"],
     updatedAt: nowText()
@@ -478,7 +476,7 @@ function approvePlan(id) {
   plan.status = "已下发待患者确认";
   plan.updatedAt = nowText();
   addTimeline(plan.patientId, "方案", `医生确认并下发方案：${plan.title}`);
-  openModal("患者知晓确认", `<p>方案已下发至患者端。生产环境由患者端点击“已知晓并开始执行”。</p><div class="summary-box">${plan.title}</div>`, `<button class="btn" data-action="close-modal">稍后</button><button class="btn primary" data-action="patient-confirm-plan" data-id="${id}">模拟患者确认</button>`);
+  openModal("患者知晓确认", `<p>方案已下发给患者，待患者确认已知晓并开始执行。</p><div class="summary-box">${plan.title}</div>`, `<button class="btn" data-action="close-modal">稍后</button><button class="btn primary" data-action="patient-confirm-plan" data-id="${id}">标记已确认</button>`);
   saveState(state);
 }
 
@@ -567,7 +565,7 @@ document.body.addEventListener("click", (event) => {
     state = resetState();
     selectedPatientId = state.patients[0].id;
     patientFilter = "all";
-    persist("Mock 数据已重置");
+    persist("数据已刷新");
   }
   if (action === "filter-patients") {
     patientFilter = target.dataset.filter;
@@ -590,7 +588,9 @@ document.body.addEventListener("click", (event) => {
     render();
   }
   if (action === "open-more") openMore(target.dataset.patient);
-  if (action === "add-patient") showToast("添加患者二维码入口已预留");
+  if (action === "add-patient") {
+    openModal("添加患者", `<div class="qr-box"><strong>绑定二维码</strong><p>请患者使用小程序扫码确认绑定。</p></div>`, `<button class="btn" data-action="close-modal">关闭</button>`);
+  }
   if (action === "quick-primary") {
     const alert = alertsOf(target.dataset.patient).find((item) => item.status === "待处理");
     if (alert) handleAlert(alert.id);

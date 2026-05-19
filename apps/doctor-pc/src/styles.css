@@ -888,6 +888,35 @@ button:disabled {
   background: #f8fafc;
 }
 
+.qr-box {
+  width: 220px;
+  height: 220px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  margin: 8px auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: center;
+  background:
+    linear-gradient(90deg, #111827 10px, transparent 10px) 0 0 / 32px 32px,
+    linear-gradient(#111827 10px, transparent 10px) 0 0 / 32px 32px,
+    #fff;
+}
+
+.qr-box strong,
+.qr-box p {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.qr-box p {
+  margin: 0;
+  color: var(--sub);
+}
+
 .icon-btn {
   width: 30px;
   height: 30px;
