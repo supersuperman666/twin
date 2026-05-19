@@ -1,16 +1,16 @@
 :root {
   --primary: #1677ff;
-  --primary-soft: #e6f4ff;
-  --text: #1f2937;
-  --sub: #657284;
+  --primary-soft: #e8f2ff;
+  --text: #172033;
+  --sub: #667085;
   --weak: #98a2b3;
-  --line: #e5e7eb;
+  --line: #e4e7ec;
   --bg: #f5f7fb;
   --card: #fff;
-  --danger: #e5484d;
-  --warning: #f59e0b;
-  --success: #1f9d69;
-  --nav: #0f172a;
+  --danger: #d92d20;
+  --warning: #f79009;
+  --success: #12a66a;
+  --nav: #111827;
 }
 
 * {
@@ -27,6 +27,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -41,9 +42,9 @@ button:disabled {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 224px 1fr;
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -82,8 +83,9 @@ button:disabled {
   color: #fff;
 }
 
-.brand small {
-  color: #94a3b8;
+.brand small,
+.doctor small {
+  color: var(--weak);
   font-size: 12px;
 }
 
@@ -123,13 +125,15 @@ button:disabled {
   justify-content: space-between;
   padding: 0 24px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
 }
 
 .topbar h1,
 .topbar p,
-.patient-head h2,
+.toolbar h2,
+.toolbar p,
+.patient-hero h2,
 .flow-card h3 {
   margin: 0;
 }
@@ -138,7 +142,8 @@ button:disabled {
   font-size: 20px;
 }
 
-.topbar p {
+.topbar p,
+.toolbar p {
   color: var(--sub);
   font-size: 13px;
 }
@@ -160,29 +165,94 @@ button:disabled {
   font-weight: 800;
 }
 
-.doctor small {
-  color: var(--weak);
-}
-
 .content {
   padding: 20px 24px 32px;
 }
 
+.page-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.toolbar h2 {
+  font-size: 22px;
+}
+
+.toolbar-actions,
+.row-actions,
+.actions,
+.hero-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  color: var(--text);
+  background: #fff;
+  white-space: nowrap;
+}
+
+.btn.primary {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.btn.danger {
+  color: var(--danger);
+}
+
+.link,
+.back-link {
+  border: 0;
+  color: var(--primary);
+  background: transparent;
+  font-weight: 700;
+}
+
+.back-link {
+  width: max-content;
+  margin-bottom: 10px;
+}
+
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.stat-grid.six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .stat-card {
-  min-height: 96px;
-  padding: 16px;
+  min-height: 94px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--card);
   text-align: left;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.stat-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
 }
 
 .stat-card span,
@@ -194,23 +264,78 @@ button:disabled {
 .stat-card strong {
   display: block;
   margin: 8px 0 4px;
-  font-size: 28px;
+  font-size: 26px;
 }
 
-.two-col,
-.patient-layout {
+.layout-list {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: 236px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
+.filter-panel,
 .panel {
-  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--card);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.filter-panel {
+  position: sticky;
+  top: 88px;
+  padding: 16px;
+}
+
+.filter-panel h3 {
+  margin: 0 0 14px;
+}
+
+.filter-block {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-block span {
+  color: var(--sub);
+  font-weight: 700;
+}
+
+.filter-block div,
+.analysis-controls,
+.tag-row,
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sub);
+  background: #f8fafc;
+}
+
+.chip.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 700;
+}
+
+.hint {
+  margin: 10px 0 0;
+  color: var(--weak);
+  font-size: 12px;
+}
+
+.panel {
+  overflow: hidden;
 }
 
 .panel-hd {
@@ -223,50 +348,69 @@ button:disabled {
   border-bottom: 1px solid var(--line);
 }
 
-.card-list {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-}
-
-.flow-card {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-left: 4px solid #cbd5e1;
-  border-radius: 9px;
-  background: #fff;
-}
-
-.flow-card.urgent {
-  border-left-color: var(--danger);
-}
-
-.flow-card.important {
-  border-left-color: var(--warning);
-}
-
-.flow-card.active-plan {
-  border-left-color: var(--primary);
-}
-
-.flow-card.done {
-  border-left-color: var(--success);
-}
-
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.flow-card h3 {
-  font-size: 16px;
-}
-
-.flow-card p,
-.summary {
-  margin: 6px 0 0;
+.panel-hd span {
   color: var(--sub);
+  font-size: 13px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  color: var(--sub);
+  background: #f8fafc;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.table small {
+  display: block;
+  margin-top: 4px;
+  color: var(--weak);
+}
+
+.compact-table th,
+.compact-table td {
+  height: 44px;
+}
+
+.patient-cell {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 180px;
+}
+
+.star {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  color: #c5cbd3;
+  background: transparent;
+  font-size: 17px;
+}
+
+.star.on {
+  color: #f59e0b;
+}
+
+.score-line {
+  display: grid;
+  gap: 4px;
+}
+
+.score-line b {
+  font-size: 20px;
 }
 
 .tag {
@@ -306,6 +450,321 @@ button:disabled {
   background: #f2f4f7;
 }
 
+.patient-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.patient-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.patient-hero h2 {
+  font-size: 26px;
+}
+
+.patient-hero p {
+  margin: 6px 0 10px;
+  color: var(--sub);
+}
+
+.hero-score {
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #fff7e6;
+}
+
+.hero-score strong {
+  color: var(--warning);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.hero-score span {
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.detail-tabs {
+  position: sticky;
+  top: 68px;
+  z-index: 9;
+  display: flex;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--bg);
+}
+
+.detail-tabs button {
+  height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sub);
+  background: #fff;
+}
+
+.detail-tabs button.active {
+  color: #fff;
+  border-color: var(--primary);
+  background: var(--primary);
+  font-weight: 700;
+}
+
+.detail-content,
+.analysis-page {
+  display: grid;
+  gap: 16px;
+}
+
+.overview-grid,
+.content-grid,
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.metric-card span {
+  color: var(--sub);
+}
+
+.metric-card strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 24px;
+}
+
+.clinical-summary .summary-list {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.summary-list p {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.info-block {
+  padding: 16px;
+}
+
+.info-block h3 {
+  margin: 0 0 8px;
+}
+
+.info-block p {
+  color: var(--sub);
+}
+
+.detail-section dl {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px 14px;
+  padding: 16px;
+  margin: 0;
+}
+
+.detail-section dt {
+  color: var(--sub);
+  font-weight: 700;
+}
+
+.detail-section dd {
+  margin: 0;
+}
+
+.screening-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.screening-head strong {
+  display: block;
+  font-size: 34px;
+}
+
+.screening-head span,
+.screening-head p {
+  color: var(--sub);
+}
+
+.disease-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.disease-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+}
+
+.disease-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.disease-card h3 {
+  margin: 0;
+}
+
+.disease-card strong {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 28px;
+}
+
+.disease-card p {
+  color: var(--sub);
+}
+
+.analysis-controls {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.chart-panel {
+  min-height: 300px;
+}
+
+.chart-lines {
+  height: 220px;
+  display: flex;
+  align-items: end;
+  gap: 18px;
+  padding: 24px 28px 12px;
+  background:
+    linear-gradient(#eef2f7 1px, transparent 1px) 0 0 / 100% 44px,
+    #fff;
+}
+
+.chart-lines span {
+  width: 34px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #5aa6ff, var(--primary));
+}
+
+.event-band {
+  display: flex;
+  gap: 12px;
+  padding: 10px 18px 16px;
+  color: var(--sub);
+}
+
+.event-band span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  font-size: 12px;
+}
+
+.relation-list {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.relation-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.relation-list small {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.card-list {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.card-list.compact .flow-card {
+  box-shadow: none;
+}
+
+.flow-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.flow-card.urgent {
+  border-left-color: var(--danger);
+}
+
+.flow-card.important {
+  border-left-color: var(--warning);
+}
+
+.flow-card.active-plan {
+  border-left-color: var(--primary);
+}
+
+.flow-card.done {
+  border-left-color: var(--success);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.flow-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.flow-card p {
+  margin: 6px 0 0;
+  color: var(--sub);
+}
+
 .evidence {
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -321,9 +780,6 @@ button:disabled {
 }
 
 .pill-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-top: 12px;
 }
 
@@ -349,133 +805,29 @@ button:disabled {
   color: #475467;
 }
 
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-}
-
-.btn {
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  border: 1px solid #d0d5dd;
-  border-radius: 7px;
-  color: var(--text);
-  background: #fff;
-}
-
-.btn.primary {
-  border-color: var(--primary);
-  color: #fff;
-  background: var(--primary);
-}
-
-.btn.danger {
-  color: var(--danger);
-}
-
-.link {
-  border: 0;
-  color: var(--primary);
-  background: transparent;
-  font-weight: 700;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table th,
-.table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.table th {
-  color: var(--sub);
-  background: #f8fafc;
-  font-size: 12px;
-}
-
-.table tr.active,
-.table tbody tr:hover {
-  background: #f0f7ff;
-}
-
-.table small {
-  display: block;
-  margin-top: 4px;
-  color: var(--weak);
-}
-
-.side-panel {
-  position: sticky;
-  top: 88px;
-}
-
-.patient-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  border-bottom: 1px solid var(--line);
-}
-
-.patient-head p {
-  margin: 6px 0 0;
-  color: var(--sub);
-}
-
-.score {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--warning);
-  background: #fff7e6;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.score small {
-  display: block;
-  color: var(--weak);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.section {
-  padding: 16px;
-  border-bottom: 1px solid var(--line);
-}
-
-.timeline {
+.timeline-full {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  padding: 16px;
 }
 
-.timeline div {
+.timeline-full article {
   display: grid;
-  gap: 3px;
-  padding-left: 12px;
-  border-left: 2px solid #dbeafe;
+  grid-template-columns: 148px 70px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
-.timeline time {
+.timeline-full time {
   color: var(--weak);
-  font-size: 12px;
 }
 
-.timeline span {
+.timeline-full p {
+  grid-column: 3;
+  margin: 0;
   color: var(--sub);
 }
 
@@ -499,7 +851,7 @@ button:disabled {
 }
 
 .modal {
-  width: 480px;
+  width: 500px;
   overflow: hidden;
   border-radius: 12px;
   background: #fff;
@@ -525,6 +877,15 @@ button:disabled {
 
 .modal-body {
   padding: 18px;
+}
+
+.modal-tip,
+.summary-box {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 8px;
+  color: var(--sub);
+  background: #f8fafc;
 }
 
 .icon-btn {
@@ -553,20 +914,22 @@ button:disabled {
   font-weight: 500;
 }
 
-.form textarea {
-  min-height: 92px;
-  padding: 10px;
+.form textarea,
+.form select {
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
+  padding: 10px;
+}
+
+.form textarea {
+  min-height: 92px;
   resize: vertical;
 }
 
-.summary-box {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f8fafc;
-  font-weight: 700;
+.action-stack {
+  display: grid;
+  gap: 10px;
 }
 
 .toast {

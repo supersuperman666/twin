@@ -1,6 +1,6 @@
 import { seedHealthData } from "../../shared/mock/health-data.js";
 
-const STORAGE_KEY = "digital-twin-doctor-pc-mock-v1";
+const STORAGE_KEY = "digital-twin-doctor-pc-mock-v2";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
