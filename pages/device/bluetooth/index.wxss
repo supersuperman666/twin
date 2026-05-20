@@ -1,0 +1,170 @@
+.bind-page {
+  min-height: 100vh;
+  padding: 34rpx 42rpx 142rpx;
+  box-sizing: border-box;
+  color: #2b2f36;
+  background: #ffffff;
+  text-align: center;
+}
+
+.device-title {
+  margin-bottom: 44rpx;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.step {
+  margin-bottom: 48rpx;
+}
+
+.step-title,
+.step-desc {
+  display: block;
+}
+
+.step-title {
+  color: #2b2f36;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.step-desc {
+  margin-top: 10rpx;
+  color: #a4a7ad;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.device-illustration {
+  width: 220rpx;
+  height: 190rpx;
+  margin: 28rpx auto 0;
+  position: relative;
+}
+
+.screen {
+  width: 124rpx;
+  height: 160rpx;
+  border: 6rpx solid #237be8;
+  border-radius: 10rpx;
+  position: absolute;
+  left: 18rpx;
+  bottom: 0;
+}
+
+.wave {
+  width: 76rpx;
+  height: 58rpx;
+  margin: 28rpx auto 14rpx;
+  border-left: 6rpx solid #237be8;
+  border-bottom: 6rpx solid #237be8;
+  transform: skewX(-18deg);
+}
+
+.power {
+  color: #237be8;
+  font-size: 36rpx;
+}
+
+.power-bubble {
+  width: 106rpx;
+  height: 106rpx;
+  border: 6rpx solid #237be8;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  right: 4rpx;
+  top: 0;
+  color: #237be8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+.power-icon {
+  font-size: 38rpx;
+}
+
+.phone-illustration {
+  margin: 30rpx auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22rpx;
+  color: #237be8;
+}
+
+.phone {
+  width: 98rpx;
+  height: 150rpx;
+  border: 6rpx solid #237be8;
+  border-radius: 10rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bluetooth {
+  width: 50rpx;
+  height: 50rpx;
+  border-radius: 50%;
+  background: #237be8;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+}
+
+.home-dot {
+  width: 14rpx;
+  height: 14rpx;
+  margin-top: 28rpx;
+  border: 4rpx solid #237be8;
+  border-radius: 50%;
+}
+
+.signal {
+  width: 28rpx;
+  height: 54rpx;
+  border: 6rpx solid #237be8;
+  border-top: 0;
+  border-bottom: 0;
+}
+
+.signal.left {
+  border-right: 0;
+  border-radius: 40rpx 0 0 40rpx;
+}
+
+.signal.right {
+  border-left: 0;
+  border-radius: 0 40rpx 40rpx 0;
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #237be8;
+}
+
+.bottom-btn {
+  width: 100%;
+  height: 96rpx;
+  border-radius: 0;
+  background: #237be8;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 96rpx;
+}
+
+.bottom-btn::after {
+  border: 0;
+}

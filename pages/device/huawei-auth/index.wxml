@@ -1,0 +1,36 @@
+<view class="auth-page">
+  <view class="cookie-bar">
+    <text>本网站使用 Cookie 功能，为您提供最佳的用户体验。</text>
+    <text class="blue">了解更多</text>
+    <text class="close" bindtap="showUnavailable">×</text>
+  </view>
+
+  <view class="brand">
+    <view class="logo">HUAWEI</view>
+    <text class="title">华为账号</text>
+    <text class="subtitle">登录账号以使用云空间、应用市场及更多服务</text>
+    <text wx:if="{{deviceName}}" class="target">授权设备：{{deviceName}}</text>
+  </view>
+
+  <view class="form">
+    <input class="field" placeholder="手机号/邮件地址/账号名" placeholder-class="placeholder" />
+    <view class="password-row">
+      <input class="field password" password placeholder="密码" placeholder-class="placeholder" />
+      <text class="eye">⌧</text>
+    </view>
+    <view class="link-row">
+      <text bindtap="showUnavailable">短信验证码登录</text>
+      <text bindtap="showUnavailable">忘记密码</text>
+    </view>
+    <button class="login-btn" bindtap="handleLogin">登录</button>
+    <button class="register-btn" bindtap="showUnavailable">注册账号</button>
+  </view>
+
+  <view class="footer-links">
+    <text bindtap="showUnavailable">遇到问题</text>
+    <text class="divider">|</text>
+    <text bindtap="showUnavailable">用户协议</text>
+    <text class="divider">|</text>
+    <text bindtap="showUnavailable">隐私声明</text>
+  </view>
+</view>

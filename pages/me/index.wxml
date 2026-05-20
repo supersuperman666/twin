@@ -21,7 +21,7 @@
 
   <view class="section-head">
     <text>设备管理</text>
-    <button>绑定</button>
+    <button bindtap="goDevice">绑定</button>
   </view>
   <view class="device-list">
     <view wx:for="{{devices}}" wx:key="name" class="device-card">

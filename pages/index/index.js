@@ -39,7 +39,7 @@ Page({
       { label: '医生咨询', mark: '医', color: '#2d8df0' },
       { label: '报告解读', mark: '报', color: '#37b88f' },
       { label: '续方购药', mark: '药', color: '#f59b23' },
-      { label: '设备绑定', mark: '设', color: '#6b73e8' }
+      { label: '设备绑定', mark: '设', color: '#6b73e8', path: '/pages/device/index/index' }
     ],
     healthTags: ['2型糖尿病', '慢阻肺稳定期', '睡眠呼吸障碍风险', '绑定血氧仪'],
   },
@@ -128,5 +128,14 @@ Page({
   restartAssessment() {
     wx.removeStorageSync('screeningDraft')
     wx.navigateTo({ url: '/pages/screening/index?mode=restart' })
+  },
+
+  handleService(event) {
+    const { path } = event.currentTarget.dataset
+    if (path) {
+      wx.navigateTo({ url: path })
+      return
+    }
+    wx.showToast({ title: '功能建设中', icon: 'none' })
   }
 })

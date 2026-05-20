@@ -1,47 +1,35 @@
 <view class="page">
   <view class="nav-row">
     <view class="back" bindtap="goBack">‹</view>
-    <text class="nav-title">设备管理</text>
+    <text class="nav-title">智能硬件</text>
     <view class="nav-space"></view>
   </view>
 
-  <view class="hero green">
-    <text class="hero-label">已绑定设备</text>
-    <view class="hero-main">
-      <view><text class="hero-value">2</text><text class="hero-unit">台</text></view>
-      <text class="hero-badge">同步正常</text>
-    </view>
-    <text class="hero-label">用于自动同步血氧、脉率、睡眠报告等数据。</text>
-  </view>
-
-  <view class="section-head">
-    <text class="section-title">我的设备</text>
-    <text class="link" bindtap="showComing">+ 添加设备</text>
-  </view>
-  <view wx:for="{{devices}}" wx:key="model" class="device-card">
-    <view class="list-top">
-      <view>
-        <text class="list-title">{{item.name}}</text>
-        <text class="list-desc">{{item.model}} · {{item.sync}}</text>
+  <view class="hardware-shell">
+    <view class="category-rail">
+      <view
+        wx:for="{{categories}}"
+        wx:key="key"
+        class="category-item {{activeKey == item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchCategory"
+      >
+        <view class="category-icon category-icon-{{item.key}}">{{item.icon}}</view>
+        <text>{{item.name}}</text>
       </view>
-      <text class="tag {{item.statusClass}}">{{item.status}}</text>
     </view>
-    <view class="device-metrics">
-      <text wx:for="{{item.metrics}}" wx:key="*this" class="metric-chip">{{item}}</text>
-    </view>
-  </view>
 
-  <view class="section-head"><text class="section-title">可添加设备</text></view>
-  <view wx:for="{{pendingDevices}}" wx:key="name" class="device-card">
-    <view class="list-top">
-      <view>
-        <text class="list-title">{{item.name}}</text>
-        <text class="list-desc">{{item.desc}}</text>
+    <scroll-view class="device-panel" scroll-y>
+      <view class="panel-title">{{activeName}}</view>
+      <view wx:for="{{currentDevices}}" wx:key="id" class="device-card">
+        <view class="device-image">
+          <text>{{item.icon}}</text>
+        </view>
+        <view class="device-info">
+          <text class="device-name">{{item.name}}</text>
+        </view>
+        <button class="bind-btn {{item.bound ? 'danger' : ''}}" data-id="{{item.id}}" bindtap="handleDeviceAction">{{item.actionText}}</button>
       </view>
-      <text class="tag" bindtap="showComing">添加</text>
-    </view>
-    <view class="device-metrics">
-      <text wx:for="{{item.metrics}}" wx:key="*this" class="metric-chip">{{item}}</text>
-    </view>
+    </scroll-view>
   </view>
 </view>

@@ -1,0 +1,9 @@
+<view class="connecting-page">
+  <view class="scan-ring">
+    <view class="scan-core">蓝牙</view>
+  </view>
+  <text class="title">正在连接设备</text>
+  <text class="device">{{deviceName}}</text>
+  <text class="desc">正在搜索附近设备并建立连接，请保持设备处于工作状态。</text>
+  <button class="ghost-btn" bindtap="goHardware">返回智能硬件</button>
+</view>

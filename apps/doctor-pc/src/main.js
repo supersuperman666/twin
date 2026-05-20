@@ -1,6 +1,6 @@
 import { loadState, nowText, resetState, saveState } from "./store.js";
 
-let state = loadState();
+let state = sanitizeStateText(loadState());
 let currentView = "patients";
 let selectedPatientId = state.patients[0]?.id;
 let patientFilter = "all";
@@ -11,6 +11,8 @@ let planMode = "list";
 let selectedPlanId = state.plans[0]?.id;
 let planStatusFilter = "全部";
 let planTagFilter = "全部";
+let planSourceFilter = "全部";
+let planDiseaseFilter = "全部";
 let planSearchQuery = "";
 let paginationState = {
   patients: { page: 1, pageSize: 20, jump: "" },
@@ -37,6 +39,24 @@ const pageSubTitle = document.querySelector("#pageSubTitle");
 const toast = document.querySelector("#toast");
 const modalRoot = document.querySelector("#modalRoot");
 
+function sanitizeStateText(value) {
+  if (typeof value === "string") {
+    return value
+      .replaceAll("睡���时长", "睡眠时长")
+      .replaceAll("���录症状", "记录症状")
+      .replaceAll("血氧监���连续性", "血氧监测连续性")
+      .replaceAll("手动补���", "手动补录")
+      .replaceAll("���", "");
+  }
+  if (Array.isArray(value)) return value.map(sanitizeStateText);
+  if (value && typeof value === "object") {
+    Object.keys(value).forEach((key) => {
+      value[key] = sanitizeStateText(value[key]);
+    });
+  }
+  return value;
+}
+
 const viewMeta = {
   patients: ["患者管理", "查看患者状态，处理预警、方案与随访事项"],
   alerts: ["预警中心", "按异常事件集中处理预警，并形成随访或方案调整闭环"],
@@ -57,6 +77,8 @@ const adviceOf = (patientId) => state.advice?.filter((item) => item.patientId ==
 
 const PLAN_STATUSES = ["全部", "草稿", "已下发待患者确认", "执行中", "已驳回", "已停用", "已完成"];
 const PLAN_REMINDER_TAGS = ["全部", "患者未确认", "患者有疑问", "患者无法执行", "即将到期", "待复盘"];
+const PLAN_SOURCE_FILTERS = ["全部", "系统草稿", "医生创建", "模板创建", "历史复制", "随访调整", "预警调整"];
+const PLAN_DISEASE_FILTERS = ["全部", "糖尿病", "慢阻肺", "睡眠呼吸障碍", "高血压", "多病共管"];
 const PLAN_STATUS_CODE = { "草稿": "draft", "已下发待患者确认": "pending_patient", "执行中": "active", "已驳回": "rejected", "已停用": "stopped", "已完成": "completed" };
 const PLAN_ACTION_RULES = {
   draft: { primary: { label: "审核/继续编辑", action: "edit-plan" }, secondary: [{ label: "驳回推荐", action: "reject-plan" }, { label: "删除草稿", action: "delete-plan" }] },
@@ -74,7 +96,21 @@ const MODULE_DEPENDENCY_RULES = {
   lifestyle: { affectedTargets: [], affectedAlerts: [], affectedPatientFeatures: ["健康建议待办"], closable: true, closableReason: "" }
 };
 const MEDICATION_FREQUENCIES = ["每日 1 次", "每日 2 次", "每日 3 次", "每日 4 次", "每 8 小时 1 次", "每 12 小时 1 次", "隔日 1 次", "每 3 日 1 次", "必要时", "紧急时"];
-const REQUIRED_PLAN_MODULES = ["basic", "goals", "metrics", "alerts", "followup", "guidance"];
+const PLAN_PERIOD_DAYS = [7, 14, 30, 90, 180];
+const PLAN_DISEASE_OPTIONS = ["糖尿病", "高血压", "睡眠呼吸障碍", "慢阻肺"];
+const METRIC_NAME_OPTIONS = ["血糖", "血压", "SpO2", "呼吸频率", "体重", "睡眠报告"];
+const METRIC_SCENE_PLACEHOLDER = "血糖：凌晨/空腹/早餐后2h/午餐前/午餐后2h/晚餐前/睡前/随机；血压：晨起/睡前/随机；血氧/呼吸频率：静息后/活动后/睡前";
+const METRIC_FREQUENCIES = ["每日", "每周 1 天", "每周 2 天", "每周 3 天", "每周 4 天", "每周 5 天", "每周 6 天", "每周 7 天"];
+const METRIC_SCENE_OPTIONS = {
+  血糖: ["凌晨", "空腹", "早餐后2h", "午餐前", "午餐后2h", "晚餐前", "睡前", "随机"],
+  血压: ["晨起", "睡前", "随机"],
+  SpO2: ["静息后", "活动后", "睡前"],
+  呼吸频率: ["静息后", "活动后", "睡前"],
+  体重: ["晨起", "随机"],
+  睡眠报告: ["每次睡眠报告后", "夜间", "起床后"]
+};
+const REMOVED_PLAN_MODULES = ["guidance"];
+const REQUIRED_PLAN_MODULES = ["basic", "goals", "metrics", "followup"];
 const PLAN_MODULE_META = {
   basic: { name: "方案基础信息", type: "required", visible: true },
   goals: { name: "管理目标", type: "required", visible: true },
@@ -83,9 +119,8 @@ const PLAN_MODULE_META = {
   medication: { name: "用药方案", type: "conditional", visible: true },
   device: { name: "设备监测方案", type: "conditional", visible: false },
   lifestyle: { name: "生活方式方案", type: "conditional", visible: true },
-  alerts: { name: "预警规则", type: "required", visible: false },
-  followup: { name: "随访计划", type: "required", visible: true },
-  guidance: { name: "患者指导", type: "required", visible: true }
+  alerts: { name: "预警规则", type: "conditional", visible: false },
+  followup: { name: "随访计划", type: "required", visible: true }
 };
 
 function persist(message) {
@@ -468,10 +503,11 @@ function ensurePlanShape(plan) {
   plan.objective = plan.objective || "阶段管理目标待完善";
   plan.updatedAt = plan.updatedAt || nowText();
   plan.modules = plan.modules?.length ? plan.modules : defaultPlanModules(plan);
+  plan.modules = plan.modules.filter((module) => !REMOVED_PLAN_MODULES.includes(module.key));
   plan.modules.forEach((module) => {
     const meta = PLAN_MODULE_META[module.key] || {};
     module.name = module.name || meta.name || module.key;
-    module.type = module.type || meta.type || "conditional";
+    module.type = meta.type || module.type || "conditional";
     module.patientVisible = module.patientVisible ?? Boolean(meta.visible);
     module.included = module.included ?? module.type === "required";
     module.status = module.status || (module.included ? "completed" : "excluded");
@@ -492,6 +528,12 @@ function ensurePlanShape(plan) {
 }
 
 function normalizeModuleConfig(plan, module) {
+  if (module.key === "basic") {
+    module.fields.diseases = normalizeDiseases(module.fields.diseases || plan.diseases || [plan.disease]);
+    module.fields.planName = module.fields.planName || plan.title;
+    module.fields.periodDays = Number(module.fields.periodDays || String(plan.period || "").match(/\d+/)?.[0] || 30);
+    module.fields.startDate = module.fields.startDate || "";
+  }
   if (module.key === "metrics" && !module.fields.metricItems) {
     module.fields.metricItems = (module.fields.rows || []).map(metricRowToConfig);
   }
@@ -530,6 +572,12 @@ function metricRowToConfig(row) {
     priority: "普通",
     patientInstruction: taskTitle
   };
+}
+
+function normalizeDiseases(value) {
+  const raw = Array.isArray(value) ? value : splitList(value);
+  const normalized = raw.map((item) => item === "睡眠呼吸暂停" ? "睡眠呼吸障碍" : item).filter(Boolean);
+  return normalized.length ? [...new Set(normalized)] : [...PLAN_DISEASE_OPTIONS];
 }
 
 function alertRowToConfig(row) {
@@ -572,7 +620,6 @@ function followupRowsToRule(rows, plan) {
     focusItems: ["指标达标", "症状变化", "用药依从性", "设备同步"],
     prepareItems: ["近 7 天记录", "症状反馈", plan?.disease?.includes("睡眠") ? "睡眠报告" : "用药记录"].filter(Boolean),
     scheduleFollowup: true,
-    noFollowupNote: "",
     patientInstruction: "请在随访前补齐近期记录和症状反馈。"
   };
 }
@@ -592,9 +639,8 @@ function defaultPlanModules(plan) {
     moduleTemplate("medication", hasMedication, hasMedication ? `${patient.profile.medication.join("；")}。患者端仅作为用药提醒和执行记录，不涉及处方开具。` : "未启用用药方案。", plan),
     moduleTemplate("device", hasDevice, hasDevice ? `${patient?.profile?.devices?.join("；") || "关键设备"}保持绑定和同步，设备异常时提醒患者重新同步。` : "未启用设备监测。", plan),
     moduleTemplate("lifestyle", true, disease.includes("糖尿病") ? "控制晚餐主食与含糖饮料，记录饮食备注。" : disease.includes("慢阻肺") ? "避免烟尘刺激，按耐受程度进行低强度活动。" : "规律作息，睡前避免饮酒和镇静类用药。", plan),
-    moduleTemplate("alerts", true, planAlertRules(disease).join("；"), plan),
-    moduleTemplate("followup", true, `${plan.period}内至少 1 次计划随访；出现预警后可发起临时随访。`, plan),
-    moduleTemplate("guidance", true, `请按方案完成记录；出现明显不适或紧急症状时及时线下就医。`, plan)
+    moduleTemplate("alerts", true, "使用全局预警规则，必要时可启用个体化预警。", plan),
+    moduleTemplate("followup", true, `${plan.period}内至少 1 次计划随访；出现预警后可发起临时随访。`, plan)
   ];
 }
 
@@ -608,7 +654,7 @@ function moduleTemplate(key, included, summary, plan = null) {
     status: included ? "completed" : "excluded",
     patientVisible: meta.visible,
     summary,
-    recommendationReason: included ? "根据患者疾病标签、筛查风险、近期数据与设备情况生成，可由医生编辑确认。" : "本次方案未启用该模块。",
+    recommendationReason: included ? "" : "本次方案未启用该模块。",
     fields: { ...defaultModuleFields(plan, key, summary), patientInstruction: summary }
   };
 }
@@ -663,17 +709,13 @@ function defaultModuleFields(plan, key, summary = "") {
     alerts: {
       seedDisease: disease,
       rows: alertRuleConfigs(disease),
+      useGlobalRules: true,
       patientInstruction: "指标或设备数据异常时，系统会提示复测、补充症状或等待医生处理。"
     },
     followup: {
       seedDisease: disease,
       rows: [`计划随访|${plan?.period || "30 天"}内至少 1 次|方案执行情况、指标完整性、患者反馈|系统生成待随访`, "临时随访|预警处理后|异常原因、症状变化、是否调整方案|医生主动发起"],
       patientInstruction: "请按随访提醒配合医生完成反馈。"
-    },
-    guidance: {
-      seedDisease: disease,
-      rows: ["日常执行|按方案完成指标、症状、用药和设备同步", "异常处理|明显不适或紧急症状请及时线下就医", "备注要求|记录饮食、活动、睡眠、漏服等影响因素"],
-      patientInstruction: summary || "请按方案完成记录；出现明显不适或紧急症状时及时线下就医。"
     }
   };
   return defaults[key] || { patientInstruction: summary };
@@ -698,11 +740,19 @@ function metricCodeOf(name) {
   return "custom_metric";
 }
 
+function normalizeMetricName(name) {
+  if (/血糖/.test(name)) return "血糖";
+  if (/血压/.test(name)) return "血压";
+  if (/SpO2|血氧/.test(name)) return "SpO2";
+  if (/呼吸/.test(name)) return "呼吸频率";
+  if (/体重|BMI/.test(name)) return "体重";
+  if (/睡眠|AHI|CPAP/.test(name)) return "睡眠报告";
+  return name || "血糖";
+}
+
 function metricScenes(name) {
-  if (/血糖/.test(name)) return ["空腹", "餐后 2h"];
-  if (/血压/.test(name)) return ["晨起", "睡前"];
-  if (/SpO2|血氧/.test(name)) return ["静息", "睡前"];
-  if (/睡眠|AHI|CPAP/.test(name)) return ["夜间"];
+  const normalized = normalizeMetricName(name);
+  if (METRIC_SCENE_OPTIONS[normalized]) return METRIC_SCENE_OPTIONS[normalized];
   return ["默认"];
 }
 
@@ -711,6 +761,22 @@ function defaultTimeWindow(name, frequency) {
   if (/睡前/.test(name)) return "21:00-23:00";
   if (/睡眠|AHI|CPAP/.test(name) || frequency.includes("夜间")) return "睡眠后自动同步";
   return "";
+}
+
+function planMetricConfig(disease) {
+  if (disease.includes("糖尿病")) {
+    return [metricRowToConfig("血糖|4.4-7.0 mmol/L|每日|手动记录/设备采集|按时完成血糖记录")];
+  }
+  if (disease.includes("高血压")) {
+    return [metricRowToConfig("血压|< 135/85 mmHg|每日|手动记录/设备采集|按时完成血压记录")];
+  }
+  if (disease.includes("慢阻肺")) {
+    return [metricRowToConfig("SpO2|>= 92%|每日|手动记录/设备采集|按时完成血氧记录"), metricRowToConfig("呼吸频率|12-20 次/分|每日|手动记录|按时记录呼吸频率")];
+  }
+  if (disease.includes("睡眠")) {
+    return [metricRowToConfig("睡眠报告|按设备报告|每日|设备采集|起床后同步睡眠报告")];
+  }
+  return [metricRowToConfig("体重|按医嘱目标|每日|手动记录|按时记录体重")];
 }
 
 function taskGroupOf(name, frequency) {
@@ -757,7 +823,7 @@ function generatePlanTaskRules(plan) {
   plan.modules.forEach((module) => {
     if (!module.included) return;
     if (module.key === "metrics") {
-      (module.fields.metricItems || []).filter((item) => item.generateTodo).forEach((item) => pushRule({
+      (module.fields.metricItems || []).forEach((item) => pushRule({
         sourceModule: "指标测量方案",
         taskType: metricCodeOf(item.metricName) === "cpap_usage" ? "CPAP 任务" : "指标记录",
         title: `${item.taskGroup || "记录"}：${item.metricName}`,
@@ -848,28 +914,12 @@ function generatePlanTaskRules(plan) {
       });
     }
   });
-  pushRule({
-    sourceModule: "患者指导",
-    taskType: "确认阅读",
-    title: `确认已知晓：${plan.title}`,
-    patientInstruction: "请确认已知晓并开始执行当前管理方案。",
-    scheduleRule: { frequency: "一次性", timeWindow: "下发后" },
-    taskPayload: { acknowledgeObject: plan.id },
-    taskGroup: "方案确认",
-    mergeKey: "plan_acknowledge",
-    priority: "重要",
-    allowBackfill: false,
-    allowUnableFeedback: false
-  });
   return rules;
 }
 
 function metricFrequency(disease, item) {
-  if (/CPAP|睡眠|AHI|最低血氧/.test(item)) return "每日夜间";
-  if (disease.includes("糖尿病")) return item.includes("餐后") ? "每周至少 2 次" : "每日晨起";
-  if (disease.includes("慢阻肺")) return "每日 1 次";
-  if (disease.includes("高血压")) return "每日晨间";
-  return "按方案";
+  if (disease.includes("糖尿病") && item.includes("餐后")) return "每周 2 天";
+  return "每日";
 }
 
 function metricSource(disease, item) {
@@ -940,24 +990,16 @@ function validatePlan(plan) {
   }
   // Rule 3: At least 1 key metric measurement
   const metricModule = planModule(plan, "metrics");
-  if (!metricModule?.fields?.metricItems?.some((item) => item.generateTodo)) warnings.push({ level: "error", moduleKey: "metrics", message: "请至少配置 1 个会生成患者待办的关键指标测量规则。" });
-  // Rule 4: Preserve core safety alerts
-  const alertModule = planModule(plan, "alerts");
-  if (!alertModule?.fields?.alertRules?.some((rule) => rule.enabled)) warnings.push({ level: "error", moduleKey: "alerts", message: "请至少保留 1 条启用状态的核心安全预警规则。" });
-  // Rule 5: Followup plan completeness
+  if (!metricModule?.fields?.metricItems?.length) warnings.push({ level: "error", moduleKey: "metrics", message: "请至少配置 1 个关键指标测量规则。" });
+  // Rule 4: Followup plan completeness
   const followRule = planModule(plan, "followup")?.fields?.followupRule;
   if (followRule?.scheduleFollowup !== false && !followRule?.firstFollowupAfterDays) warnings.push({ level: "error", moduleKey: "followup", message: "请设置首次随访时间，或关闭随访安排。" });
-  // Rule 6: Patient guidance completeness
-  const guidanceModule = planModule(plan, "guidance");
-  if (guidanceModule?.included && !String(guidanceModule.fields?.patientInstruction || guidanceModule.summary || "").trim()) {
-    warnings.push({ level: "error", moduleKey: "guidance", message: "患者指导模块需补充生成说明所需的目标或执行规则。" });
-  }
-  // Rule 7: Conditional modules internal field completeness
+  // Rule 5: Conditional modules internal field completeness
   plan.modules.filter((module) => module.type === "conditional" && module.included).forEach((module) => {
     if (module.key === "medication" && !module.fields?.medicationItems?.length) warnings.push({ level: "warning", moduleKey: module.key, message: `${module.name}已启用但未添加药品，建议配置。` });
     if (module.key === "device" && !module.fields?.deviceItems?.length) warnings.push({ level: "warning", moduleKey: module.key, message: `${module.name}已启用但未添加设备，建议配置。` });
   });
-  // Rule 8: Device/medication dependency check
+  // Rule 6: Device/medication dependency check
   const deviceDependent = plan.targets.some((item) => /AHI|ODI|CPAP|最低血氧|睡眠报告/.test(item));
   if (deviceDependent && !planModule(plan, "device")?.included) {
     warnings.push({ level: "warning", moduleKey: "device", message: "方案包含睡眠/低氧设备指标，建议启用设备监测方案。" });
@@ -981,12 +1023,33 @@ function filteredPlans() {
     .map((plan) => ensurePlanShape(plan))
     .filter((plan) => planStatusFilter === "全部" || plan.status === planStatusFilter)
     .filter((plan) => planTagFilter === "全部" || planReminderTags(plan).includes(planTagFilter))
+    .filter((plan) => planSourceMatches(plan, planSourceFilter))
+    .filter((plan) => {
+      if (planDiseaseFilter === "全部") return true;
+      const diseases = plan.diseases || [plan.disease];
+      if (planDiseaseFilter === "多病共管") return diseases.length > 1;
+      return diseases.includes(planDiseaseFilter) || (planDiseaseFilter === "睡眠呼吸障碍" && diseases.some((item) => /睡眠/.test(item)));
+    })
     .filter((plan) => {
       if (!query) return true;
       const patient = patientById(plan.patientId);
       return [plan.title, plan.id, plan.disease, patient?.name, patient?.id, patient?.phone]
         .some((value) => String(value || "").toLowerCase().includes(query));
     });
+}
+
+function planSourceMatches(plan, filter) {
+  if (filter === "全部") return true;
+  const source = String(plan.source || "");
+  const map = {
+    系统草稿: /系统.*草稿|系统推荐/,
+    医生创建: /医生创建|空白创建/,
+    模板创建: /模板/,
+    历史复制: /复制|历史/,
+    随访调整: /随访.*调整/,
+    预警调整: /预警.*调整/
+  };
+  return map[filter]?.test(source) || source.includes(filter);
 }
 
 function planReminderTags(plan) {
@@ -1236,7 +1299,7 @@ function renderPlans() {
   }
   const plans = filteredPlans();
   const { pageItems } = paginateItems("plans", plans);
-  app.innerHTML = `<section class="page-stack">
+  app.innerHTML = `<section class="page-stack plan-detail-page">
     <div class="toolbar compact-toolbar">
       <div class="global-search">
         <span>⌕</span>
@@ -1248,8 +1311,34 @@ function renderPlans() {
         <button class="btn primary" data-action="open-create-plan">新建管理方案</button>
       </div>
     </div>
-    <div class="plan-status-tabs">${PLAN_STATUSES.map((status) => `<button class="chip ${planStatusFilter === status ? "active" : ""}" data-action="set-plan-status" data-status="${status}">${status}<small>${status === "全部" ? state.plans.length : state.plans.filter((plan) => ensurePlanShape(plan).status === status).length}</small></button>`).join("")}</div>
-    <div class="plan-status-tabs subtle">${PLAN_REMINDER_TAGS.map((tagName) => `<button class="chip ${planTagFilter === tagName ? "active" : ""}" data-action="set-plan-tag" data-tag="${tagName}">${tagName}<small>${tagName === "全部" ? state.plans.length : state.plans.filter((plan) => planReminderTags(ensurePlanShape(plan)).includes(tagName)).length}</small></button>`).join("")}</div>
+    <div class="plan-filter-panel">
+      <div class="plan-status-bar">${PLAN_STATUSES.map((status) => {
+        const count = status === "全部" ? state.plans.length : state.plans.filter((plan) => ensurePlanShape(plan).status === status).length;
+        return `<button class="plan-status-tab ${planStatusFilter === status ? "active" : ""}" data-action="set-plan-status" data-status="${status}">${status}<span class="pst-count">${count}</span></button>`;
+      }).join("")}</div>
+      <div class="plan-secondary-filters">
+        <div class="plan-sec-group">
+          <span class="plan-sec-label">提醒</span>
+          ${PLAN_REMINDER_TAGS.filter(t => t !== "全部").map((tagName) => {
+            const count = state.plans.filter((plan) => planReminderTags(ensurePlanShape(plan)).includes(tagName)).length;
+            return `<button class="chip sm ${planTagFilter === tagName ? "active" : ""}" data-action="set-plan-tag" data-tag="${tagName}">${tagName}${count > 0 ? `<small>${count}</small>` : ""}</button>`;
+          }).join("")}
+          ${planTagFilter !== "全部" ? `<button class="chip sm clear-chip" data-action="set-plan-tag" data-tag="全部">×</button>` : ""}
+        </div>
+        <div class="plan-sec-divider"></div>
+        <div class="plan-sec-group">
+          <span class="plan-sec-label">来源</span>
+          ${PLAN_SOURCE_FILTERS.filter(s => s !== "全部").map((source) => `<button class="chip sm ${planSourceFilter === source ? "active" : ""}" data-action="set-plan-source" data-source="${source}">${source}</button>`).join("")}
+          ${planSourceFilter !== "全部" ? `<button class="chip sm clear-chip" data-action="set-plan-source" data-source="全部">×</button>` : ""}
+        </div>
+        <div class="plan-sec-divider"></div>
+        <div class="plan-sec-group">
+          <span class="plan-sec-label">疾病</span>
+          ${PLAN_DISEASE_FILTERS.filter(d => d !== "全部").map((disease) => `<button class="chip sm ${planDiseaseFilter === disease ? "active" : ""}" data-action="set-plan-disease" data-disease="${disease}">${disease}</button>`).join("")}
+          ${planDiseaseFilter !== "全部" ? `<button class="chip sm clear-chip" data-action="set-plan-disease" data-disease="全部">×</button>` : ""}
+        </div>
+      </div>
+    </div>
     <section class="panel table-panel">
       ${pageItems.length ? `<table class="table plan-table">
         <thead><tr><th>方案</th><th>患者</th><th>疾病/风险</th><th>状态</th><th>完整度/负担</th><th>最近更新</th><th>操作</th></tr></thead>
@@ -1264,7 +1353,7 @@ function planCard(plan) {
   const validation = validatePlan(plan);
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
-  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "approve-plan" && (!validation.canPublish || plan.statusCode !== "draft") ? "disabled" : ""} ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const secondaryBtns = (rules?.secondary || []).map((s) => {
     if (s.action === "create-followup") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
     if (s.action === "send-advice") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}">${s.label}</button>`;
@@ -1286,7 +1375,7 @@ function planRow(plan) {
   const includedModules = plan.modules.filter((module) => module.included).length;
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
-  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "approve-plan" && (!validation.canPublish || plan.statusCode !== "draft") ? "disabled" : ""} ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const secondaryBtns = (rules?.secondary || []).map((s) => {
     const attrs = `data-action="${s.action}" data-id="${plan.id}"`;
     if (s.action === "create-followup") return `<button class="btn" ${attrs} data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
@@ -1349,7 +1438,7 @@ function showModuleClosurePreview(plan, moduleKey) {
   const rules = MODULE_DEPENDENCY_RULES[moduleKey];
   if (!rules) { return true; }
   if (!rules.closable) {
-    openModal("不可关闭", `<div class="closure-preview-modal"><p>${tag("不可关闭", "red")} ${rules.closableReason}</p><button class="btn" onclick="document.getElementById('modal-mask').click()">知道了</button></div>`);
+    openModal("不可关闭", `<div class="closure-preview-modal"><p>${tag("不可关闭", "red")} ${rules.closableReason}</p><button class="btn" data-action="close-modal">知道了</button></div>`);
     return false;
   }
   const consequencesHTML = `<div class="closure-preview-modal">
@@ -1358,7 +1447,7 @@ function showModuleClosurePreview(plan, moduleKey) {
     ${rules.affectedTargets.length ? `<div><strong>将影响的量化目标：</strong><ul>${rules.affectedTargets.map((t) => `<li>${t} ${tag("无数据来源", "red")}</li>`).join("")}</ul></div>` : ""}
     ${rules.affectedAlerts.length ? `<div><strong>将影响的预警规则：</strong><ul>${rules.affectedAlerts.map((a) => `<li>${a} ${tag("失去触发条件", "red")}</li>`).join("")}</ul></div>` : ""}
     <p class="warning">确认关闭后，上述功能将不再对患者可见，相关目标将标记"无数据来源"。</p>
-    <div class="modal-actions"><button class="btn" data-action="confirm-close-module" data-id="${plan.id}" data-module="${moduleKey}">确认关闭</button><button class="btn" onclick="document.getElementById('modal-mask').click()">取消</button></div>
+    <div class="modal-actions"><button class="btn" data-action="confirm-close-module" data-id="${plan.id}" data-module="${moduleKey}">确认关闭</button><button class="btn" data-action="close-modal">取消</button></div>
   </div>`;
   openModal("关闭后果预览", consequencesHTML);
   return null;
@@ -1373,10 +1462,6 @@ function showQuickReview(plan) {
       <h4>方案总览</h4>
       <p><strong>${escapeHtml(plan.title)}</strong> · ${tag(plan.diseases?.[0] || plan.disease || "", "blue")} · ${plan.period?.days || 14}天周期</p>
       <p class="muted">${escapeHtml(plan.modules.find((m) => m.key === "basic")?.fields?.stageGoal || "")}</p>
-    </div>
-    <div class="review-section">
-      <h4>系统推荐依据</h4>
-      <p>${escapeHtml(plan.modules.find((m) => m.key === "goals")?.recommendationReason || "根据疾病风险分层和近期数据生成")}</p>
     </div>
     <div class="review-section">
       <h4>管理目标预览</h4>
@@ -1409,7 +1494,6 @@ function renderPlanDetail() {
   }
   ensurePlanShape(plan);
   const patient = patientById(plan.patientId);
-  const validation = validatePlan(plan);
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
   const diseases = (plan.diseases || [plan.disease]).map((d) => tag(d, "blue")).join("");
@@ -1418,7 +1502,7 @@ function renderPlanDetail() {
   const alertText = latestAlert ? [latestAlert.metricName, latestAlert.value].filter(Boolean).join(" ") || latestAlert.title || "待处理预警" : "";
   const alertHint = latestAlert ? `<span class="alert-hint">${tag("待处理预警", "red")} ${escapeHtml(alertText)}</span>` : "";
   const followupHint = latestFollowup ? `<span class="followup-hint">下次随访: ${latestFollowup.dueAt}</span>` : "";
-  const heroPrimaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "approve-plan" && (!validation.canPublish || plan.statusCode !== "draft") ? "disabled" : ""} ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const heroPrimaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const heroSecondaryBtns = (rules?.secondary || []).map((s) => {
     if (s.action === "create-followup") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
     if (s.action === "send-advice") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}">${s.label}</button>`;
@@ -1440,7 +1524,6 @@ function renderPlanDetail() {
         ${heroPrimaryBtn}${heroSecondaryBtns}<button class="btn" data-action="preview-plan" data-id="${plan.id}">患者可见预览</button>
       </div>
     </section>
-    ${!validation.canPublish ? `<div class="validation-banner">${validation.warnings.filter((w) => w.level === "error").map((w) => `<span>${tag("阻断", "red")} ${w.message}</span>`).join("")}<button class="link" data-action="edit-plan" data-id="${plan.id}">去补充</button></div>` : ""}
     <section class="plan-editor">
       <nav class="plan-anchor-bar">
         ${plan.modules.map((module) => {
@@ -1452,48 +1535,31 @@ function renderPlanDetail() {
           else dotClass = "orange";
           return `<a href="#plan-${module.key}" class="${module.included ? "" : "muted"}"><span class="status-dot ${dotClass}"></span>${module.name}<small>${module.type === "required" ? "必填" : module.included ? "已启用" : "未启用"}</small></a>`;
         }).join("")}
+        <a href="#plan-timeline"><span class="status-dot blue"></span>方案时间轴<small>记录</small></a>
       </nav>
       <div class="plan-content">
         <div class="plan-module-list">
           ${plan.modules.map((module) => planModuleCard(plan, module)).join("")}
-          ${plan.statusCode === "active" ? renderExecutionOverview(plan) : ""}
+          ${statusCode === "active" ? renderExecutionOverview(plan) : ""}
+          ${renderPlanTimeline(plan)}
         </div>
-        <aside class="audit-panel panel">
-          <div class="audit-block">
-            <span>必填完整度</span>
-            <strong>${validation.requiredCompleted}/${validation.requiredTotal}</strong>
-            <div class="mini-progress"><span style="width:${Math.round(validation.requiredCompleted / validation.requiredTotal * 100)}%"></span></div>
-          </div>
-          <div class="audit-block">
-            <span>发布校验</span>
-            ${validation.warnings.length ? validation.warnings.map((item) => `<p class="${item.level}">${item.level === "error" ? "阻断" : "提醒"}：${item.message}${item.moduleKey ? ` <button class="link" data-action="edit-plan-module" data-id="${plan.id}" data-module="${item.moduleKey}">去补充</button>` : ""}</p>`).join("") : `<p class="ok">已满足下发条件。</p>`}
-          </div>
-          <div class="audit-block">
-            <span>执行负担明细</span>
-            ${plan.workload ? `<div class="workload-detail">
-              <div><span>每日任务数</span><strong>${plan.workload.dailyTaskCount || 0}</strong></div>
-              <div><span>预计每日耗时</span><strong>${plan.workload.estimatedMinutesPerDay || 0} 分钟</strong></div>
-              <div><span>连续天数</span><strong>${plan.workload.continuousDays || 0} 天</strong></div>
-              <div><span>随访频率</span><strong>${plan.workload.weeklyFollowupCount || 0} 次/周</strong></div>
-              <div><span>负担等级</span>${plan.workload.burdenLevel ? `<span class="burden-badge burden-${plan.workload.burdenLevel}">${plan.workload.burdenLevel}</span>` : "-"}</div>
-            </div>` : `<p>${taskLoadSummary(plan)}</p>`}
-          </div>
-          ${plan.source === "系统生成草稿" ? `<div class="audit-block"><button class="btn primary" data-action="quick-review" data-id="${plan.id}">快速审核</button><small>3分钟审核系统推荐方案</small></div>` : ""}
-          <div class="audit-block">
-            <span>患者可见内容</span>
-            <button class="btn" data-action="preview-plan" data-id="${plan.id}">查看患者端预览</button>
-          </div>
-          <div class="audit-block">
-            <span>方案时间轴</span>
-            ${(plan.changeLogs || []).map((item) => `<p>${item.time} ${item.text}</p>`).join("")}
-          </div>
-        </aside>
       </div>
     </section>
+    <div class="plan-bottom-actions">
+      <div>
+        <strong>${escapeHtml(plan.title)}</strong>
+        <span>${tag(plan.status, toneOf(plan.status))}${plan.version ? tag(plan.version, "gray") : ""}</span>
+      </div>
+      <div class="row-actions">
+        <button class="btn" data-action="save-plan-draft" data-id="${plan.id}">保存草稿</button>
+        <button class="btn primary" data-action="approve-plan" data-id="${plan.id}">确认下发</button>
+      </div>
+    </div>
   </section>`;
 }
 
 function planModuleCard(plan, module) {
+  if (module.key === "basic") return basicPlanModuleCard(plan, module);
   const required = module.type === "required";
   const hasSummary = String(module.summary || "").trim();
   let statusLabel = "";
@@ -1510,11 +1576,11 @@ function planModuleCard(plan, module) {
     else { statusLabel = tag("已完成", "green"); }
   }
   const toggleBtn = required ? "" : `<button class="btn" data-action="toggle-plan-module" data-id="${plan.id}" data-module="${module.key}">${module.included ? "关闭模块" : "启用模块"}</button>`;
+  const displaySummary = module.key === "alerts" && module.fields?.useGlobalRules ? "" : module.summary;
   return `<article class="plan-module-card panel ${cardClass}" id="plan-${module.key}">
     <div class="plan-module-head">
       <div>
         <h3>${module.name}${required ? tag("必填", "blue") : statusLabel}</h3>
-        <p>${module.recommendationReason}</p>
       </div>
       <div class="row-actions">
         ${toggleBtn}
@@ -1522,11 +1588,36 @@ function planModuleCard(plan, module) {
       </div>
     </div>
     <div class="module-summary">
-      <strong>医生端配置</strong>
-      <p>${module.included ? escapeHtml(module.summary || "待补充") : escapeHtml(module.excludeReason || "未启用，该模块不会下发给患者。")}</p>
+      ${module.included && displaySummary ? `<p>${escapeHtml(displaySummary)}</p>` : ""}
+      ${!module.included && module.excludeReason ? `<p>${escapeHtml(module.excludeReason)}</p>` : ""}
       ${module.included ? renderModuleStructuredContent(module) : ""}
-      ${module.patientVisible && module.included ? `<strong>患者端展示</strong><p>${escapeHtml(module.fields?.patientInstruction || module.summary || "待补充")}</p>` : ""}
     </div>
+  </article>`;
+}
+
+function renderPlanTimeline(plan) {
+  const logs = plan.changeLogs || [];
+  return `<article class="plan-module-card panel plan-timeline-card" id="plan-timeline">
+    <div class="plan-module-head">
+      <div><h3>方案时间轴${tag("记录", "gray")}</h3></div>
+    </div>
+    <div class="timeline-list">
+      ${logs.length ? logs.map((item) => `<div class="timeline-item"><time>${escapeHtml(item.time)}</time><p>${escapeHtml(item.text)}</p></div>`).join("") : `<div class="empty">暂无方案变更记录</div>`}
+    </div>
+  </article>`;
+}
+
+function basicPlanModuleCard(plan, module) {
+  const hasSummary = String(module.summary || "").trim();
+  const statusLabel = hasSummary ? tag(module.doctorModified ? "已修改" : "已完成", module.doctorModified ? "blue" : "green") : tag("待补充", "orange");
+  return `<article class="plan-module-card panel ${hasSummary ? "" : "incomplete"}" id="plan-${module.key}">
+    <div class="plan-module-head">
+      <div><h3>${module.name}${tag("必填", "blue")}${statusLabel}</h3></div>
+      <div class="row-actions">
+        <button class="btn primary" data-action="save-plan-module" data-id="${plan.id}" data-module="${module.key}">保存基础信息</button>
+      </div>
+    </div>
+    ${basicInlineEditor(module)}
   </article>`;
 }
 
@@ -1556,7 +1647,7 @@ function renderModuleStructuredContent(module) {
         <td>${escapeHtml(item.frequency)}<small>${escapeHtml(item.timeWindow || "不限")}</small></td>
         <td>${renderMiniTags(item.dataSources)}</td>
         <td>${escapeHtml(item.targetRange)}</td>
-        <td>${item.generateTodo ? tag("生成待办", "blue") : tag("不生成", "gray")}${tag(item.priority, toneOf(item.priority))}<small>${escapeHtml(item.taskGroup)}</small></td>
+        <td>${tag("自动生成任务", "blue")}${tag(item.priority, toneOf(item.priority))}<small>${escapeHtml(item.taskGroup)}</small></td>
       </tr>`).join("")}</tbody>
     </table>`;
   }
@@ -1583,26 +1674,27 @@ function renderModuleStructuredContent(module) {
   }
   if (module.key === "device") {
     return `<table class="config-table structured-table">
-      <thead><tr><th>设备类型</th><th>绑定</th><th>患者端说明</th></tr></thead>
+      <thead><tr><th>设备类型</th><th>绑定</th></tr></thead>
       <tbody>${(module.fields.deviceItems || []).map((item) => `<tr>
         <td>${renderMiniTags(item.deviceType || [])}</td>
         <td>${item.recommendBind ? tag("推荐绑定", "green") : tag("可选", "gray")}</td>
-        <td><small>${escapeHtml(item.patientInstruction || "-")}</small></td>
       </tr>`).join("")}</tbody>
     </table>`;
   }
   if (module.key === "lifestyle") {
     return `<table class="config-table structured-table">
-      <thead><tr><th>指导类型</th><th>执行频率</th><th>完成反馈</th><th>患者说明</th></tr></thead>
+      <thead><tr><th>指导类型</th><th>执行频率</th><th>完成反馈</th></tr></thead>
       <tbody>${(module.fields.lifestyleItems || []).map((item) => `<tr>
         <td>${renderMiniTags(item.type || [])}</td>
         <td>${escapeHtml(item.frequency)}</td>
         <td>${escapeHtml(item.feedbackMode)}</td>
-        <td><small>${escapeHtml(item.patientInstruction)}</small></td>
       </tr>`).join("")}</tbody>
     </table>`;
   }
   if (module.key === "alerts") {
+    if (module.fields?.useGlobalRules) {
+      return `<div class="module-detail-grid"><div><span>规则来源</span><strong>使用全局预警规则</strong><p>按疾病与指标默认规则触发，医生无需逐个患者配置。</p></div></div>`;
+    }
     return `<table class="config-table structured-table">
       <thead><tr><th>预警对象</th><th>触发条件</th><th>等级</th><th>患者动作</th><th>医生动作</th><th>随访建议</th></tr></thead>
       <tbody>${(module.fields.alertRules || []).map((rule) => `<tr>
@@ -1624,14 +1716,6 @@ function renderModuleStructuredContent(module) {
       <div><span>患者准备材料</span><p>${renderMiniTags(rule.prepareItems || [])}</p></div>
     </div>`;
   }
-  if (module.key === "guidance") {
-    const f = module.fields || {};
-    return `<div class="module-detail-grid">
-      <div><span>阶段目标说明</span><p>${escapeHtml(f.stageGoalNote || "-")}</p></div>
-      <div><span>异常处理指导</span><p>${escapeHtml(f.abnormalHandling || "-")}</p></div>
-      <div><span>医生补充说明</span><p>${escapeHtml(f.doctorNote || "-")}</p></div>
-    </div>`;
-  }
   if (!rows.length) return "";
   return `<table class="config-table">
     <tbody>${rows.map((row) => `<tr>${String(row).split("|").map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
@@ -1640,6 +1724,47 @@ function renderModuleStructuredContent(module) {
 
 function renderMiniTags(items = []) {
   return `<span class="mini-tags">${items.map((item) => `<em>${escapeHtml(item)}</em>`).join("")}</span>`;
+}
+
+function selectOptions(options, selected, allowFallback = true) {
+  const selectedList = Array.isArray(selected) ? selected : [selected].filter(Boolean);
+  const allOptions = allowFallback ? [...new Set([...options, ...selectedList])] : options;
+  return allOptions.map((value) => `<option value="${escapeAttr(value)}" ${selectedList.includes(value) ? "selected" : ""}>${escapeHtml(value)}</option>`).join("");
+}
+
+function metricSceneOptions(metricName) {
+  return METRIC_SCENE_OPTIONS[normalizeMetricName(metricName)] || ["默认"];
+}
+
+function diseaseMultiSelect(fieldPath, selected) {
+  const selectedList = normalizeDiseases(selected);
+  return checkboxDropdown(fieldPath, PLAN_DISEASE_OPTIONS, selectedList);
+}
+
+function checkboxDropdown(fieldPath, options, selected) {
+  const selectedList = Array.isArray(selected) ? selected.filter(Boolean) : splitList(selected);
+  const label = selectedList.join("、") || "请选择";
+  return `<details class="multi-select">
+    <summary data-field-summary="${fieldPath}">${escapeHtml(label)}</summary>
+    <div class="multi-select-menu">
+      ${options.map((option) => `<label><input type="checkbox" data-field-option="${fieldPath}" value="${escapeAttr(option)}" ${selectedList.includes(option) ? "checked" : ""}> ${escapeHtml(option)}</label>`).join("")}
+    </div>
+    <input type="hidden" data-field="${fieldPath}" value="${escapeAttr(label)}">
+  </details>`;
+}
+
+function basicInlineEditor(module) {
+  const f = module.fields || {};
+  const diseases = normalizeDiseases(f.diseases);
+  return `<div class="basic-inline-editor">
+    <div class="rule-card single basic-editor">
+      <label>方案名称<input data-field="basic.planName" value="${escapeAttr(f.planName || module.summary || "")}"></label>
+      <label>适用疾病${diseaseMultiSelect("basic.diseases", diseases)}</label>
+      <label>方案周期<select data-field="basic.periodDays">${PLAN_PERIOD_DAYS.map((d) => `<option value="${d}" ${Number(f.periodDays) === d ? "selected" : ""}>${d} 天</option>`).join("")}</select></label>
+      <label>计划开始日期<input type="date" data-field="basic.startDate" value="${escapeAttr(f.startDate || "")}"><small>默认患者确认次日开始</small></label>
+      <label class="wide">医生端摘要<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
+    </div>
+  </div>`;
 }
 
 function taskLoadSummary(plan) {
@@ -1656,8 +1781,7 @@ function moduleEditorBody(module) {
     device: "每行一条：设备|同步要求|来源|异常处理",
     lifestyle: "每行一条：建议|执行频次|患者记录|复盘方式",
     alerts: "每行一条：对象|触发规则|系统动作|预警级别",
-    followup: "每行一条：随访类型|时间规则|随访重点|生成方式",
-    guidance: "每行一条：指导主题|患者可见内容"
+    followup: "每行一条：随访类型|时间规则|随访重点|生成方式"
   };
   const rows = (module.fields.rows || []).join("\n");
   const structuredFields = structuredModuleEditor(module);
@@ -1667,12 +1791,10 @@ function moduleEditorBody(module) {
   const rowFields = module.key === "goals" || structuredFields ? "" : `
     <label>结构化配置<small>${rowTip[module.key] || "每行一条配置，字段用 | 分隔"}</small><textarea id="moduleRows">${escapeHtml(rows)}</textarea></label>`;
   return `<div class="form">
-    <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"} ${module.recommendationReason}</p>
+    <p class="modal-tip">${module.type === "required" ? "必填模块，确认下发前必须补齐。" : "条件模块，启用后会进入患者执行方案。"}</p>
     ${goalFields}
     ${structuredFields}
     ${rowFields}
-    <label>医生端摘要<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
-    ${module.patientVisible ? `<div class="compiled-patient-copy"><strong>患者端说明（系统生成）</strong><p>${escapeHtml(compilePatientInstruction(module))}</p><small>根据目标、频率、时间和异常动作自动生成，避免专业术语。</small></div>` : ""}
   </div>`;
 }
 
@@ -1681,9 +1803,10 @@ function structuredModuleEditor(module) {
     const f = module.fields || {};
     return `<div class="rule-card single basic-editor">
       <label>方案名称<input data-field="basic.planName" value="${escapeAttr(f.planName || module.summary || "")}"></label>
-      <label>适用疾病<input data-field="basic.diseases" value="${escapeAttr((f.diseases || []).join("、"))}" placeholder="多个疾病用顿号分隔"></label>
-      <label>方案周期<select data-field="basic.periodDays">${[7, 14, 30, 60, 90].map((d) => `<option value="${d}" ${Number(f.periodDays) === d ? "selected" : ""}>${d} 天</option>`).join("")}</select></label>
-      <label>开始日期<input type="date" data-field="basic.startDate" value="${escapeAttr(f.startDate || "")}"></label>
+      <label>适用疾病${diseaseMultiSelect("basic.diseases", normalizeDiseases(f.diseases))}</label>
+      <label>方案周期<select data-field="basic.periodDays">${PLAN_PERIOD_DAYS.map((d) => `<option value="${d}" ${Number(f.periodDays) === d ? "selected" : ""}>${d} 天</option>`).join("")}</select></label>
+      <label>计划开始日期<input type="date" data-field="basic.startDate" value="${escapeAttr(f.startDate || "")}"><small>默认患者确认次日开始</small></label>
+      <label class="wide">医生端摘要<textarea id="moduleSummary">${escapeHtml(module.summary || "")}</textarea></label>
     </div>`;
   }
   if (module.key === "symptoms") {
@@ -1716,14 +1839,6 @@ function structuredModuleEditor(module) {
       <div id="lifestyleRuleList">${items.map((item, index) => lifestyleRuleEditor(item, index)).join("")}</div>
     </div>`;
   }
-  if (module.key === "guidance") {
-    const f = module.fields || {};
-    return `<div class="rule-card single guidance-editor">
-      <label>阶段目标说明<textarea data-field="guidance.stageGoalNote">${escapeHtml(f.stageGoalNote || "")}</textarea></label>
-      <label>异常处理指导<textarea data-field="guidance.abnormalHandling">${escapeHtml(f.abnormalHandling || "")}</textarea></label>
-      <label>医生补充说明<textarea data-field="guidance.doctorNote">${escapeHtml(f.doctorNote || "")}</textarea></label>
-    </div>`;
-  }
   if (module.key === "metrics") {
     return `<div class="rule-editor">
       <div class="rule-editor-head"><strong>指标测量规则</strong><button class="btn" data-action="add-metric-rule">添加指标</button></div>
@@ -1733,6 +1848,10 @@ function structuredModuleEditor(module) {
   if (module.key === "alerts") {
     return `<div class="rule-editor">
       <div class="rule-editor-head"><strong>预警规则参数</strong><button class="btn" data-action="add-alert-rule">添加规则</button></div>
+      <div class="rule-card single">
+        <label><input type="checkbox" data-field="alerts.useGlobalRules" ${module.fields.useGlobalRules !== false ? "checked" : ""}> 使用全局预警规则</label>
+        <small>默认按疾病、指标与平台全局阈值触发；关闭后可为该患者单独配置规则。</small>
+      </div>
       <div id="alertRuleList">${(module.fields.alertRules || []).map((rule, index) => alertRuleEditor(rule, index)).join("")}</div>
     </div>`;
   }
@@ -1745,26 +1864,24 @@ function structuredModuleEditor(module) {
       <label>随访方式<input data-field="followup.methods" value="${escapeAttr((rule.methods || []).join("、"))}"></label>
       <label>随访重点<input data-field="followup.focusItems" value="${escapeAttr((rule.focusItems || []).join("、"))}"></label>
       <label>患者准备材料<input data-field="followup.prepareItems" value="${escapeAttr((rule.prepareItems || []).join("、"))}"></label>
-      <label>不安排随访说明<textarea data-field="followup.noFollowupNote" placeholder="医生内部备注，非必填">${escapeHtml(rule.noFollowupNote || "")}</textarea></label>
     </div>`;
   }
   return "";
 }
 
 function metricRuleEditor(item, index) {
+  const metricName = normalizeMetricName(item.metricName);
+  const sceneOptions = metricSceneOptions(metricName);
+  const selectedScenes = (item.scenes || []).length ? item.scenes : sceneOptions;
   return `<div class="rule-card" data-rule-type="metric">
-    <label>指标<select data-field="metricName">${["空腹血糖", "餐后 2h 血糖", "血压", "SpO2", "呼吸频率", "睡眠时长", "最低血氧", "AHI", "CPAP 使用"].map((name) => `<option ${item.metricName === name ? "selected" : ""}>${name}</option>`).join("")}</select></label>
-    <label>场景<input data-field="scenes" value="${escapeAttr((item.scenes || []).join("、"))}"></label>
-    <label>频率<select data-field="frequency">${["每日", "每日夜间", "每周至少 2 次", "每周", "按异常复测"].map((value) => `<option ${item.frequency === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+    <label>指标名称<select data-field="metricName">${METRIC_NAME_OPTIONS.map((name) => `<option ${metricName === name ? "selected" : ""}>${name}</option>`).join("")}</select></label>
+    <label>测量场景${checkboxDropdown("scenes", sceneOptions, selectedScenes)}<small>${METRIC_SCENE_PLACEHOLDER}</small></label>
+    <label>测量频率<select data-field="frequency">${METRIC_FREQUENCIES.map((value) => `<option ${item.frequency === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
     <label>时间窗<input data-field="timeWindow" value="${escapeAttr(item.timeWindow || "")}" placeholder="如 06:00-09:00"></label>
     <label>数据来源<input data-field="dataSources" value="${escapeAttr((item.dataSources || []).join("、"))}"></label>
     <label>目标范围<input data-field="targetRange" value="${escapeAttr(item.targetRange || "")}"></label>
     <label>任务分组<select data-field="taskGroup">${["晨间测量", "睡前测量", "睡眠监测", "日常记录"].map((value) => `<option ${item.taskGroup === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
     <label>优先级<select data-field="priority">${["普通", "重要", "紧急"].map((value) => `<option ${item.priority === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
-    <label><input type="checkbox" data-field="generateTodo" ${item.generateTodo ? "checked" : ""}> 生成患者待办</label>
-    <label><input type="checkbox" data-field="allowBackfill" ${item.allowBackfill ? "checked" : ""}> 允许补记</label>
-    <label><input type="checkbox" data-field="allowUnableFeedback" ${item.allowUnableFeedback ? "checked" : ""}> 允许反馈无法完成</label>
-    <div class="compiled-patient-copy wide"><strong>患者说明（系统生成）</strong><p>${escapeHtml(compileMetricInstruction(item))}</p></div>
   </div>`;
 }
 
@@ -1802,7 +1919,6 @@ function medicationRuleEditor(item, index) {
     <label>服用时间<input data-field="medication.timing" value="${escapeAttr((item.timing || []).join("、"))}" placeholder="早餐后/晚餐后/睡前"></label>
     <label>用药来源<select data-field="medication.source">${["院内处方", "自购", "家属提供"].map((v) => `<option ${item.source === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
     <label><input type="checkbox" data-field="medication.isCritical" ${item.isCritical ? "checked" : ""}> 关键用药</label>
-    <div class="compiled-patient-copy wide"><strong>患者说明（系统生成）</strong><p>${escapeHtml(compileMedicationInstruction(item))}</p></div>
   </div>`;
 }
 
@@ -1814,7 +1930,7 @@ function addMedicationRuleEditor() {
 
 function deviceRuleEditor(item, index) {
   return `<div class="rule-card" data-rule-type="device">
-    <label>设备类型<input data-field="device.deviceType" value="${escapeAttr((item.deviceType || []).join("、"))}" placeholder="血压计/血氧仪/睡眠监测仪"></label>
+    <label>设备类型<input data-field="device.deviceType" value="${escapeAttr(listText(item.deviceType))}" placeholder="血压计/血氧仪/睡眠监测仪"></label>
     <label><input type="checkbox" data-field="device.recommendBind" ${item.recommendBind !== false ? "checked" : ""}> 推荐绑定设备</label>
     <label class="wide">患者端说明<textarea data-field="device.patientInstruction" placeholder="无默认值，医生需要时填写">${escapeHtml(item.patientInstruction || "")}</textarea></label>
   </div>`;
@@ -1831,7 +1947,6 @@ function lifestyleRuleEditor(item, index) {
     <label>指导类型<input data-field="lifestyle.type" value="${escapeAttr((item.type || []).join("、"))}" placeholder="饮食/运动/戒烟/睡眠/肺康复"></label>
     <label>执行频率<select data-field="lifestyle.frequency">${["每日", "每周 3 次", "每周 1 次", "持续执行"].map((v) => `<option ${item.frequency === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
     <label>完成反馈<select data-field="lifestyle.feedbackMode">${["打卡确认", "记录时长/量", "自我评分"].map((v) => `<option ${item.feedbackMode === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-    <div class="compiled-patient-copy wide"><strong>患者说明（系统生成）</strong><p>${escapeHtml(compileLifestyleInstruction(item))}</p></div>
   </div>`;
 }
 
@@ -1883,9 +1998,8 @@ function compilePatientInstruction(module = {}) {
   if (module.key === "medication") return (f.medicationItems || []).slice(0, 2).map(compileMedicationInstruction).join(" ") || "请按医生已确认的用药安排记录执行情况。";
   if (module.key === "device") return (f.deviceItems || []).map((item) => item.patientInstruction).filter(Boolean).join(" ") || "";
   if (module.key === "lifestyle") return (f.lifestyleItems || []).slice(0, 2).map(compileLifestyleInstruction).join(" ") || "请按生活方式建议执行。";
-  if (module.key === "alerts") return "数据异常时请先复测，并按提示补充症状；如明显不适，请联系医生或线下就医。";
+  if (module.key === "alerts") return module.fields?.useGlobalRules ? "使用全局预警规则" : "数据异常时请先复测，并按提示补充症状；如明显不适，请联系医生或线下就医。";
   if (module.key === "followup") return `请在随访前准备${patientTerm((f.followupRule?.prepareItems || []).join("、") || "近期记录")}，按提醒配合医生复盘。`;
-  if (module.key === "guidance") return patientTerm([f.stageGoalNote, f.abnormalHandling, f.doctorNote].filter(Boolean).join("；") || module.summary || "请按方案完成记录，出现明显不适时及时处理。");
   return patientTerm(module.summary || "");
 }
 
@@ -1894,7 +2008,7 @@ function moduleSummaryFromFields(module) {
   const rows = module.fields.rows || [];
   if (!rows.length) return module.summary || "";
   if (module.key === "metrics") return `配置 ${rows.length} 个指标测量项：${rows.map((row) => row.split("|")[0]).join("、")}`;
-  if (module.key === "alerts") return `配置 ${rows.length} 条预警规则：${rows.map((row) => row.split("|")[0]).join("、")}`;
+  if (module.key === "alerts") return module.fields?.useGlobalRules ? "使用全局预警规则" : `配置 ${rows.length} 条预警规则：${rows.map((row) => row.split("|")[0]).join("、")}`;
   if (module.key === "followup") return `配置 ${rows.length} 类随访：${rows.map((row) => row.split("|")[0]).join("、")}`;
   return rows.map((row) => row.split("|").slice(0, 2).join("：")).join("；");
 }
@@ -1921,7 +2035,7 @@ function empty(text) {
   return `<div class="empty">${text}</div>`;
 }
 
-function openModal(title, body, footer) {
+function openModal(title, body, footer = `<button class="btn primary" data-action="close-modal">关闭</button>`) {
   modalRoot.innerHTML = `<div class="modal-mask show"><div class="modal"><header><strong>${title}</strong><button class="icon-btn" data-action="close-modal">×</button></header><div class="modal-body">${body}</div><footer>${footer}</footer></div></div>`;
 }
 
@@ -1933,6 +2047,8 @@ function closeModal() {
 function openDrawer(title, bodyHTML, footerHTML) {
   const existing = document.querySelector(".drawer-container");
   if (existing) existing.remove();
+  const existingMask = document.querySelector(".drawer-mask");
+  if (existingMask) existingMask.remove();
   const mask = document.createElement("div");
   mask.className = "drawer-mask show";
   mask.dataset.action = "close-modal";
@@ -1975,7 +2091,7 @@ function openCreatePlanModal() {
   openModal("新建管理方案", `<div class="form">
     <label>选择患者<select id="newPlanPatient">${patientOptions}</select></label>
     <label>确诊疾病<select id="newPlanDisease"><option>糖尿病</option><option>慢阻肺</option><option>睡眠呼吸暂停</option><option>高血压</option></select></label>
-    <label>方案周期<select id="newPlanPeriod"><option>14 天</option><option selected>30 天</option><option>90 天</option></select></label>
+      <label>方案周期<select id="newPlanPeriod">${PLAN_PERIOD_DAYS.map((day) => `<option ${day === 30 ? "selected" : ""}>${day} 天</option>`).join("")}</select></label>
     <div class="method-cards">
       <label class="method-card active" data-method="system">
         <input type="radio" name="createMethod" value="系统推荐模板" checked>
@@ -2098,7 +2214,8 @@ function createPlan(patientId, alertId, silent = false) {
 
 function approvePlan(id) {
   const plan = state.plans.find((item) => item.id === id);
-  if (plan.statusCode !== "draft") {
+  const statusCode = plan.statusCode || PLAN_STATUS_CODE[plan.status] || "draft";
+  if (statusCode !== "draft") {
     showToast("当前方案状态不可重复下发");
     return;
   }
@@ -2402,6 +2519,11 @@ function viewPatientFeedback(id) {
 }
 
 function openPlanModuleEditor(id, moduleKey) {
+  if (moduleKey === "basic") {
+    document.querySelector("#plan-basic")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelector('[data-field="basic.planName"]')?.focus();
+    return;
+  }
   const plan = state.plans.find((item) => item.id === id);
   const module = planModule(plan, moduleKey);
   const headerTags = `${module.patientVisible ? '<span class="tag blue">患者可见</span>' : '<span class="tag gray">患者不可见</span>'}${module.type === "required" ? '<span class="tag blue">必填</span>' : '<span class="tag green">条件模块</span>'}`;
@@ -2417,12 +2539,13 @@ function savePlanModule(id, moduleKey) {
   module.doctorModified = true;
   if (module.key === "basic") {
     module.fields.planName = readField("basic.planName");
-    module.fields.diseases = splitList(readField("basic.diseases"));
+    module.fields.diseases = normalizeDiseases(readField("basic.diseases"));
     module.fields.periodDays = Number(readField("basic.periodDays")) || 30;
     module.fields.startDate = readField("basic.startDate");
     plan.title = module.fields.planName;
     if (module.fields.diseases.length) plan.disease = module.fields.diseases[0];
-    if (module.fields.diseases.length > 1) plan.diseases = module.fields.diseases;
+    plan.diseases = module.fields.diseases;
+    plan.period = `${module.fields.periodDays} 天`;
     module.fields.rows = [`方案名称|${module.fields.planName}`, `适用疾病|${module.fields.diseases.join("、")}`, `周期|${module.fields.periodDays} 天`, `开始日期|${module.fields.startDate}`];
   } else if (module.key === "goals") {
     module.fields.stageGoal = $("#moduleStageGoal").value.trim();
@@ -2435,8 +2558,9 @@ function savePlanModule(id, moduleKey) {
     module.fields.rows = module.fields.metricItems.map((item) => `${item.metricName}|${item.targetRange}|${item.frequency}${item.timeWindow ? ` ${item.timeWindow}` : ""}|${item.dataSources.join("/")}|${item.patientInstruction}`);
     plan.targets = module.fields.metricItems.map((item) => `${item.metricName} ${item.targetRange}`);
   } else if (module.key === "alerts") {
+    module.fields.useGlobalRules = readCheckboxField("alerts.useGlobalRules");
     module.fields.alertRules = readAlertRules();
-    module.fields.rows = module.fields.alertRules.map((rule) => `${rule.metricName}|${rule.operator} ${rule.threshold}${rule.duration ? ` 连续/持续${rule.duration}` : ""}|${rule.patientActions.join("、")}|${rule.alertLevel}`);
+    module.fields.rows = module.fields.useGlobalRules ? ["规则来源|使用全局预警规则"] : module.fields.alertRules.map((rule) => `${rule.metricName}|${rule.operator} ${rule.threshold}${rule.duration ? ` 连续/持续${rule.duration}` : ""}|${rule.patientActions.join("、")}|${rule.alertLevel}`);
   } else if (module.key === "followup") {
     module.fields.followupRule = readFollowupRule();
     module.fields.rows = [`计划随访|下发后第 ${module.fields.followupRule.firstFollowupAfterDays} 天|${module.fields.followupRule.focusItems.join("、")}|系统生成待随访`];
@@ -2452,16 +2576,11 @@ function savePlanModule(id, moduleKey) {
     module.fields.rows = module.fields.medicationItems.map((item) => `${item.medName}|${item.dose} ${item.frequency}|${(item.timing || []).join("、")}|${item.source}|${item.isCritical ? "关键" : "普通"}`);
   } else if (module.key === "device") {
     module.fields.deviceItems = readDeviceRules();
-    module.fields.rows = module.fields.deviceItems.map((item) => `${(item.deviceType || []).join("、")}|${item.recommendBind ? "推荐绑定" : "可选"}|${item.patientInstruction || ""}`);
+    module.fields.rows = module.fields.deviceItems.map((item) => `${listText(item.deviceType)}|${item.recommendBind ? "推荐绑定" : "可选"}|${item.patientInstruction || ""}`);
   } else if (module.key === "lifestyle") {
     module.fields.lifestyleItems = readLifestyleRules();
     module.fields.lifestyleItems.forEach((item) => { item.patientInstruction = compileLifestyleInstruction(item); });
     module.fields.rows = module.fields.lifestyleItems.map((item) => `${(item.type || []).join("、")}|${item.frequency}|${item.feedbackMode}|${item.patientInstruction}`);
-  } else if (module.key === "guidance") {
-    module.fields.stageGoalNote = readField("guidance.stageGoalNote");
-    module.fields.abnormalHandling = readField("guidance.abnormalHandling");
-    module.fields.doctorNote = readField("guidance.doctorNote");
-    module.fields.rows = [`阶段目标说明|${module.fields.stageGoalNote}`, `异常处理|${module.fields.abnormalHandling}`, `医生补充|${module.fields.doctorNote}`];
   } else {
     module.fields.rows = $("#moduleRows")?.value?.split("\n").map((item) => item.trim()).filter(Boolean) || [];
   }
@@ -2478,7 +2597,10 @@ function savePlanModule(id, moduleKey) {
 
 function readField(fieldPath) {
   const el = document.querySelector(`[data-field="${fieldPath}"]`);
-  return el ? (el.type === "checkbox" ? el.checked : el.value.trim()) : "";
+  if (!el) return "";
+  if (el.type === "checkbox") return el.checked;
+  if (el.multiple) return [...el.selectedOptions].map((option) => option.value);
+  return el.value.trim();
 }
 
 function readCheckboxField(fieldPath) {
@@ -2546,26 +2668,32 @@ function getDefaultModuleFields(key, plan) {
 }
 
 function splitList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   return String(value || "").split(/[、,，]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function listText(value) {
+  return Array.isArray(value) ? value.join("、") : String(value || "");
 }
 
 function readMetricRules() {
   return $$("#metricRuleList [data-rule-type='metric']").map((card) => {
     const get = (field) => $(`[data-field="${field}"]`, card);
     const metricName = get("metricName").value;
+    const scenesEl = get("scenes");
     return {
       metricCode: metricCodeOf(metricName),
       metricName,
-      scenes: splitList(get("scenes").value),
+      scenes: scenesEl?.multiple ? [...scenesEl.selectedOptions].map((option) => option.value) : splitList(scenesEl?.value || ""),
       frequency: get("frequency").value,
       timeWindow: get("timeWindow").value.trim(),
       dataSources: splitList(get("dataSources").value),
       targetRange: get("targetRange").value.trim(),
       taskGroup: get("taskGroup").value,
       priority: get("priority").value,
-      generateTodo: get("generateTodo").checked,
-      allowBackfill: get("allowBackfill").checked,
-      allowUnableFeedback: get("allowUnableFeedback").checked
+      generateTodo: true,
+      allowBackfill: true,
+      allowUnableFeedback: true
     };
   });
 }
@@ -2596,8 +2724,7 @@ function readFollowupRule() {
     methods: splitList($('[data-field="followup.methods"]').value),
     focusItems: splitList($('[data-field="followup.focusItems"]').value),
     prepareItems: splitList($('[data-field="followup.prepareItems"]').value),
-    scheduleFollowup: $('[data-field="followup.scheduleFollowup"]').checked,
-    noFollowupNote: $('[data-field="followup.noFollowupNote"]').value.trim()
+    scheduleFollowup: $('[data-field="followup.scheduleFollowup"]').checked
   };
 }
 
@@ -2635,6 +2762,7 @@ function confirmTogglePlanModule(id, moduleKey) {
 
 function showPlanPreview(id) {
   const plan = state.plans.find((item) => item.id === id);
+  const statusCode = plan.statusCode || PLAN_STATUS_CODE[plan.status] || "draft";
   const preview = buildPatientPreview(plan);
   const goalCard = preview.objective ? `<div class="mini-app-card goal-card"><div class="card-bar blue"></div><div class="card-content"><strong>本阶段目标</strong><p>${escapeHtml(preview.objective)}</p></div></div>` : "";
   const todayTasks = preview.dailyTasks.length ? `<div class="mini-app-card task-card"><div class="card-bar green"></div><div class="card-content"><strong>今日待完成</strong>${preview.dailyTasks.map((t) => `<div class="preview-task-item">${escapeHtml(t)}</div>`).join("")}</div></div>` : "";
@@ -2647,7 +2775,7 @@ function showPlanPreview(id) {
     ${followupCard}
     ${abnormalCard}
     <div class="preview-mini-app-modules"><strong>可见模块</strong><div class="pill-list">${preview.visibleModules.map((m) => `<span>${m}</span>`).join("")}</div></div>
-  </div>`, `<button class="btn" data-action="close-modal">返回编辑</button><button class="btn primary" data-action="approve-plan" data-id="${id}" ${plan.statusCode === "draft" ? "" : "disabled"}>确认下发</button>`);
+  </div>`, `<button class="btn" data-action="close-modal">返回编辑</button><button class="btn primary" data-action="approve-plan" data-id="${id}" ${statusCode === "draft" ? "" : "disabled"}>确认下发</button>`);
 }
 
 function createFollowup(patientId, alertId, silent = false, planId = null) {
@@ -2840,6 +2968,18 @@ document.body.addEventListener("click", (event) => {
     resetPage("plans");
     render();
   }
+  if (action === "set-plan-source") {
+    planSourceFilter = target.dataset.source;
+    planMode = "list";
+    resetPage("plans");
+    render();
+  }
+  if (action === "set-plan-disease") {
+    planDiseaseFilter = target.dataset.disease;
+    planMode = "list";
+    resetPage("plans");
+    render();
+  }
   if (action === "edit-plan") {
     selectedPlanId = target.dataset.id;
     planMode = "detail";
@@ -2942,12 +3082,34 @@ document.body.addEventListener("input", (event) => {
 });
 
 document.body.addEventListener("change", (event) => {
-  const target = event.target.closest('[data-action="page-size"]');
-  if (!target) return;
-  const scope = target.dataset.pageScope;
-  paginationState[scope].pageSize = Number(target.value);
-  paginationState[scope].page = 1;
-  render();
+  const pageSizeTarget = event.target.closest('[data-action="page-size"]');
+  if (pageSizeTarget) {
+    const scope = pageSizeTarget.dataset.pageScope;
+    paginationState[scope].pageSize = Number(pageSizeTarget.value);
+    paginationState[scope].page = 1;
+    render();
+    return;
+  }
+  const metricNameTarget = event.target.closest('[data-field="metricName"]');
+  if (metricNameTarget) {
+    const card = metricNameTarget.closest('[data-rule-type="metric"]');
+    const sceneDropdown = card?.querySelector(".multi-select [data-field='scenes']")?.closest(".multi-select");
+    if (sceneDropdown) {
+      const options = metricSceneOptions(metricNameTarget.value);
+      sceneDropdown.outerHTML = checkboxDropdown("scenes", options, options);
+    }
+    return;
+  }
+  const multiOptionTarget = event.target.closest("[data-field-option]");
+  if (multiOptionTarget) {
+    const fieldPath = multiOptionTarget.dataset.fieldOption;
+    const wrap = multiOptionTarget.closest(".multi-select");
+    const fallback = fieldPath === "basic.diseases" ? PLAN_DISEASE_OPTIONS[0] : "";
+    const checked = [...wrap.querySelectorAll(`[data-field-option="${fieldPath}"]:checked`)].map((item) => item.value);
+    const value = (checked.length ? checked : [fallback].filter(Boolean)).join("、");
+    wrap.querySelector(`[data-field="${fieldPath}"]`).value = value;
+    wrap.querySelector(`[data-field-summary="${fieldPath}"]`).textContent = value || "请选择";
+  }
 });
 
 document.body.addEventListener("keydown", (event) => {

@@ -254,7 +254,7 @@
     <button>更多</button>
   </view>
   <view class="service-row">
-    <view wx:for="{{services}}" wx:key="label" class="service">
+    <view wx:for="{{services}}" wx:key="label" class="service" data-path="{{item.path}}" bindtap="handleService">
       <view style="background-color: {{item.color}};">
         <text class="service-mark">{{item.mark}}</text>
       </view>

@@ -13,14 +13,21 @@
     "pages/symptom/detail/index",
     "pages/medication/detail/index",
     "pages/device/index/index",
+    "pages/device/huawei-auth/index",
+    "pages/device/bluetooth/index",
+    "pages/device/connecting/index",
     "pages/plan/index",
     "pages/me/index"
   ],
   "window": {
     "navigationBarTitleText": "慢病管家",
-    "navigationBarBackgroundColor": "#4B92F0",
+    "navigationBarBackgroundColor": "#2F95ED",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#F5F7FB"
+    "backgroundColor": "#F5F7FB",
+    "backgroundColorTop": "#2F95ED",
+    "navigationBarShadow": {
+      "color": "transparent"
+    }
   },
   "tabBar": {
     "custom": true,

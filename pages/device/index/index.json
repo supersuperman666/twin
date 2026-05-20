@@ -1,3 +1,10 @@
 {
-  "navigationBarTitleText": "设备管理"
+  "navigationBarTitleText": "智能硬件",
+  "navigationBarBackgroundColor": "#2F95ED",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#2F95ED",
+  "backgroundColorTop": "#2F95ED",
+  "navigationBarShadow": {
+    "color": "#2F95ED"
+  }
 }

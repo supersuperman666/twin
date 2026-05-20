@@ -1,0 +1,154 @@
+.auth-page {
+  min-height: 100vh;
+  padding: 34rpx 44rpx 56rpx;
+  box-sizing: border-box;
+  color: #1f2329;
+  background: #ffffff;
+}
+
+.cookie-bar {
+  min-height: 104rpx;
+  padding: 22rpx 72rpx 22rpx 28rpx;
+  border-radius: 18rpx;
+  background: #eeeeee;
+  position: relative;
+  color: #2b2f36;
+  font-size: 29rpx;
+  line-height: 1.35;
+}
+
+.blue {
+  color: #0b82ff;
+}
+
+.close {
+  position: absolute;
+  right: 28rpx;
+  top: 26rpx;
+  color: #333;
+  font-size: 42rpx;
+  line-height: 1;
+}
+
+.brand {
+  margin-top: 70rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  width: 86rpx;
+  height: 86rpx;
+  border-radius: 18rpx;
+  background: #d91532;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17rpx;
+  font-weight: 900;
+}
+
+.title {
+  margin-top: 42rpx;
+  font-size: 46rpx;
+  font-weight: 900;
+}
+
+.subtitle {
+  margin-top: 20rpx;
+  color: #6f7378;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.target {
+  margin-top: 16rpx;
+  color: #8a96a3;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.form {
+  margin-top: 118rpx;
+}
+
+.field {
+  height: 90rpx;
+  border-bottom: 2rpx solid #dedede;
+  color: #1f2329;
+  font-size: 31rpx;
+}
+
+.placeholder {
+  color: #767b82;
+}
+
+.password-row {
+  position: relative;
+}
+
+.password {
+  padding-right: 80rpx;
+}
+
+.eye {
+  position: absolute;
+  right: 8rpx;
+  top: 24rpx;
+  color: #111;
+  font-size: 42rpx;
+}
+
+.link-row {
+  margin: 38rpx 0 58rpx;
+  display: flex;
+  justify-content: space-between;
+  color: #0b82ff;
+  font-size: 30rpx;
+}
+
+.login-btn,
+.register-btn {
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 31rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 88rpx;
+}
+
+.login-btn {
+  background: #97caff;
+  color: #ffffff;
+}
+
+.register-btn {
+  margin-top: 34rpx;
+  background: #f1f1f1;
+  color: #0b82ff;
+}
+
+.login-btn::after,
+.register-btn::after {
+  border: 0;
+}
+
+.footer-links {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 54rpx;
+  display: flex;
+  justify-content: center;
+  gap: 26rpx;
+  color: #0b82ff;
+  font-size: 25rpx;
+}
+
+.divider {
+  color: #c8c8c8;
+}

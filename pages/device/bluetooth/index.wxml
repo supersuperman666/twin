@@ -1,0 +1,40 @@
+<view class="bind-page">
+  <view class="device-title">{{deviceName}}</view>
+
+  <view class="step">
+    <text class="step-title">步骤一</text>
+    <text class="step-desc">确认硬件处于工作状态</text>
+    <view class="device-illustration">
+      <view class="screen">
+        <view class="wave"></view>
+        <view class="power">⏻</view>
+      </view>
+      <view class="power-bubble">
+        <text>ON</text>
+        <text class="power-icon">⏻</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="step">
+    <text class="step-title">步骤二</text>
+    <text class="step-desc">打开手机蓝牙</text>
+  </view>
+
+  <view class="step">
+    <text class="step-title">步骤三</text>
+    <text class="step-desc">在本小程序的绑定部分，点击绑定，手机会自动查找设备，找到设备后点击绑定，稍后将提示绑定成功。</text>
+    <view class="phone-illustration">
+      <view class="signal left"></view>
+      <view class="phone">
+        <view class="bluetooth">⌁</view>
+        <view class="home-dot"></view>
+      </view>
+      <view class="signal right"></view>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <button class="bottom-btn" bindtap="startBinding">立即绑定</button>
+  </view>
+</view>

@@ -1,10 +1,10 @@
 {
-  "navigationBarTitleText": "健康测评",
+  "navigationBarTitleText": "蓝牙连接",
   "navigationBarBackgroundColor": "#2F95ED",
   "navigationBarTextStyle": "white",
+  "backgroundColor": "#2F95ED",
   "backgroundColorTop": "#2F95ED",
   "navigationBarShadow": {
-    "color": "transparent"
-  },
-  "navigationStyle": "custom"
+    "color": "#2F95ED"
+  }
 }
