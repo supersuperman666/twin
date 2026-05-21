@@ -814,3 +814,357 @@ page {
 .modal-actions .action-btn {
   flex: 1;
 }
+
+/* ─────────── 建议列表区 ─────────── */
+.advice-section {
+  margin-bottom: 28rpx;
+}
+
+.advice-item {
+  background: #ffffff;
+  border-radius: 18rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 8rpx 22rpx rgba(39, 63, 94, 0.06);
+}
+
+.advice-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.advice-item-from {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #2478ff;
+}
+
+.advice-status-badge {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.advice-status-badge.unread {
+  background: #2478ff;
+  color: #ffffff;
+}
+
+.advice-status-badge.read {
+  background: #e8ecf2;
+  color: #8a96a3;
+}
+
+.advice-item-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 900;
+  color: #1d2733;
+  margin-bottom: 8rpx;
+}
+
+.advice-item-summary {
+  display: block;
+  font-size: 25rpx;
+  color: #738091;
+  line-height: 1.5;
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+}
+
+.advice-item-time {
+  display: block;
+  font-size: 22rpx;
+  color: #aab9c8;
+}
+
+/* ─────────── 复测任务组卡片 ─────────── */
+.recheck-section {
+  margin-bottom: 28rpx;
+}
+
+.recheck-group-card {
+  background: #ffffff;
+  border-radius: 18rpx;
+  padding: 24rpx 28rpx;
+  border: 2rpx solid #c7e1fa;
+  margin-bottom: 16rpx;
+  box-shadow: 0 8rpx 22rpx rgba(39, 63, 94, 0.06);
+}
+
+.recheck-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.recheck-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background: #2478ff;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recheck-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d2733;
+}
+
+.recheck-tag {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #fff0c7;
+  color: #d97706;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.recheck-summary {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #2478ff;
+  margin-bottom: 8rpx;
+}
+
+.recheck-instruction {
+  display: block;
+  font-size: 25rpx;
+  color: #738091;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.recheck-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.recheck-progress-text {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #0e7d52;
+}
+
+.recheck-remaining {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.recheck-action {
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #e8f2ff;
+  color: #2478ff;
+  font-size: 24rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────── 干预随访卡片 ─────────── */
+.intervention-followups {
+  margin-top: 24rpx;
+}
+
+.followup-intervention-card {
+  background: #ffffff;
+  border-radius: 18rpx;
+  padding: 24rpx 28rpx;
+  border: 2rpx solid #c7e1fa;
+  margin-bottom: 16rpx;
+  box-shadow: 0 8rpx 22rpx rgba(39, 63, 94, 0.06);
+}
+
+.fi-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.fi-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background: #10a37f;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fi-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d2733;
+}
+
+.fi-tag {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #fff0c7;
+  color: #d97706;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.fi-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.fi-time {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #1d2733;
+}
+
+.fi-method-tag {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.fi-instruction {
+  display: block;
+  font-size: 25rpx;
+  color: #738091;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.fi-prepare-status {
+  margin-bottom: 16rpx;
+}
+
+.fi-prepare-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.fi-prepare-badge.pending {
+  background: #fff0c7;
+  color: #d97706;
+}
+
+.fi-prepare-badge.partial {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.fi-prepare-badge.ready {
+  background: #dff7ea;
+  color: #15803d;
+}
+
+.fi-action {
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #e8f2ff;
+  color: #2478ff;
+  font-size: 24rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────── 建议详情抽屉 ─────────── */
+.advice-drawer-box {
+  padding-top: 36rpx;
+}
+
+.drawer-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #2478ff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.advice-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.drawer-doctor {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #2478ff;
+}
+
+.drawer-time {
+  font-size: 22rpx;
+  color: #aab9c8;
+}
+
+.advice-drawer-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 900;
+  color: #1d2733;
+  margin-bottom: 16rpx;
+}
+
+.advice-drawer-content {
+  display: block;
+  font-size: 28rpx;
+  color: #3a4a5a;
+  line-height: 1.7;
+  margin-bottom: 20rpx;
+}
+
+.advice-drawer-status {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-bottom: 28rpx;
+}
+
+.advice-drawer-status.is-unread {
+  background: #2478ff;
+  color: #ffffff;
+}
+
+.advice-drawer-status.is-read {
+  background: #e8ecf2;
+  color: #8a96a3;
+}

@@ -1,0 +1,90 @@
+<view class="page">
+  <!-- Top Status Bar -->
+  <view class="status-bar">
+    <view class="status-badge {{prepareStatus === 'ready' ? 'ready' : prepareStatus === 'partial' ? 'partial' : 'pending'}}">
+      {{prepareLabel}}
+    </view>
+  </view>
+
+  <!-- Section 1: Followup Basics -->
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-icon followup-icon"></view>
+      <text class="section-title">随访安排</text>
+    </view>
+    <view class="basics-card">
+      <view class="basics-row">
+        <text class="basics-label">随访时间</text>
+        <text class="basics-value">{{followup.dueAt}}</text>
+      </view>
+      <view class="basics-row">
+        <text class="basics-label">随访方式</text>
+        <view class="method-tag">{{followup.method}}</view>
+      </view>
+      <view class="basics-row">
+        <text class="basics-label">负责医生</text>
+        <text class="basics-value">{{followup.doctorName}}</text>
+      </view>
+      <view class="basics-row" wx:if="{{followup.type}}">
+        <text class="basics-label">随访类型</text>
+        <text class="basics-value">{{followup.type}}</text>
+      </view>
+    </view>
+    <view class="instruction-card" wx:if="{{followup.patientInstruction}}">
+      <view class="instruction-icon">医</view>
+      <text class="instruction-text">{{followup.patientInstruction}}</text>
+    </view>
+  </view>
+
+  <!-- Section 2: Normal Preparation Items -->
+  <view class="section-card" wx:if="{{normalItems.length}}">
+    <view class="section-head">
+      <view class="section-icon prep-icon"></view>
+      <text class="section-title">请在随访前准备以下内容</text>
+    </view>
+    <view class="prep-list">
+      <view class="prep-item" wx:for="{{normalItems}}" wx:key="*this">
+        <view class="prep-dot"></view>
+        <text class="prep-text">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- Section 3: Special Action Entries -->
+  <view class="section-card" wx:if="{{specialItems.length}}">
+    <view class="section-head">
+      <view class="section-icon action-icon"></view>
+      <text class="section-title">需要完成的操作</text>
+    </view>
+    <view class="action-list">
+      <view class="action-item" wx:for="{{specialItems}}" wx:key="label">
+        <view class="action-info">
+          <text class="action-label">{{item.label}}</text>
+          <text class="action-status {{item.done ? 'done' : 'pending'}}">{{item.done ? '已完成' : '待完成'}}</text>
+        </view>
+        <view wx:if="{{!item.done}}" class="action-btn" bindtap="{{item.type === 'report' ? 'onUploadReport' : 'onFillScale'}}" data-code="{{item.scaleCode}}">
+          {{item.type === 'report' ? '去上传' : '去填写'}}
+        </view>
+        <view wx:if="{{item.done}}" class="action-done-tag">已完成</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Focus Items -->
+  <view class="section-card" wx:if="{{followup.focus && followup.focus.length}}">
+    <view class="section-head">
+      <view class="section-icon focus-icon"></view>
+      <text class="section-title">随访重点</text>
+    </view>
+    <view class="focus-list">
+      <view class="focus-item" wx:for="{{followup.focus}}" wx:key="*this">
+        <text>{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- Bottom Action -->
+  <view class="bottom-bar">
+    <view class="back-btn" bindtap="onBack">返回</view>
+  </view>
+</view>

@@ -1,3 +1,5 @@
+const interventionStore = require('../../utils/intervention-store');
+
 Page({
   data: {
     userStage: 'new',
@@ -30,11 +32,6 @@ Page({
         action: '复测'
       }
     ],
-    tasks: [
-      { index: '1', title: '早餐后2小时血糖', desc: '建议 10:30 前完成', action: '记录', done: false },
-      { index: '2', title: '吸入剂用药打卡', desc: '布地奈德福莫特罗 1吸', action: '打卡', done: false },
-      { index: '3', title: '睡眠报告确认', desc: '昨夜低氧事件已生成', action: '查看', done: false }
-    ],
     services: [
       { label: '医生咨询', mark: '医', color: '#2d8df0' },
       { label: '报告解读', mark: '报', color: '#37b88f' },
@@ -42,6 +39,13 @@ Page({
       { label: '设备绑定', mark: '设', color: '#6b73e8', path: '/pages/device/index/index' }
     ],
     healthTags: ['2型糖尿病', '慢阻肺稳定期', '睡眠呼吸障碍风险', '绑定血氧仪'],
+    adviceList: [],
+    recheckPlans: [],
+    recheckProgress: {},
+    activeFollowups: [],
+    followupPrepareStatus: {},
+    showAdviceDrawer: false,
+    currentAdvice: null,
   },
 
   onLoad() {
@@ -51,12 +55,28 @@ Page({
   onShow() {
     this.setTabBarSelected()
     this.loadAssessmentResult({ preserveStage: true })
+    this.loadInterventionData()
   },
 
   setTabBarSelected() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 })
     }
+  },
+
+  loadInterventionData() {
+    const adviceList = interventionStore.getAdviceList();
+    const recheckPlans = interventionStore.getActiveRecheckPlans();
+    const recheckProgress = {};
+    recheckPlans.forEach(r => {
+      recheckProgress[r.id] = interventionStore.computeRecheckProgress(r.id);
+    });
+    const activeFollowups = interventionStore.getActiveFollowups();
+    const followupPrepareStatus = {};
+    activeFollowups.forEach(f => {
+      followupPrepareStatus[f.id] = interventionStore.computeFollowupPrepareStatus(f.id);
+    });
+    this.setData({ adviceList, recheckPlans, recheckProgress, activeFollowups, followupPrepareStatus });
   },
 
   loadAssessmentResult(options = {}) {
@@ -137,5 +157,36 @@ Page({
       return
     }
     wx.showToast({ title: '功能建设中', icon: 'none' })
-  }
+  },
+
+  onAdviceTap(e) {
+    const id = e.currentTarget.dataset.id;
+    const advice = interventionStore.getAdviceById(id);
+    if (!advice) return;
+    interventionStore.markAdviceRead(id);
+    this.setData({ showAdviceDrawer: true, currentAdvice: advice });
+    this.loadInterventionData();
+  },
+
+  onAdviceClose() {
+    this.setData({ showAdviceDrawer: false, currentAdvice: null });
+  },
+
+  onRecheckAction(e) {
+    const planId = e.currentTarget.dataset.id;
+    const plan = interventionStore.getRecheckPlanById(planId);
+    if (!plan) return;
+    const firstMetric = plan.metricCodes[0];
+    const metricRouteMap = {
+      '血糖': '/pages/record/form/index?type=glucose',
+      'SpO2': '/pages/record/form/index?type=oxygen',
+      '血压': '/pages/record/form/index?type=blood_pressure',
+    };
+    wx.navigateTo({ url: metricRouteMap[firstMetric] || '/pages/record/index' });
+  },
+
+  onFollowupPrepareTap(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: `/pages/followup/detail/index?id=${id}` });
+  },
 })

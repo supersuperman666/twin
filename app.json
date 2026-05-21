@@ -17,7 +17,8 @@
     "pages/device/bluetooth/index",
     "pages/device/connecting/index",
     "pages/plan/index",
-    "pages/me/index"
+    "pages/me/index",
+    "pages/followup/detail/index"
   ],
   "window": {
     "navigationBarTitleText": "慢病管家",

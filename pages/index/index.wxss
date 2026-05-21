@@ -1175,3 +1175,413 @@
   font-size: 28rpx !important;
   font-weight: 900 !important;
 }
+
+/* ─────────── 建议提醒模块 ─────────── */
+.advice-symbol {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
+  background: #2478ff;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-advice-item {
+  padding: 22rpx 24rpx;
+  border-radius: 16rpx;
+  background: #eaf4ff;
+  border: 1rpx solid #c7e1fa;
+  margin-bottom: 16rpx;
+}
+
+.home-advice-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
+.home-advice-avatar {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  background: #2478ff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.home-advice-from {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #2478ff;
+}
+
+.home-advice-badge {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.home-advice-badge.unread {
+  background: #2478ff;
+  color: #ffffff;
+}
+
+.home-advice-badge.read {
+  background: #e8ecf2;
+  color: #8a96a3;
+}
+
+.home-advice-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d2733;
+  margin-bottom: 6rpx;
+}
+
+.home-advice-summary {
+  display: block;
+  font-size: 24rpx;
+  color: #738091;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+}
+
+/* ─────────── 复测任务组卡片 ─────────── */
+.recheck-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.home-recheck-card {
+  padding: 24rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #c7e1fa;
+  background: #ffffff;
+}
+
+.home-recheck-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 14rpx;
+}
+
+.home-recheck-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background: #2478ff;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-recheck-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d2733;
+}
+
+.home-recheck-tag {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #fff0c7;
+  color: #d97706;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.home-recheck-summary {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #2478ff;
+  margin-bottom: 8rpx;
+}
+
+.home-recheck-instruction {
+  display: block;
+  font-size: 24rpx;
+  color: #738091;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.home-recheck-progress {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.home-recheck-status {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #0e7d52;
+}
+
+.home-recheck-remaining {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.home-recheck-btn {
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #e8f2ff;
+  color: #2478ff;
+  font-size: 24rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────── 随访提醒 ─────────── */
+.home-followup-item {
+  padding: 22rpx 24rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  border: 1rpx solid #c7e1fa;
+  margin-bottom: 16rpx;
+}
+
+.home-fu-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.home-fu-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background: #10a37f;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-fu-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #1d2733;
+}
+
+.home-fu-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.home-fu-time {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #1d2733;
+}
+
+.home-fu-method {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.home-fu-instruction {
+  display: block;
+  font-size: 24rpx;
+  color: #738091;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.home-fu-prepare-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-fu-prepare-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.home-fu-prepare-badge.pending {
+  background: #fff0c7;
+  color: #d97706;
+}
+
+.home-fu-prepare-badge.partial {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.home-fu-prepare-badge.ready {
+  background: #dff7ea;
+  color: #15803d;
+}
+
+.home-fu-btn {
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #e8f2ff;
+  color: #2478ff;
+  font-size: 24rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────── 建议详情抽屉 ─────────── */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.modal-box {
+  width: 100%;
+  padding: 40rpx 36rpx calc(env(safe-area-inset-bottom) + 40rpx);
+  border-radius: 32rpx 32rpx 0 0;
+  background: #ffffff;
+}
+
+.advice-drawer-box {
+  padding-top: 36rpx;
+}
+
+.drawer-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #2478ff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.advice-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.drawer-doctor {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #2478ff;
+}
+
+.drawer-time {
+  font-size: 22rpx;
+  color: #aab9c8;
+}
+
+.advice-drawer-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 900;
+  color: #1d2733;
+  margin-bottom: 16rpx;
+}
+
+.advice-drawer-content {
+  display: block;
+  font-size: 28rpx;
+  color: #3a4a5a;
+  line-height: 1.7;
+  margin-bottom: 20rpx;
+}
+
+.advice-drawer-status {
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-bottom: 28rpx;
+}
+
+.advice-drawer-status.is-unread {
+  background: #2478ff;
+  color: #ffffff;
+}
+
+.advice-drawer-status.is-read {
+  background: #e8ecf2;
+  color: #8a96a3;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 18rpx;
+}
+
+.modal-actions .action-btn {
+  flex: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.action-btn::after {
+  border: 0;
+}
+
+.action-btn.ghost {
+  height: 72rpx;
+  padding: 0 40rpx;
+  border: 2rpx solid #d0daea;
+  color: #4e6074;
+  background: #ffffff;
+  font-size: 27rpx;
+}
+
+.action-btn.sm {
+  height: 72rpx;
+  font-size: 27rpx;
+}

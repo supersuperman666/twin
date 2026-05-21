@@ -1,0 +1,271 @@
+.page {
+  background: #f5f7fb;
+  padding: 24rpx 24rpx calc(env(safe-area-inset-bottom) + 120rpx);
+  min-height: 100vh;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.status-badge {
+  padding: 8rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.status-badge.pending {
+  background: #fff0c7;
+  color: #d97706;
+}
+
+.status-badge.partial {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-badge.ready {
+  background: #dff7ea;
+  color: #15803d;
+}
+
+/* Section Card */
+.section-card {
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 22rpx rgba(40, 82, 126, 0.07);
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-icon {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
+}
+
+.section-icon.followup-icon {
+  background: #2478ff;
+}
+
+.section-icon.prep-icon {
+  background: #f59e0b;
+}
+
+.section-icon.action-icon {
+  background: #7c3aed;
+}
+
+.section-icon.focus-icon {
+  background: #10a37f;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #1d2733;
+}
+
+/* Basics Card */
+.basics-card {
+  margin-bottom: 20rpx;
+}
+
+.basics-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+}
+
+.basics-label {
+  font-size: 26rpx;
+  color: #738091;
+  font-weight: 600;
+}
+
+.basics-value {
+  font-size: 26rpx;
+  color: #1d2733;
+  font-weight: 700;
+}
+
+.method-tag {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+/* Instruction Card */
+.instruction-card {
+  background: #eaf4ff;
+  border: 1rpx solid #c7e1fa;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.instruction-icon {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 10rpx;
+  background: #2478ff;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.instruction-text {
+  font-size: 26rpx;
+  color: #1f5fbf;
+  line-height: 1.6;
+}
+
+/* Prep List */
+.prep-list {
+  padding-left: 8rpx;
+}
+
+.prep-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 10rpx 0;
+}
+
+.prep-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.prep-text {
+  font-size: 26rpx;
+  color: #1d2733;
+}
+
+/* Action List */
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.action-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  background: #f5f7fb;
+  border-radius: 16rpx;
+}
+
+.action-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.action-label {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1d2733;
+}
+
+.action-status.pending {
+  font-size: 22rpx;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.action-status.done {
+  font-size: 22rpx;
+  color: #17a466;
+  font-weight: 600;
+}
+
+.action-btn {
+  background: #2478ff;
+  color: #fff;
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.action-done-tag {
+  background: #dff7ea;
+  color: #15803d;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+/* Focus List */
+.focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.focus-item {
+  font-size: 26rpx;
+  color: #1d2733;
+  padding: 8rpx 0 8rpx 20rpx;
+  position: relative;
+}
+
+.focus-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: #10a37f;
+}
+
+/* Bottom Bar */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 20rpx 24rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: center;
+}
+
+.back-btn {
+  background: #f5f7fb;
+  color: #738091;
+  padding: 20rpx 120rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  text-align: center;
+}

@@ -1,5 +1,6 @@
 const planStore = require('../../utils/plan-store');
 const recordStore = require('../../utils/record-store');
+const interventionStore = require('../../utils/intervention-store');
 
 Page({
   data: {
@@ -11,8 +12,15 @@ Page({
     totalCount: 0,
     progressPct: 0,
     doctorAdviceNote: '',
+    adviceList: [],
+    recheckPlans: [],
+    recheckProgress: {},
+    activeFollowups: [],
+    followupPrepareStatus: {},
     showQuestionModal: false,
     questionInput: '',
+    showAdviceDrawer: false,
+    currentAdvice: null,
   },
 
   onShow() {
@@ -33,6 +41,20 @@ Page({
     const doneCount = tasks.filter(t => t.done).length;
     const totalCount = tasks.length;
     const guidanceMod = plan.modules.find(m => m.key === 'guidance');
+
+    // Intervention data
+    const adviceList = interventionStore.getAdviceList();
+    const recheckPlans = interventionStore.getActiveRecheckPlans();
+    const recheckProgress = {};
+    recheckPlans.forEach(r => {
+      recheckProgress[r.id] = interventionStore.computeRecheckProgress(r.id);
+    });
+    const activeFollowups = interventionStore.getActiveFollowups();
+    const followupPrepareStatus = {};
+    activeFollowups.forEach(f => {
+      followupPrepareStatus[f.id] = interventionStore.computeFollowupPrepareStatus(f.id);
+    });
+
     this.setData({
       plan,
       tasks,
@@ -41,6 +63,11 @@ Page({
       progressPct: totalCount ? Math.round(doneCount / totalCount * 100) : 0,
       pageState: plan.patientStatus === 'pending_confirm' ? 'pending_confirm' : 'active',
       doctorAdviceNote: guidanceMod ? guidanceMod.note : '',
+      adviceList,
+      recheckPlans,
+      recheckProgress,
+      activeFollowups,
+      followupPrepareStatus,
     });
   },
 
@@ -142,6 +169,37 @@ Page({
       });
       wx.showToast({ title: '已打卡', icon: 'success', duration: 1000 });
     }
+  },
+
+  onAdviceTap(e) {
+    const id = e.currentTarget.dataset.id;
+    const advice = interventionStore.getAdviceById(id);
+    if (!advice) return;
+    interventionStore.markAdviceRead(id);
+    this.setData({ showAdviceDrawer: true, currentAdvice: advice });
+    this.loadPlan();
+  },
+
+  onAdviceClose() {
+    this.setData({ showAdviceDrawer: false, currentAdvice: null });
+  },
+
+  onRecheckAction(e) {
+    const planId = e.currentTarget.dataset.id;
+    const plan = interventionStore.getRecheckPlanById(planId);
+    if (!plan) return;
+    const firstMetric = plan.metricCodes[0];
+    const metricRouteMap = {
+      '血糖': '/pages/record/form/index?type=glucose',
+      'SpO2': '/pages/record/form/index?type=oxygen',
+      '血压': '/pages/record/form/index?type=blood_pressure',
+    };
+    wx.navigateTo({ url: metricRouteMap[firstMetric] || '/pages/record/index' });
+  },
+
+  onFollowupPrepareTap(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: `/pages/followup/detail/index?id=${id}` });
   },
 
   goScreening() {

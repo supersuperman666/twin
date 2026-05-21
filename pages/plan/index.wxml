@@ -145,13 +145,47 @@
           </view>
         </view>
 
-        <!-- 医生建议 -->
-        <view class="advice-card">
+        <!-- 医生建议列表 -->
+        <view wx:if="{{adviceList.length}}" class="advice-section">
+          <view wx:for="{{adviceList}}" wx:key="id" class="advice-item" bindtap="onAdviceTap" data-id="{{item.id}}">
+            <view class="advice-item-header">
+              <view class="advice-avatar">医</view>
+              <text class="advice-item-from">{{item.doctorName}}</text>
+              <view class="advice-status-badge {{item.status === 'sent' ? 'unread' : 'read'}}">
+                {{item.status === 'sent' ? '未读' : '已读'}}
+              </view>
+            </view>
+            <text class="advice-item-title">{{item.title}}</text>
+            <text class="advice-item-summary">{{item.content}}</text>
+            <text class="advice-item-time">{{item.sentAt}}</text>
+          </view>
+        </view>
+
+        <!-- 方案指导（原有 guidance note） -->
+        <view wx:if="{{doctorAdviceNote}}" class="advice-card">
           <view class="advice-header">
             <view class="advice-avatar">医</view>
             <text class="advice-from">{{plan.doctor}} · 方案指导</text>
           </view>
           <text class="advice-text">{{doctorAdviceNote}}</text>
+        </view>
+
+        <!-- 复测任务组卡片 -->
+        <view wx:if="{{recheckPlans.length}}" class="recheck-section">
+          <view wx:for="{{recheckPlans}}" wx:key="id" class="recheck-group-card">
+            <view class="recheck-header">
+              <view class="recheck-icon">测</view>
+              <text class="recheck-title">复测指标</text>
+              <view class="recheck-tag">临时安排</view>
+            </view>
+            <text class="recheck-summary">{{recheckProgress[item.id].summary}}</text>
+            <text class="recheck-instruction">{{item.patientInstruction}}</text>
+            <view class="recheck-progress-row">
+              <text class="recheck-progress-text">{{recheckProgress[item.id].taskStatus}}</text>
+              <text wx:if="{{recheckProgress[item.id].daysRemaining > 0}}" class="recheck-remaining">还需完成 {{recheckProgress[item.id].daysRemaining}} 天</text>
+            </view>
+            <view class="recheck-action" bindtap="onRecheckAction" data-id="{{item.id}}">去记录</view>
+          </view>
         </view>
 
       </view>
@@ -251,6 +285,28 @@
           </view>
         </view>
 
+        <!-- 干预随访卡片 -->
+        <view wx:if="{{activeFollowups.length}}" class="intervention-followups">
+          <view wx:for="{{activeFollowups}}" wx:key="id" class="followup-intervention-card">
+            <view class="fi-header">
+              <view class="fi-icon">随</view>
+              <text class="fi-title">{{item.title}}</text>
+              <view class="fi-tag">临时安排</view>
+            </view>
+            <view class="fi-info">
+              <text class="fi-time">{{item.dueAt}}</text>
+              <view class="fi-method-tag">{{item.method}}</view>
+            </view>
+            <text wx:if="{{item.patientInstruction}}" class="fi-instruction">{{item.patientInstruction}}</text>
+            <view class="fi-prepare-status">
+              <view class="fi-prepare-badge {{followupPrepareStatus[item.id].prepareStatus}}">
+                {{followupPrepareStatus[item.id].prepareStatus === 'ready' ? '已准备' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? '已部分完成' : '待准备'}}
+              </view>
+            </view>
+            <view class="fi-action" bindtap="onFollowupPrepareTap" data-id="{{item.id}}">查看准备项</view>
+          </view>
+        </view>
+
       </view>
     </block>
 
@@ -272,6 +328,25 @@
       <view class="modal-actions">
         <button class="action-btn ghost sm" bindtap="onCloseQuestion">取消</button>
         <button class="action-btn primary sm" bindtap="onSubmitQuestion">提交</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- ───────── 建议详情抽屉 ───────── -->
+  <view wx:if="{{showAdviceDrawer}}" class="modal-mask" bindtap="onAdviceClose">
+    <view class="modal-box advice-drawer-box" catchtap="noop">
+      <view class="advice-drawer-header">
+        <view class="advice-avatar drawer-avatar">医</view>
+        <text class="drawer-doctor">{{currentAdvice.doctorName}}</text>
+        <text class="drawer-time">{{currentAdvice.sentAt}}</text>
+      </view>
+      <text class="advice-drawer-title">{{currentAdvice.title}}</text>
+      <text class="advice-drawer-content">{{currentAdvice.content}}</text>
+      <view class="advice-drawer-status {{currentAdvice.status === 'read' ? 'is-read' : 'is-unread'}}">
+        {{currentAdvice.status === 'read' ? '已读' : '未读'}}
+      </view>
+      <view class="modal-actions">
+        <button class="action-btn ghost sm" bindtap="onAdviceClose">关闭</button>
       </view>
     </view>
   </view>
