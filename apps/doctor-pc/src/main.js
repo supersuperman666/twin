@@ -83,7 +83,7 @@ const PLAN_STATUS_CODE = { "草稿": "draft", "已下发待患者确认": "pendi
 const PLAN_ACTION_RULES = {
   draft: { primary: { label: "审核/继续编辑", action: "edit-plan" }, secondary: [{ label: "驳回推荐", action: "reject-plan" }, { label: "删除草稿", action: "delete-plan" }] },
   pending_patient: { primary: { label: "提醒患者确认", action: "remind-patient" }, secondary: [{ label: "标记已知晓", action: "mark-patient-known" }, { label: "撤回下发", action: "withdraw-plan" }] },
-  active: { primary: { label: "查看方案", action: "edit-plan" }, secondary: [{ label: "调整方案", action: "adjust-plan" }, { label: "停用方案", action: "stop-plan" }, { label: "创建随访", action: "create-followup" }, { label: "结束本阶段", action: "complete-plan" }] },
+  active: { primary: { label: "查看方案", action: "edit-plan" }, secondary: [{ label: "调整方案", action: "adjust-plan" }, { label: "停用方案", action: "stop-plan" }, { label: "创建随访", action: "open-followup-drawer" }, { label: "结束本阶段", action: "complete-plan" }] },
   rejected: { primary: { label: "查看详情", action: "edit-plan" }, secondary: [{ label: "复制为新方案", action: "copy-as-new-plan" }] },
   stopped: { primary: { label: "查看历史", action: "edit-plan" }, secondary: [{ label: "复制为新方案", action: "copy-as-new-plan" }] },
   completed: { primary: { label: "查看复盘", action: "edit-plan" }, secondary: [{ label: "复制为新方案", action: "copy-as-new-plan" }] }
@@ -1134,7 +1134,8 @@ function renderPatientDetail() {
         <div class="hero-actions">
           <button class="btn primary" data-action="quick-primary" data-patient="${patient.id}">优先处理</button>
           <button class="btn" data-action="send-advice" data-patient="${patient.id}">发送医生建议</button>
-          <button class="btn" data-action="create-followup" data-patient="${patient.id}">创建随访</button>
+          <button class="btn" data-action="open-recheck-drawer" data-patient="${patient.id}">复测指标</button>
+          <button class="btn" data-action="open-followup-drawer" data-patient="${patient.id}">创建随访</button>
         </div>
       </div>
       <nav class="detail-tabs">
@@ -1241,7 +1242,7 @@ function renderAnalysis(patient) {
       </section>
       <section class="panel">
         <div class="panel-hd"><strong>多指标关联</strong></div>
-        <div class="relation-list">${patient.analysis.correlations.map((item) => `<button data-action="create-followup" data-patient="${patient.id}">${item}<small>创建随访</small></button>`).join("")}</div>
+        <div class="relation-list">${patient.analysis.correlations.map((item) => `<button data-action="open-followup-drawer" data-patient="${patient.id}">${item}<small>创建随访</small></button>`).join("")}</div>
       </section>
     </div>
     <section class="panel">
@@ -1264,7 +1265,7 @@ function renderPatientPlans(patient) {
 }
 
 function renderPatientFollowups(patient) {
-  return `<section class="panel"><div class="panel-hd"><strong>随访记录</strong><button class="btn primary" data-action="create-followup" data-patient="${patient.id}">创建随访</button></div><div class="card-list">${followupsOf(patient.id).map(followupCard).join("") || empty("暂无随访")}</div></section>`;
+  return `<section class="panel"><div class="panel-hd"><strong>随访记录</strong><button class="btn primary" data-action="open-followup-drawer" data-patient="${patient.id}">创建随访</button></div><div class="card-list">${followupsOf(patient.id).map(followupCard).join("") || empty("暂无随访")}</div></section>`;
 }
 
 function renderTimeline(patient) {
@@ -1273,7 +1274,13 @@ function renderTimeline(patient) {
 }
 
 function renderAdvice(patient) {
-  return `<section class="panel"><div class="panel-hd"><strong>医生建议</strong><button class="btn primary" data-action="send-advice" data-patient="${patient.id}">发送医生建议</button></div><div class="card-list">${adviceOf(patient.id).map((item) => `<article class="flow-card"><div class="card-top"><div><h3>${item.type}</h3><p>${item.source} | ${item.createdAt}</p></div>${tag(item.status, toneOf(item.status))}</div><p>${item.text}</p></article>`).join("") || empty("暂无医生建议")}</div></section>`;
+  const adviceCard = (item) => {
+    const title = item.title || item.type || "医生建议";
+    const content = item.content || item.text || "";
+    const source = item.sourceType === "alert" ? "预警后" : item.sourceType === "followup" ? "随访后" : item.source || "手动发起";
+    return `<article class="flow-card"><div class="card-top"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(source)} | ${item.sentAt || item.createdAt}</p></div>${tag(item.status, toneOf(item.status))}</div><p>${escapeHtml(content)}</p></article>`;
+  };
+  return `<section class="panel"><div class="panel-hd"><strong>医生建议</strong><button class="btn primary" data-action="send-advice" data-patient="${patient.id}">发送医生建议</button></div><div class="card-list">${adviceOf(patient.id).map(adviceCard).join("") || empty("暂无医生建议")}</div></section>`;
 }
 
 function renderAlerts() {
@@ -1282,11 +1289,17 @@ function renderAlerts() {
 }
 
 function alertCard(alert) {
+  const disabled = alert.status !== "待处理" ? "disabled" : "";
+  const actionSummary = alert._actionSummary ? `<div class="alert-action-summary">${alert._actionSummary}</div>` : "";
   return `<article class="flow-card ${alert.level === "紧急" ? "urgent" : alert.level === "重要" ? "important" : ""}">
     <div class="card-top"><div><h3>${alert.title}</h3><p>${patientName(alert.patientId)} | ${alert.type} | ${alert.createdAt}</p></div><div>${tag(alert.level, toneOf(alert.level))}${tag(alert.status, toneOf(alert.status))}</div></div>
     <div class="evidence"><strong>触发规则</strong><span>${alert.rule}</span>${alert.evidence.map((item) => `<strong>证据</strong><span>${item}</span>`).join("")}</div>
+    ${actionSummary}
     <div class="actions">
-      <button class="btn primary" data-action="handle-alert" data-id="${alert.id}" ${alert.status !== "待处理" ? "disabled" : ""}>处理预警</button>
+      <button class="btn primary" data-action="open-recheck-drawer" data-patient="${alert.patientId}" data-alert="${alert.id}" ${disabled}>复测指标</button>
+      <button class="btn" data-action="open-followup-drawer" data-patient="${alert.patientId}" data-alert="${alert.id}" ${disabled}>创建随访</button>
+      <button class="btn" data-action="send-advice" data-patient="${alert.patientId}" data-alert="${alert.id}" ${disabled}>发送医生建议</button>
+      <button class="btn" data-action="handle-alert" data-id="${alert.id}" ${disabled}>处理预警</button>
       <button class="btn" data-action="view-patient" data-patient="${alert.patientId}">患者详情</button>
     </div>
   </article>`;
@@ -1353,9 +1366,9 @@ function planCard(plan) {
   const validation = validatePlan(plan);
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
-  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "open-followup-drawer" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const secondaryBtns = (rules?.secondary || []).map((s) => {
-    if (s.action === "create-followup") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
+    if (s.action === "open-followup-drawer") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
     if (s.action === "send-advice") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}">${s.label}</button>`;
     return `<button class="btn" data-action="${s.action}" data-id="${plan.id}">${s.label}</button>`;
   }).join("");
@@ -1375,10 +1388,10 @@ function planRow(plan) {
   const includedModules = plan.modules.filter((module) => module.included).length;
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
-  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const primaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "open-followup-drawer" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const secondaryBtns = (rules?.secondary || []).map((s) => {
     const attrs = `data-action="${s.action}" data-id="${plan.id}"`;
-    if (s.action === "create-followup") return `<button class="btn" ${attrs} data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
+    if (s.action === "open-followup-drawer") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
     if (s.action === "send-advice") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}">${s.label}</button>`;
     return `<button class="btn" ${attrs}>${s.label}</button>`;
   }).join("");
@@ -1502,9 +1515,9 @@ function renderPlanDetail() {
   const alertText = latestAlert ? [latestAlert.metricName, latestAlert.value].filter(Boolean).join(" ") || latestAlert.title || "待处理预警" : "";
   const alertHint = latestAlert ? `<span class="alert-hint">${tag("待处理预警", "red")} ${escapeHtml(alertText)}</span>` : "";
   const followupHint = latestFollowup ? `<span class="followup-hint">下次随访: ${latestFollowup.dueAt}</span>` : "";
-  const heroPrimaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "create-followup" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
+  const heroPrimaryBtn = rules?.primary ? `<button class="btn primary" data-action="${rules.primary.action}" data-id="${plan.id}" ${rules.primary.action === "open-followup-drawer" ? `data-patient="${plan.patientId}" data-plan="${plan.id}"` : ""}>${rules.primary.label}</button>` : "";
   const heroSecondaryBtns = (rules?.secondary || []).map((s) => {
-    if (s.action === "create-followup") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
+    if (s.action === "open-followup-drawer") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}" data-plan="${plan.id}">${s.label}</button>`;
     if (s.action === "send-advice") return `<button class="btn" data-action="${s.action}" data-patient="${plan.patientId}">${s.label}</button>`;
     return `<button class="btn" data-action="${s.action}" data-id="${plan.id}">${s.label}</button>`;
   }).join("");
@@ -2019,11 +2032,16 @@ function renderFollowups() {
 }
 
 function followupCard(followup) {
+  const nextStepSummary = [followup._lastAdviceSummary, followup._lastRecheckSummary, followup._nextFollowupSummary].filter(Boolean).join("；");
   return `<article class="flow-card ${followup.status === "已完成" ? "done" : followup.status === "逾期" ? "urgent" : ""}">
     <div class="card-top"><div><h3>${followup.title}</h3><p>${patientName(followup.patientId)} | ${followup.type} | ${followup.dueAt}</p></div>${tag(followup.status, toneOf(followup.status))}</div>
     <div class="pill-list">${followup.focus.map((item) => `<span>${item}</span>`).join("")}</div>
+    ${nextStepSummary ? `<div class="alert-action-summary">${nextStepSummary}</div>` : ""}
     <div class="actions">
       <button class="btn primary" data-action="complete-followup" data-id="${followup.id}" ${["已完成", "已取消"].includes(followup.status) ? "disabled" : ""}>完成随访</button>
+      <button class="btn" data-action="send-advice" data-patient="${followup.patientId}" data-followup="${followup.id}">发送医生建议</button>
+      <button class="btn" data-action="open-recheck-drawer" data-patient="${followup.patientId}" data-followup="${followup.id}">复测指标</button>
+      <button class="btn" data-action="open-followup-drawer" data-patient="${followup.patientId}" data-followup="${followup.id}">追加随访</button>
       <button class="btn" data-action="reschedule-followup" data-id="${followup.id}">改期</button>
       <button class="btn danger" data-action="cancel-followup" data-id="${followup.id}">取消</button>
       <button class="btn" data-action="view-patient" data-patient="${followup.patientId}">患者详情</button>
@@ -2778,6 +2796,189 @@ function showPlanPreview(id) {
   </div>`, `<button class="btn" data-action="close-modal">返回编辑</button><button class="btn primary" data-action="approve-plan" data-id="${id}" ${statusCode === "draft" ? "" : "disabled"}>确认下发</button>`);
 }
 
+const FOLLOWUP_TYPES = ["预警后随访", "方案复盘随访", "主动随访", "追踪随访"];
+const FOLLOWUP_METHODS = ["电话", "线下"];
+const FOLLOWUP_PREPARE_ITEMS = ["血糖记录", "血压记录", "血氧/呼吸数据", "症状记录", "用药记录", "设备同步", "睡眠报告", "检查报告", "量表问卷"];
+const FOLLOWUP_SCALES = ["CAT", "mMRC", "ESS", "STOP-Bang"];
+
+function openFollowupDrawer(patientId, alertId, followupId) {
+  const patient = patientById(patientId);
+  const alert = alertId ? state.alerts.find((a) => a.id === alertId) : null;
+  const sourceFollowup = followupId ? state.followups.find((f) => f.id === followupId) : null;
+  const defaultType = alert ? "预警后随访" : sourceFollowup ? "追踪随访" : "主动随访";
+  const activePlan = plansOf(patientId).find((p) => p.id === patient.activePlanId);
+  const sourceLabel = alert ? `预警：${alert.title}` : sourceFollowup ? `随访：${sourceFollowup.title}` : "";
+  const sourceType = alert ? "alert" : sourceFollowup ? "followup" : "manual";
+  const sourceId = alert?.id || sourceFollowup?.id || "";
+  const today = new Date().toISOString().slice(0, 16);
+  openDrawer(
+    `创建随访`,
+    `<div class="form drawer-form">
+      <div class="drawer-patient-bar"><strong>${patient.name}</strong>${sourceId ? `<span class="tag blue">${sourceLabel}</span>` : ""}</div>
+      <fieldset class="form-group">
+        <legend>随访基础信息</legend>
+        <label>随访类型 <span class="field-note">必填</span>
+          <select id="followupType">
+            ${FOLLOWUP_TYPES.map((t) => `<option ${t === defaultType ? "selected" : ""}>${t}</option>`).join("")}
+          </select>
+        </label>
+        <label>关联方案
+          <select id="followupPlan">
+            <option value="">无关联方案</option>
+            ${activePlan ? `<option value="${escapeAttr(activePlan.id)}" selected>${escapeHtml(activePlan.title)}</option>` : ""}
+          </select>
+        </label>
+        ${alert ? `<label>关联预警<input value="${escapeAttr(alert.title)}" readonly></label>` : ""}
+        <label>创建原因 <span class="field-note">必填</span>
+          <textarea id="followupReason" rows="2" maxlength="200" placeholder="填写安排此次随访的原因">${alert ? alert.title : ""}</textarea>
+          <span class="field-error" id="followupReasonError"></span>
+        </label>
+      </fieldset>
+      <fieldset class="form-group">
+        <legend>随访安排</legend>
+        <label>计划时间 <span class="field-note">必填</span>
+          <div class="quick-time-row">
+            <button type="button" class="chip" data-quick-hours="24">24小时后</button>
+            <button type="button" class="chip" data-quick-hours="48">48小时后</button>
+            <button type="button" class="chip" data-quick-days="3">3天后</button>
+            <button type="button" class="chip" data-quick-days="7">1周后</button>
+          </div>
+          <input id="followupScheduledAt" type="datetime-local" min="${escapeAttr(today)}">
+          <span class="field-error" id="followupTimeError"></span>
+        </label>
+        <label>随访方式 <span class="field-note">必填</span>
+          <div class="radio-group">
+            ${FOLLOWUP_METHODS.map((m, i) => `<label class="radio-item"><input type="radio" name="followupMethod" value="${escapeAttr(m)}" ${i === 0 ? "checked" : ""}> ${m}</label>`).join("")}
+          </div>
+        </label>
+        <label>负责人<input id="followupOwner" value="${escapeAttr(state.currentDoctor?.name || "林医生")}"></label>
+      </fieldset>
+      <fieldset class="form-group">
+        <legend>患者准备</legend>
+        <label>准备材料（可多选）
+          <div class="check-group" id="followupPrepareItems">
+            ${FOLLOWUP_PREPARE_ITEMS.map((item) => `<label class="check-item"><input type="checkbox" name="followupPrepare" value="${escapeAttr(item)}"> ${item}</label>`).join("")}
+          </div>
+        </label>
+        <div id="scalesArea" style="display:none">
+          <label>量表 <span class="field-note">至少选一个</span>
+            <div class="check-group">
+              ${FOLLOWUP_SCALES.map((s) => `<label class="check-item"><input type="checkbox" name="followupScale" value="${escapeAttr(s)}"> ${s}</label>`).join("")}
+            </div>
+            <span class="field-error" id="scalesError"></span>
+          </label>
+        </div>
+        <label>患者端说明 <span class="field-note">必填，120字内</span>
+          <textarea id="followupInstruction" rows="3" maxlength="120" placeholder="告知患者需要准备什么（患者可见）"></textarea>
+          <span class="field-error" id="followupInstructionError"></span>
+        </label>
+        <label class="switch-row"><span>是否提醒患者</span><input id="followupNotify" type="checkbox" checked></label>
+      </fieldset>
+      <input type="hidden" id="followupSourceType" value="${escapeAttr(sourceType)}">
+      <input type="hidden" id="followupSourceId" value="${escapeAttr(sourceId)}">
+      <input type="hidden" id="followupPatientId" value="${escapeAttr(patientId)}">
+    </div>`,
+    `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" id="saveFollowupBtn" data-action="save-followup-drawer" disabled>创建随访</button>`
+  );
+  function updateFollowupBtn() {
+    const btn = document.querySelector("#saveFollowupBtn");
+    if (!btn) return;
+    const reason = (document.querySelector("#followupReason")?.value || "").trim();
+    const time = document.querySelector("#followupScheduledAt")?.value;
+    const method = document.querySelector('[name="followupMethod"]:checked')?.value;
+    const instruction = (document.querySelector("#followupInstruction")?.value || "").trim();
+    btn.disabled = !reason || !time || !method || !instruction;
+  }
+  document.addEventListener("click", function onFollowupClick(e) {
+    if (!document.querySelector("#followupPatientId")) { document.removeEventListener("click", onFollowupClick); return; }
+    const hoursBtn = e.target.closest("[data-quick-hours]");
+    const daysBtn = e.target.closest("[data-quick-days]");
+    if (hoursBtn || daysBtn) {
+      const d = new Date();
+      if (hoursBtn) d.setHours(d.getHours() + parseInt(hoursBtn.dataset.quickHours));
+      if (daysBtn) d.setDate(d.getDate() + parseInt(daysBtn.dataset.quickDays));
+      const el = document.querySelector("#followupScheduledAt");
+      if (el) el.value = d.toISOString().slice(0, 16);
+      updateFollowupBtn();
+    }
+  }, { passive: true });
+  document.addEventListener("change", function onFollowupChange(e) {
+    if (!document.querySelector("#followupPatientId")) { document.removeEventListener("change", onFollowupChange); return; }
+    if (e.target.name === "followupPrepare" && e.target.value === "量表问卷") {
+      const scalesArea = document.querySelector("#scalesArea");
+      if (scalesArea) scalesArea.style.display = e.target.checked ? "" : "none";
+    }
+    updateFollowupBtn();
+  }, { passive: true });
+  document.addEventListener("input", function onFollowupInput(e) {
+    if (!document.querySelector("#followupPatientId")) { document.removeEventListener("input", onFollowupInput); return; }
+    if (e.target.id === "followupInstruction") {
+      const el = document.querySelector("#followupInstructionError");
+      if (el) el.textContent = e.target.value.length > 120 ? "患者端说明不能超过120字" : "";
+    }
+    if (e.target.id === "followupReason") {
+      const el = document.querySelector("#followupReasonError");
+      if (el) el.textContent = e.target.value.length > 200 ? "创建原因不能超过200字" : "";
+    }
+    updateFollowupBtn();
+  }, { passive: true });
+}
+
+function saveFollowupDrawer() {
+  const patientId = document.querySelector("#followupPatientId")?.value;
+  const sourceType = document.querySelector("#followupSourceType")?.value || "manual";
+  const sourceId = document.querySelector("#followupSourceId")?.value || "";
+  const type = document.querySelector("#followupType")?.value;
+  const relatedPlanId = document.querySelector("#followupPlan")?.value || null;
+  const reason = (document.querySelector("#followupReason")?.value || "").trim();
+  const scheduledAt = document.querySelector("#followupScheduledAt")?.value;
+  const method = document.querySelector('[name="followupMethod"]:checked')?.value;
+  const owner = (document.querySelector("#followupOwner")?.value || "").trim();
+  const instruction = (document.querySelector("#followupInstruction")?.value || "").trim();
+  const prepareItems = [...document.querySelectorAll('[name="followupPrepare"]:checked')].map((el) => el.value);
+  const scales = [...document.querySelectorAll('[name="followupScale"]:checked')].map((el) => el.value);
+  if (!reason || !scheduledAt || !method || !instruction) { showToast("请填写必填项"); return; }
+  if (new Date(scheduledAt) < new Date()) { showToast("随访时间不能早于当前时间"); return; }
+  if (prepareItems.includes("量表问卷") && !scales.length) {
+    const el = document.querySelector("#scalesError");
+    if (el) el.textContent = "请选择至少一个量表";
+    showToast("请选择至少一个量表");
+    return;
+  }
+  const followup = {
+    id: uid("F"),
+    patientId,
+    sourceType,
+    sourceId,
+    relatedAlertId: sourceType === "alert" ? sourceId : null,
+    relatedPlanId,
+    title: type,
+    type,
+    status: "待随访",
+    dueAt: scheduledAt.replace("T", " "),
+    method,
+    owner: owner || state.currentDoctor?.name || "林医生",
+    prepareItems,
+    scales,
+    patientInstruction: instruction,
+    reason,
+    focus: prepareItems.length ? prepareItems.slice(0, 3) : ["方案执行情况", "指标记录", "症状变化"]
+  };
+  state.followups.unshift(followup);
+  patientById(patientId).nextFollowupId = followup.id;
+  addTimeline(patientId, "随访", `创建随访计划：${type}（${method}，${followup.dueAt}）`);
+  if (sourceType === "alert" && sourceId) {
+    const alert = state.alerts.find((a) => a.id === sourceId);
+    if (alert) alert._actionSummary = (alert._actionSummary ? alert._actionSummary + "；" : "") + `已创建随访「${type}」`;
+  }
+  if (sourceType === "followup" && sourceId) {
+    const src = state.followups.find((f) => f.id === sourceId);
+    if (src) src._nextFollowupSummary = `已追加随访「${type}」`;
+  }
+  closeDrawer();
+  persist(`已创建随访：${type}`);
+}
+
 function createFollowup(patientId, alertId, silent = false, planId = null) {
   const followup = {
     id: uid("F"),
@@ -2811,20 +3012,284 @@ function saveFollowup(id) {
   persist("随访已完成");
 }
 
-function sendAdvice(patientId) {
-  openModal("发送医生建议", `<div class="form">
-    <label>建议类型<select id="adviceType"><option>复测建议</option><option>执行建议</option><option>就医/转诊建议</option><option>健康指导</option></select></label>
-    <label>患者可见内容<textarea id="adviceText">请根据当前方案完成记录，如出现明显不适请及时线下就医。</textarea></label>
-    <label><input id="adviceTask" type="checkbox" checked> 同步生成患者端待办</label>
-  </div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-advice" data-patient="${patientId}">发送</button>`);
+function sendAdvice(patientId, alertId, followupId) {
+  const patient = patientById(patientId);
+  const alert = alertId ? state.alerts.find((a) => a.id === alertId) : null;
+  const followup = followupId ? state.followups.find((f) => f.id === followupId) : null;
+  const sourceLabel = alert ? `预警：${alert.title}` : followup ? `随访：${followup.title}` : "手动发起";
+  const sourceType = alert ? "alert" : followup ? "followup" : "manual";
+  const sourceId = alert?.id || followup?.id || "";
+  openDrawer(
+    `发送医生建议`,
+    `<div class="form drawer-form">
+      <div class="drawer-patient-bar"><strong>${patient.name}</strong>${sourceId ? `<span class="tag blue">${sourceLabel}</span>` : ""}</div>
+      <fieldset class="form-group">
+        <legend>来源信息</legend>
+        <label>来源<input id="adviceSourceLabel" value="${escapeAttr(sourceLabel)}" readonly></label>
+        <label>发送原因（内部留痕，患者不可见）<textarea id="adviceReason" rows="2" placeholder="可填写此次发送建议的内部原因"></textarea></label>
+      </fieldset>
+      <fieldset class="form-group">
+        <legend>建议内容</legend>
+        <label>标题 <span class="field-note">必填，20字内</span>
+          <input id="adviceTitle" maxlength="20" placeholder="请输入建议标题">
+          <span class="field-error" id="adviceTitleError"></span>
+        </label>
+        <label>正文 <span class="field-note">必填，200字内</span>
+          <textarea id="adviceContent" rows="5" maxlength="200" placeholder="请用患者可理解的语言描述建议内容（30-150字为佳）"></textarea>
+          <span class="field-error" id="adviceContentError"></span>
+        </label>
+      </fieldset>
+      <input type="hidden" id="adviceSourceType" value="${escapeAttr(sourceType)}">
+      <input type="hidden" id="adviceSourceId" value="${escapeAttr(sourceId)}">
+      <input type="hidden" id="advicePatientId" value="${escapeAttr(patientId)}">
+    </div>`,
+    `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" id="sendAdviceBtn" data-action="save-advice" disabled>发送建议</button>`
+  );
+  const updateBtn = () => {
+    const btn = document.querySelector("#sendAdviceBtn");
+    if (!btn) return;
+    const title = (document.querySelector("#adviceTitle")?.value || "").trim();
+    const content = (document.querySelector("#adviceContent")?.value || "").trim();
+    btn.disabled = !title || !content;
+  };
+  document.addEventListener("input", function onInput(e) {
+    if (!document.querySelector("#adviceTitle")) { document.removeEventListener("input", onInput); return; }
+    if (e.target.id === "adviceTitle") {
+      const v = e.target.value;
+      document.querySelector("#adviceTitleError").textContent = v.length > 20 ? "标题不能超过20字" : "";
+    }
+    if (e.target.id === "adviceContent") {
+      const v = e.target.value;
+      document.querySelector("#adviceContentError").textContent = v.length > 200 ? "正文不能超过200字" : "";
+    }
+    updateBtn();
+  }, { passive: true });
 }
 
-function saveAdvice(patientId) {
+function saveAdvice() {
+  const patientId = document.querySelector("#advicePatientId")?.value;
+  const title = (document.querySelector("#adviceTitle")?.value || "").trim();
+  const content = (document.querySelector("#adviceContent")?.value || "").trim();
+  const reason = (document.querySelector("#adviceReason")?.value || "").trim();
+  const sourceType = document.querySelector("#adviceSourceType")?.value || "manual";
+  const sourceId = document.querySelector("#adviceSourceId")?.value || "";
+  if (!title || !content) { showToast("请填写标题和正文"); return; }
+  if (title.length > 20) { showToast("标题不能超过20字"); return; }
+  if (content.length > 200) { showToast("正文不能超过200字"); return; }
   state.advice = state.advice || [];
-  state.advice.unshift({ id: uid("AD"), patientId, type: $("#adviceType").value, source: "医生手动", status: "未读", text: $("#adviceText").value, createdAt: nowText() });
-  addTimeline(patientId, "医生建议", `发送医生建议：${$("#adviceType").value}`);
-  closeModal();
+  state.advice.unshift({ id: uid("AD"), patientId, sourceType, sourceId, title, content, reason, status: "未读", sentAt: nowText(), createdAt: nowText() });
+  addTimeline(patientId, "医生建议", `发送医生建议：${title}`);
+  if (sourceType === "alert" && sourceId) {
+    const alert = state.alerts.find((a) => a.id === sourceId);
+    if (alert) alert._actionSummary = (alert._actionSummary ? alert._actionSummary + "；" : "") + `已发送建议「${title}」`;
+  }
+  if (sourceType === "followup" && sourceId) {
+    const followup = state.followups.find((f) => f.id === sourceId);
+    if (followup) followup._lastAdviceSummary = `已发送建议「${title}」`;
+  }
+  closeDrawer();
   persist("医生建议已发送");
+}
+
+const RECHECK_METRIC_SCENES = {
+  "血糖": ["凌晨", "空腹", "早餐后2h", "午餐前", "午餐后2h", "晚餐前", "睡前", "随机"],
+  "血压": ["晨起", "睡前", "随机"],
+  "SpO2": ["静息后", "活动后", "睡前"],
+  "呼吸频率": ["静息后", "活动后", "睡前"],
+  "睡眠报告": ["夜间", "起床后", "每次睡眠报告后"]
+};
+const RECHECK_METRICS = Object.keys(RECHECK_METRIC_SCENES);
+const RECHECK_FREQUENCIES = ["一次", "每日1次", "每日2次", "每日3次"];
+const RECHECK_DURATIONS = ["1天", "2天", "3天", "5天", "7天", "自定义"];
+
+function openRecheckDrawer(patientId, alertId, followupId) {
+  const patient = patientById(patientId);
+  const alert = alertId ? state.alerts.find((a) => a.id === alertId) : null;
+  const followup = followupId ? state.followups.find((f) => f.id === followupId) : null;
+  const sourceLabel = alert ? `预警：${alert.title}` : followup ? `随访：${followup.title}` : "手动发起";
+  const sourceType = alert ? "alert" : followup ? "followup" : "manual";
+  const sourceId = alert?.id || followup?.id || "";
+  const today = new Date().toISOString().slice(0, 10);
+  openDrawer(
+    `创建复测指标`,
+    `<div class="form drawer-form">
+      <div class="drawer-patient-bar"><strong>${patient.name}</strong>${sourceId ? `<span class="tag blue">${sourceLabel}</span>` : ""}</div>
+      <fieldset class="form-group">
+        <legend>复测对象与原因</legend>
+        <label>复测指标 <span class="field-note">必填，最多3个</span>
+          <div class="check-group" id="recheckMetrics">
+            ${RECHECK_METRICS.map((m) => `<label class="check-item"><input type="checkbox" name="recheckMetric" value="${escapeAttr(m)}"> ${m}</label>`).join("")}
+          </div>
+          <span class="field-error" id="recheckMetricsError"></span>
+        </label>
+        <div id="recheckScenesArea"></div>
+        <label>复测原因 <span class="field-note">必填</span>
+          <textarea id="recheckReason" rows="2" maxlength="200" placeholder="填写此次复测的原因（医生内部留痕）">${alert ? alert.title : ""}</textarea>
+          <span class="field-error" id="recheckReasonError"></span>
+        </label>
+      </fieldset>
+      <fieldset class="form-group">
+        <legend>执行规则</legend>
+        <div class="form-row">
+          <label>执行频率 <span class="field-note">必填</span>
+            <select id="recheckFreq">
+              <option value="">请选择</option>
+              ${RECHECK_FREQUENCIES.map((f) => `<option>${f}</option>`).join("")}
+            </select>
+          </label>
+          <label>复测时长 <span class="field-note">必填</span>
+            <select id="recheckDuration">
+              <option value="">请选择</option>
+              ${RECHECK_DURATIONS.map((d) => `<option>${d}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <div id="recheckCustomDurationArea" style="display:none">
+          <label>自定义天数<input id="recheckCustomDays" type="number" min="1" max="30" placeholder="输入天数"></label>
+        </div>
+      </fieldset>
+      <fieldset class="form-group">
+        <legend>患者承接方式</legend>
+        <label>患者端说明 <span class="field-note">必填，120字内</span>
+          <textarea id="recheckInstruction" rows="3" maxlength="120" placeholder="用患者可理解的语言说明为什么要复测、怎么做"></textarea>
+          <span class="field-error" id="recheckInstructionError"></span>
+        </label>
+        <div class="form-row">
+          <label>开始时间 <span class="field-note">必填</span>
+            <input id="recheckStartAt" type="date" value="${escapeAttr(today)}" min="${escapeAttr(today)}">
+            <span class="field-error" id="recheckStartError"></span>
+          </label>
+          <label>截止时间 <span class="field-note">按时长自动计算</span>
+            <input id="recheckEndAt" type="date" readonly>
+          </label>
+        </div>
+        <label class="switch-row"><span>是否提醒患者</span><input id="recheckNotify" type="checkbox" checked></label>
+      </fieldset>
+      <input type="hidden" id="recheckSourceType" value="${escapeAttr(sourceType)}">
+      <input type="hidden" id="recheckSourceId" value="${escapeAttr(sourceId)}">
+      <input type="hidden" id="recheckPatientId" value="${escapeAttr(patientId)}">
+    </div>`,
+    `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" id="saveRecheckBtn" data-action="save-recheck" disabled>创建复测</button>`
+  );
+  function updateRecheckScenes() {
+    const checked = [...document.querySelectorAll('[name="recheckMetric"]:checked')].map((el) => el.value);
+    const area = document.querySelector("#recheckScenesArea");
+    if (!area) return;
+    area.innerHTML = checked.map((metric) => {
+      const scenes = RECHECK_METRIC_SCENES[metric] || [];
+      if (!scenes.length) return "";
+      return `<label>${metric}测量场景 <span class="field-note">条件必填</span>
+        <div class="check-group" id="recheckScenes_${escapeAttr(metric)}">
+          ${scenes.map((s) => `<label class="check-item"><input type="checkbox" name="recheckScene_${escapeAttr(metric)}" value="${escapeAttr(s)}"> ${s}</label>`).join("")}
+        </div>
+        <span class="field-error" id="recheckSceneError_${escapeAttr(metric)}"></span>
+      </label>`;
+    }).join("");
+  }
+  function updateEndDate() {
+    const start = document.querySelector("#recheckStartAt")?.value;
+    const dur = document.querySelector("#recheckDuration")?.value;
+    const customDays = parseInt(document.querySelector("#recheckCustomDays")?.value || "0");
+    if (!start) return;
+    let days = 0;
+    if (dur === "1天") days = 1;
+    else if (dur === "2天") days = 2;
+    else if (dur === "3天") days = 3;
+    else if (dur === "5天") days = 5;
+    else if (dur === "7天") days = 7;
+    else if (dur === "自定义" && customDays > 0) days = customDays;
+    if (days > 0) {
+      const end = new Date(start);
+      end.setDate(end.getDate() + days - 1);
+      const endEl = document.querySelector("#recheckEndAt");
+      if (endEl) endEl.value = end.toISOString().slice(0, 10);
+    }
+  }
+  function updateRecheckBtn() {
+    const btn = document.querySelector("#saveRecheckBtn");
+    if (!btn) return;
+    const checkedMetrics = [...document.querySelectorAll('[name="recheckMetric"]:checked')];
+    const reason = (document.querySelector("#recheckReason")?.value || "").trim();
+    const freq = document.querySelector("#recheckFreq")?.value;
+    const dur = document.querySelector("#recheckDuration")?.value;
+    const instruction = (document.querySelector("#recheckInstruction")?.value || "").trim();
+    const startAt = document.querySelector("#recheckStartAt")?.value;
+    btn.disabled = !checkedMetrics.length || !reason || !freq || !dur || !instruction || !startAt;
+  }
+  document.addEventListener("change", function onRecheckChange(e) {
+    if (!document.querySelector("#recheckPatientId")) { document.removeEventListener("change", onRecheckChange); return; }
+    if (e.target.name === "recheckMetric") {
+      const checked = [...document.querySelectorAll('[name="recheckMetric"]:checked')];
+      if (checked.length > 3) { e.target.checked = false; showToast("最多选择3个指标"); return; }
+      updateRecheckScenes();
+    }
+    if (e.target.id === "recheckDuration") {
+      const customArea = document.querySelector("#recheckCustomDurationArea");
+      if (customArea) customArea.style.display = e.target.value === "自定义" ? "" : "none";
+      updateEndDate();
+    }
+    if (e.target.id === "recheckStartAt" || e.target.id === "recheckCustomDays") updateEndDate();
+    updateRecheckBtn();
+  }, { passive: true });
+  document.addEventListener("input", function onRecheckInput(e) {
+    if (!document.querySelector("#recheckPatientId")) { document.removeEventListener("input", onRecheckInput); return; }
+    if (e.target.id === "recheckInstruction") {
+      const v = e.target.value;
+      const el = document.querySelector("#recheckInstructionError");
+      if (el) el.textContent = v.length > 120 ? "患者端说明不能超过120字" : "";
+    }
+    if (e.target.id === "recheckReason") {
+      const v = e.target.value;
+      const el = document.querySelector("#recheckReasonError");
+      if (el) el.textContent = v.length > 200 ? "复测原因不能超过200字" : "";
+    }
+    if (e.target.id === "recheckCustomDays") updateEndDate();
+    updateRecheckBtn();
+  }, { passive: true });
+}
+
+function saveRecheck() {
+  const patientId = document.querySelector("#recheckPatientId")?.value;
+  const sourceType = document.querySelector("#recheckSourceType")?.value || "manual";
+  const sourceId = document.querySelector("#recheckSourceId")?.value || "";
+  const metrics = [...document.querySelectorAll('[name="recheckMetric"]:checked')].map((el) => el.value);
+  const scenes = {};
+  metrics.forEach((m) => {
+    const checked = [...document.querySelectorAll(`[name="recheckScene_${m}"]:checked`)].map((el) => el.value);
+    if (checked.length) scenes[m] = checked;
+  });
+  const reason = (document.querySelector("#recheckReason")?.value || "").trim();
+  const freq = document.querySelector("#recheckFreq")?.value;
+  const dur = document.querySelector("#recheckDuration")?.value;
+  const instruction = (document.querySelector("#recheckInstruction")?.value || "").trim();
+  const startAt = document.querySelector("#recheckStartAt")?.value;
+  const endAt = document.querySelector("#recheckEndAt")?.value;
+  if (!metrics.length) { showToast("请选择至少一个复测指标"); return; }
+  for (const m of metrics) {
+    const scenesForMetric = RECHECK_METRIC_SCENES[m];
+    if (scenesForMetric.length && !(scenes[m]?.length)) {
+      const errEl = document.querySelector(`#recheckSceneError_${m}`);
+      if (errEl) errEl.textContent = "请选择测量场景";
+      showToast("请选择测量场景");
+      return;
+    }
+  }
+  if (!reason || !freq || !dur || !instruction || !startAt) { showToast("请填写必填项"); return; }
+  state.recheckPlans = state.recheckPlans || [];
+  const plan = { id: uid("RC"), patientId, sourceType, sourceId, metricCodes: metrics, scenes, frequency: freq, duration: dur, startAt, endAt, patientInstruction: instruction, reason, status: "active", createdAt: nowText() };
+  state.recheckPlans.unshift(plan);
+  const summary = `${metrics.join("、")}，${dur}复测`;
+  addTimeline(patientId, "复测指标", `创建复测指标：${summary}`);
+  if (sourceType === "alert" && sourceId) {
+    const alert = state.alerts.find((a) => a.id === sourceId);
+    if (alert) alert._actionSummary = (alert._actionSummary ? alert._actionSummary + "；" : "") + `已创建复测（${summary}）`;
+  }
+  if (sourceType === "followup" && sourceId) {
+    const followup = state.followups.find((f) => f.id === sourceId);
+    if (followup) followup._lastRecheckSummary = `已创建复测（${summary}）`;
+  }
+  closeDrawer();
+  persist(`已创建复测：${summary}`);
 }
 
 function openMore(patientId) {
@@ -3022,6 +3487,10 @@ document.body.addEventListener("click", (event) => {
   if (action === "view-patient-feedback") viewPatientFeedback(target.dataset.id);
   if (action === "patient-confirm-plan") patientConfirmPlan(target.dataset.id);
   if (action === "create-followup") createFollowup(target.dataset.patient, target.dataset.alert, false, target.dataset.plan);
+  if (action === "open-followup-drawer") openFollowupDrawer(target.dataset.patient, target.dataset.alert, target.dataset.followup);
+  if (action === "save-followup-drawer") saveFollowupDrawer();
+  if (action === "open-recheck-drawer") openRecheckDrawer(target.dataset.patient, target.dataset.alert, target.dataset.followup);
+  if (action === "save-recheck") saveRecheck();
   if (action === "complete-followup") completeFollowup(target.dataset.id);
   if (action === "save-followup") saveFollowup(target.dataset.id);
   if (action === "reschedule-followup") {
@@ -3036,8 +3505,8 @@ document.body.addEventListener("click", (event) => {
     addTimeline(followup.patientId, "随访", `取消随访：${followup.title}`);
     persist("随访已取消");
   }
-  if (action === "send-advice") sendAdvice(target.dataset.patient);
-  if (action === "save-advice") saveAdvice(target.dataset.patient);
+  if (action === "send-advice") sendAdvice(target.dataset.patient, target.dataset.alert, target.dataset.followup);
+  if (action === "save-advice") saveAdvice();
   if (action === "confirm-disease") {
     const patient = patientById(target.dataset.patient);
     patient.screening.pending = patient.screening.pending.filter((item) => item !== target.dataset.disease);
