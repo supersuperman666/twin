@@ -1,24 +1,24 @@
 <view class="page">
 
-  <!-- ───────── 状态：无方案 ───────── -->
+  <!-- ─── 状态：无方案 ─── -->
   <block wx:if="{{pageState === 'empty'}}">
-    <view class="empty-page">
-      <view class="empty-illus">
-        <view class="illus-circle">
-          <view class="illus-doc"></view>
+    <view class="empty-state">
+      <view class="empty-icon-box">
+        <view class="empty-icon-inner">
+          <text class="empty-icon-text">方</text>
         </view>
       </view>
-      <text class="empty-title">暂无管理方案</text>
-      <text class="empty-desc">完成健康筛查后，医生将为您制定\n个人化慢病管理方案</text>
-      <button class="action-btn primary" bindtap="goScreening">去完成健康筛查</button>
+      <text class="empty-title">当前还没有生效中的管理方案</text>
+      <text class="empty-desc">医生确认并下发后，你可以在这里查看当前方案和最近安排</text>
+      <button class="btn-primary" bindtap="goScreening">去完成健康筛查</button>
     </view>
   </block>
 
-  <!-- ───────── 状态：待患者确认 ───────── -->
+  <!-- ─── 状态：待确认 ─── -->
   <block wx:elif="{{pageState === 'pending_confirm'}}">
     <view class="confirm-page">
 
-      <!-- 顶部提示横幅 -->
+      <!-- 提示横幅 -->
       <view class="notify-banner">
         <view class="banner-dot"></view>
         <view class="banner-body">
@@ -27,296 +27,241 @@
         </view>
       </view>
 
-      <!-- 方案概览卡 -->
-      <view class="preview-card">
-        <view class="preview-header">
-          <view class="preview-title-row">
-            <text class="preview-title">{{plan.title}}</text>
-            <view class="status-tag pending-tag">待确认</view>
-          </view>
-          <text class="preview-meta">{{plan.disease}} · {{plan.period.days}} 天 · {{plan.doctor}}</text>
+      <!-- 方案头卡 -->
+      <view class="card plan-header-card">
+        <view class="plan-header-top">
+          <text class="plan-name">{{plan.title}}</text>
+          <view class="badge badge-pending">待确认</view>
         </view>
-        <view class="preview-objective">
-          <text class="obj-label">方案目标</text>
-          <text class="obj-text">{{plan.objective}}</text>
-        </view>
-        <view class="target-grid">
-          <view wx:for="{{plan.targets}}" wx:key="index" class="target-chip">{{item}}</view>
+        <text class="plan-meta">适用疾病：{{plan.disease}}　主责医生：{{plan.doctor}}</text>
+        <text class="plan-meta">周期：{{plan.period.days}} 天</text>
+        <view class="plan-objective-box">
+          <text class="plan-objective-label">本阶段目标</text>
+          <text class="plan-objective-text">{{plan.objective}}</text>
         </view>
       </view>
 
-      <!-- 方案模块预览 -->
-      <view class="preview-modules">
-        <view wx:for="{{plan.modules}}" wx:key="key" class="preview-module">
-          <view class="pm-dot" style="background:{{item.accentColor}}"></view>
-          <view class="pm-body">
-            <text class="pm-name">{{item.name}}</text>
-            <text wx:if="{{item.note}}" class="pm-note">{{item.note}}</text>
-            <text wx:elif="{{item.items}}" class="pm-items">{{item.items.join('　')}}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 异常提示 -->
-      <view class="abnormal-tips">
-        <view class="tips-icon">!</view>
-        <text>{{plan.abnormalTips}}</text>
-      </view>
-
-      <!-- 确认操作区（fixed bottom） -->
-      <view class="confirm-actions">
-        <button class="action-btn ghost" bindtap="onQuestionTap">我有疑问</button>
-        <button class="action-btn primary" bindtap="onConfirmPlan">我已知晓，开始执行</button>
-      </view>
-
-    </view>
-  </block>
-
-  <!-- ───────── 状态：执行中 ───────── -->
-  <block wx:elif="{{pageState === 'active'}}">
-
-    <!-- 渐变头部 -->
-    <view class="plan-hero">
-      <view class="hero-top">
-        <view class="hero-info">
-          <text class="hero-title">{{plan.title}}</text>
-          <text class="hero-meta">{{plan.disease}} · {{plan.period.days}} 天 · {{plan.doctor}}</text>
-        </view>
-        <view class="exec-badge">
-          <text class="exec-label">执行中</text>
-        </view>
-      </view>
-      <!-- 进度条 -->
-      <view class="hero-progress">
-        <view class="prog-bar">
-          <view class="prog-fill" style="width:{{progressPct}}%"></view>
-        </view>
-        <text class="prog-text">今日完成 {{doneCount}}/{{totalCount}}</text>
-      </view>
-    </view>
-
-    <!-- 吸顶 Tab 栏 -->
-    <view class="plan-tabs">
-      <view
-        wx:for="{{['今日任务','方案详情','随访计划']}}"
-        wx:key="index"
-        class="plan-tab {{activeTab === index ? 'active' : ''}}"
-        data-tab="{{index}}"
-        bindtap="onTabChange"
-      >{{item}}</view>
-    </view>
-
-    <!-- ── Tab 0：今日任务 ── -->
-    <block wx:if="{{activeTab === 0}}">
-      <view class="tab-content">
-
-        <view wx:if="{{doneCount === totalCount && totalCount > 0}}" class="all-done-banner">
-          <text>✓ 今日任务全部完成，继续保持！</text>
-        </view>
-
-        <view class="task-list">
-          <view
-            wx:for="{{tasks}}"
-            wx:key="id"
-            class="task-row {{item.done ? 'done' : 'pending'}}"
-            data-task="{{item}}"
-            bindtap="onTaskAction"
-          >
-            <!-- 状态圆 -->
-            <view class="task-circle {{item.type}} {{item.done ? 'done' : ''}}">
-              <text wx:if="{{item.done}}">✓</text>
-              <text wx:elif="{{item.type === 'metric'}}">测</text>
-              <text wx:elif="{{item.type === 'medication'}}">药</text>
-              <text wx:else>活</text>
-            </view>
-            <!-- 内容 -->
-            <view class="task-body">
-              <text class="task-title">{{item.title}}</text>
-              <text class="task-desc">{{item.desc}}</text>
-              <text wx:if="{{item.value}}" class="task-value">{{item.value}}</text>
-            </view>
-            <!-- 动作 -->
-            <view class="task-action-area">
-              <view wx:if="{{item.done}}" class="task-done-label">已完成</view>
-              <view wx:elif="{{item.type === 'metric'}}" class="task-btn">去记录</view>
-              <view wx:elif="{{item.type === 'medication'}}" class="task-btn">去打卡</view>
-              <view wx:else class="task-btn">打卡</view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 医生建议列表 -->
-        <view wx:if="{{adviceList.length}}" class="advice-section">
-          <view wx:for="{{adviceList}}" wx:key="id" class="advice-item" bindtap="onAdviceTap" data-id="{{item.id}}">
-            <view class="advice-item-header">
-              <view class="advice-avatar">医</view>
-              <text class="advice-item-from">{{item.doctorName}}</text>
-              <view class="advice-status-badge {{item.status === 'sent' ? 'unread' : 'read'}}">
-                {{item.status === 'sent' ? '未读' : '已读'}}
+      <!-- 方案明细（待确认态默认全部展开） -->
+      <view class="section-block">
+        <text class="section-title">指标测量</text>
+        <view class="item-list">
+          <view wx:for="{{plan.modules}}" wx:key="key">
+            <block wx:if="{{item.key === 'metrics' && item.items}}">
+              <view wx:for="{{item.items}}" wx:for-item="line" wx:key="index" class="item-row">
+                <view class="item-dot"></view>
+                <text>{{line}}</text>
               </view>
-            </view>
-            <text class="advice-item-title">{{item.title}}</text>
-            <text class="advice-item-summary">{{item.content}}</text>
-            <text class="advice-item-time">{{item.sentAt}}</text>
+            </block>
           </view>
         </view>
-
-        <!-- 方案指导（原有 guidance note） -->
-        <view wx:if="{{doctorAdviceNote}}" class="advice-card">
-          <view class="advice-header">
-            <view class="advice-avatar">医</view>
-            <text class="advice-from">{{plan.doctor}} · 方案指导</text>
-          </view>
-          <text class="advice-text">{{doctorAdviceNote}}</text>
-        </view>
-
-        <!-- 复测任务组卡片 -->
-        <view wx:if="{{recheckPlans.length}}" class="recheck-section">
-          <view wx:for="{{recheckPlans}}" wx:key="id" class="recheck-group-card">
-            <view class="recheck-header">
-              <view class="recheck-icon">测</view>
-              <text class="recheck-title">复测指标</text>
-              <view class="recheck-tag">临时安排</view>
-            </view>
-            <text class="recheck-summary">{{recheckProgress[item.id].summary}}</text>
-            <text class="recheck-instruction">{{item.patientInstruction}}</text>
-            <view class="recheck-progress-row">
-              <text class="recheck-progress-text">{{recheckProgress[item.id].taskStatus}}</text>
-              <text wx:if="{{recheckProgress[item.id].daysRemaining > 0}}" class="recheck-remaining">还需完成 {{recheckProgress[item.id].daysRemaining}} 天</text>
-            </view>
-            <view class="recheck-action" bindtap="onRecheckAction" data-id="{{item.id}}">去记录</view>
-          </view>
-        </view>
-
       </view>
-    </block>
 
-    <!-- ── Tab 1：方案详情 ── -->
-    <block wx:elif="{{activeTab === 1}}">
-      <view class="tab-content">
-
-        <!-- 方案目标 -->
-        <view class="detail-section">
-          <view class="ds-header">
-            <view class="ds-dot" style="background:#2478ff"></view>
-            <text class="ds-title">管理目标</text>
-          </view>
-          <view class="ds-body">
-            <text class="ds-objective">{{plan.objective}}</text>
-            <view class="target-list">
-              <view wx:for="{{plan.targets}}" wx:key="index" class="target-row">
-                <view class="target-dot"></view>
-                <text>{{item}}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 各模块 -->
-        <view
-          wx:for="{{plan.modules}}"
-          wx:for-item="mod"
-          wx:key="key"
-          class="detail-section"
-        >
-          <view class="ds-header">
-            <view class="ds-dot" style="background:{{mod.accentColor}}"></view>
-            <text class="ds-title">{{mod.name}}</text>
-          </view>
-          <view class="ds-body">
-            <text wx:if="{{mod.note}}" class="ds-note">{{mod.note}}</text>
-            <view wx:elif="{{mod.items}}" class="item-list">
-              <view wx:for="{{mod.items}}" wx:for-item="line" wx:key="index" class="item-row">
-                <view class="item-bullet" style="background:{{mod.accentColor}}"></view>
+      <view wx:for="{{plan.modules}}" wx:key="key">
+        <block wx:if="{{item.key === 'lifestyle' && item.items}}">
+          <view class="section-block">
+            <text class="section-title">生活方式</text>
+            <view class="item-list">
+              <view wx:for="{{item.items}}" wx:for-item="line" wx:key="index" class="item-row">
+                <view class="item-dot lifestyle-dot"></view>
                 <text>{{line}}</text>
               </view>
             </view>
           </view>
-        </view>
-
+        </block>
       </view>
-    </block>
 
-    <!-- ── Tab 2：随访计划 ── -->
-    <block wx:elif="{{activeTab === 2}}">
-      <view class="tab-content">
-
-        <!-- 下次随访 -->
-        <view class="followup-card">
-          <view class="fu-date-box">
-            <text class="fu-month">{{plan.followup.nextMonth}}</text>
-            <text class="fu-day">{{plan.followup.nextDay}}</text>
-          </view>
-          <view class="fu-info">
-            <text class="fu-label">{{plan.followup.label}}</text>
-            <text class="fu-freq">{{plan.followup.frequency}}</text>
-          </view>
-        </view>
-
-        <!-- 随访重点 -->
-        <view class="detail-section">
-          <view class="ds-header">
-            <view class="ds-dot" style="background:#2478ff"></view>
-            <text class="ds-title">随访重点</text>
-          </view>
-          <view class="ds-body">
+      <view wx:for="{{plan.modules}}" wx:key="key">
+        <block wx:if="{{item.key === 'medication' && item.items}}">
+          <view class="section-block">
+            <text class="section-title">用药配合</text>
             <view class="item-list">
-              <view wx:for="{{plan.followup.focus}}" wx:key="index" class="item-row">
-                <view class="item-bullet" style="background:#2478ff"></view>
-                <text>{{item}}</text>
+              <view wx:for="{{item.items}}" wx:for-item="line" wx:key="index" class="item-row">
+                <view class="item-dot med-dot"></view>
+                <text>{{line}}</text>
               </view>
             </view>
           </view>
-        </view>
-
-        <!-- 随访准备 -->
-        <view class="detail-section">
-          <view class="ds-header">
-            <view class="ds-dot" style="background:#10a37f"></view>
-            <text class="ds-title">请提前准备</text>
-          </view>
-          <view class="ds-body">
-            <view class="prepare-list">
-              <view wx:for="{{plan.followup.prepare}}" wx:key="index" class="prepare-row">
-                <view class="prepare-check">✓</view>
-                <text>{{item}}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 干预随访卡片 -->
-        <view wx:if="{{activeFollowups.length}}" class="intervention-followups">
-          <view wx:for="{{activeFollowups}}" wx:key="id" class="followup-intervention-card">
-            <view class="fi-header">
-              <view class="fi-icon">随</view>
-              <text class="fi-title">{{item.title}}</text>
-              <view class="fi-tag">临时安排</view>
-            </view>
-            <view class="fi-info">
-              <text class="fi-time">{{item.dueAt}}</text>
-              <view class="fi-method-tag">{{item.method}}</view>
-            </view>
-            <text wx:if="{{item.patientInstruction}}" class="fi-instruction">{{item.patientInstruction}}</text>
-            <view class="fi-prepare-status">
-              <view class="fi-prepare-badge {{followupPrepareStatus[item.id].prepareStatus}}">
-                {{followupPrepareStatus[item.id].prepareStatus === 'ready' ? '已准备' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? '已部分完成' : '待准备'}}
-              </view>
-            </view>
-            <view class="fi-action" bindtap="onFollowupPrepareTap" data-id="{{item.id}}">查看准备项</view>
-          </view>
-        </view>
-
+        </block>
       </view>
-    </block>
 
+      <!-- 异常提示 -->
+      <view wx:if="{{plan.abnormalTips}}" class="abnormal-tips">
+        <view class="tips-icon">!</view>
+        <text>{{plan.abnormalTips}}</text>
+      </view>
+
+      <!-- 吸底确认按钮 -->
+      <view class="confirm-actions">
+        <button class="btn-ghost" bindtap="onQuestionTap">我有疑问</button>
+        <button class="btn-primary" bindtap="onConfirmPlan">我已知晓，开始执行</button>
+      </view>
+
+    </view>
   </block>
 
-  <!-- ───────── 疑问弹窗 ───────── -->
+  <!-- ─── 状态：执行中（连续信息流） ─── -->
+  <block wx:elif="{{pageState === 'active'}}">
+    <view class="active-page">
+
+      <!-- 1. 当前方案头卡 -->
+      <view class="card plan-header-card">
+        <view class="plan-header-top">
+          <text class="plan-name">{{plan.title}}</text>
+          <view class="badge badge-active">执行中</view>
+        </view>
+        <text class="plan-stage">{{plan.objective}}</text>
+        <view class="plan-meta-row">
+          <text class="plan-meta">主责医生：{{plan.doctor}}</text>
+          <text class="plan-meta">适用疾病：{{plan.disease}}</text>
+        </view>
+        <view class="plan-meta-row">
+          <text class="plan-meta">已生效：{{plan.period.startDate}}</text>
+          <text class="plan-meta">周期：{{plan.period.days}} 天</text>
+        </view>
+      </view>
+
+      <!-- 2. 最近安排 -->
+      <view class="section-block">
+        <text class="section-title">最近安排</text>
+
+        <!-- 空状态 -->
+        <view wx:if="{{!adviceList.length && !recheckPlans.length && !activeFollowups.length}}" class="empty-section">
+          <text class="empty-section-text">当前没有新的安排</text>
+        </view>
+
+        <!-- 医生建议卡片 -->
+        <view wx:for="{{adviceList}}" wx:key="id" class="card advice-card" bindtap="onAdviceTap" data-id="{{item.id}}">
+          <view class="advice-header">
+            <view class="advice-icon">医</view>
+            <text class="advice-from">{{item.doctorName}}</text>
+            <view class="badge {{item.status === 'sent' ? 'badge-unread' : 'badge-read'}}">
+              {{item.status === 'sent' ? '未读' : '已读'}}
+            </view>
+          </view>
+          <text class="advice-title">{{item.title}}</text>
+          <text class="advice-summary">{{item.content}}</text>
+          <text class="advice-time">{{item.sentAt}}</text>
+          <view class="card-action-btn">查看</view>
+        </view>
+
+        <!-- 复测指标卡片 -->
+        <view wx:for="{{recheckPlans}}" wx:key="id" class="card recheck-card">
+          <view class="recheck-header">
+            <view class="recheck-icon">测</view>
+            <text class="recheck-title">复测指标</text>
+            <view class="badge badge-temp">临时安排</view>
+          </view>
+          <text class="recheck-summary">{{recheckProgress[item.id].summary}}</text>
+          <text class="recheck-instruction">{{item.patientInstruction}}</text>
+          <view class="recheck-progress-row">
+            <text class="recheck-status">{{recheckProgress[item.id].taskStatus}}</text>
+            <text wx:if="{{recheckProgress[item.id].daysRemaining > 0}}" class="recheck-remaining">还需完成 {{recheckProgress[item.id].daysRemaining}} 天</text>
+          </view>
+          <view class="card-action-btn" bindtap="onRecheckAction" data-id="{{item.id}}">去记录</view>
+        </view>
+
+        <!-- 随访安排卡片（最近安排区内） -->
+        <view wx:for="{{activeFollowups}}" wx:key="id" class="card followup-card">
+          <view class="followup-header">
+            <view class="followup-icon">随</view>
+            <text class="followup-title">随访安排</text>
+            <view class="badge badge-{{followupPrepareStatus[item.id].prepareStatus === 'ready' ? 'ready' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? 'partial' : 'pending'}}">
+              {{followupPrepareStatus[item.id].prepareStatus === 'ready' ? '已准备' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? '已部分完成' : '待准备'}}
+            </view>
+          </view>
+          <text class="followup-time">{{item.dueAt}}</text>
+          <view class="followup-method-tag">{{item.method}}</view>
+          <text wx:if="{{item.patientInstruction}}" class="followup-instruction">{{item.patientInstruction}}</text>
+          <view class="card-action-btn" bindtap="onFollowupPrepareTap" data-id="{{item.id}}">查看准备项</view>
+        </view>
+
+      </view>
+
+      <!-- 3. 今日任务轻入口 -->
+      <view class="card today-task-card" bindtap="onGoHomeTasks">
+        <view class="today-task-header">
+          <text class="today-task-title">今日任务</text>
+        </view>
+        <text wx:if="{{totalCount > 0 && doneCount < totalCount}}" class="today-task-desc">今日有 {{totalCount - doneCount}} 项待完成，已完成 {{doneCount}} 项</text>
+        <text wx:elif="{{totalCount > 0 && doneCount === totalCount}}" class="today-task-desc today-task-done">今天的任务已完成</text>
+        <text wx:else class="today-task-desc">今日暂无任务</text>
+        <view class="card-action-btn">去今日任务</view>
+      </view>
+
+      <!-- 4. 方案明细（下沉内容） -->
+      <view class="section-block detail-section">
+        <text class="section-title">方案明细</text>
+
+        <!-- 指标测量 -->
+        <view wx:if="{{compiledMetrics.length}}" class="detail-group">
+          <text class="detail-group-title">指标测量</text>
+          <view wx:for="{{compiledMetrics}}" wx:key="index" class="detail-item">
+            <view class="detail-dot metric-dot"></view>
+            <text>{{item}}</text>
+          </view>
+        </view>
+
+        <!-- 生活方式 -->
+        <view wx:if="{{compiledLifestyle.length}}" class="detail-group">
+          <text class="detail-group-title">生活方式</text>
+          <view wx:for="{{compiledLifestyle}}" wx:key="index" class="detail-item">
+            <view class="detail-dot lifestyle-dot"></view>
+            <text>{{item}}</text>
+          </view>
+        </view>
+
+        <!-- 用药配合 -->
+        <view wx:if="{{compiledMedication}}" class="detail-group">
+          <text class="detail-group-title">用药配合</text>
+          <view wx:for="{{compiledMedication}}" wx:for-item="line" wx:key="index" class="detail-item">
+            <view class="detail-dot med-dot"></view>
+            <text>{{line}}</text>
+          </view>
+        </view>
+
+        <!-- 设备配合 -->
+        <view wx:if="{{compiledDevice}}" class="detail-group">
+          <text class="detail-group-title">设备配合</text>
+          <view wx:for="{{compiledDevice}}" wx:for-item="line" wx:key="index" class="detail-item">
+            <view class="detail-dot device-dot"></view>
+            <text>{{line}}</text>
+          </view>
+        </view>
+
+        <!-- 随访节奏 -->
+        <view wx:if="{{compiledFollowupPace}}" class="detail-group">
+          <text class="detail-group-title">随访安排</text>
+          <view wx:for="{{compiledFollowupPace}}" wx:for-item="line" wx:key="index" class="detail-item">
+            <view class="detail-dot followup-dot"></view>
+            <text>{{line}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 5. 阶段说明 -->
+      <view wx:if="{{stageGoal || dailyToDo.length || abnormalHandling}}" class="section-block">
+        <text class="section-title">阶段说明</text>
+        <view wx:if="{{stageGoal}}" class="detail-item">
+          <view class="detail-dot"></view>
+          <text>{{stageGoal}}</text>
+        </view>
+        <view wx:for="{{dailyToDo}}" wx:key="index" class="detail-item">
+          <view class="detail-dot"></view>
+          <text>{{item}}</text>
+        </view>
+        <view wx:if="{{abnormalHandling}}" class="detail-item abnormal-item">
+          <view class="detail-dot warn-dot"></view>
+          <text>{{abnormalHandling}}</text>
+        </view>
+      </view>
+
+    </view>
+  </block>
+
+  <!-- ─── 疑问弹窗 ─── -->
   <view wx:if="{{showQuestionModal}}" class="modal-mask" bindtap="onCloseQuestion">
     <view class="modal-box" catchtap="noop">
-      <text class="modal-title">提交疑问</text>
-      <text class="modal-sub">疑问将发送给您的主治医生</text>
+      <text class="modal-title">填写你的问题</text>
       <textarea
         class="modal-input"
         placeholder="请描述您的疑问或顾虑…"
@@ -326,27 +271,27 @@
         auto-focus
       />
       <view class="modal-actions">
-        <button class="action-btn ghost sm" bindtap="onCloseQuestion">取消</button>
-        <button class="action-btn primary sm" bindtap="onSubmitQuestion">提交</button>
+        <button class="btn-ghost" bindtap="onCloseQuestion">取消</button>
+        <button class="btn-primary" bindtap="onSubmitQuestion">提交</button>
       </view>
     </view>
   </view>
 
-  <!-- ───────── 建议详情抽屉 ───────── -->
+  <!-- ─── 建议详情抽屉 ─── -->
   <view wx:if="{{showAdviceDrawer}}" class="modal-mask" bindtap="onAdviceClose">
     <view class="modal-box advice-drawer-box" catchtap="noop">
       <view class="advice-drawer-header">
-        <view class="advice-avatar drawer-avatar">医</view>
+        <view class="drawer-icon">医</view>
         <text class="drawer-doctor">{{currentAdvice.doctorName}}</text>
         <text class="drawer-time">{{currentAdvice.sentAt}}</text>
       </view>
-      <text class="advice-drawer-title">{{currentAdvice.title}}</text>
-      <text class="advice-drawer-content">{{currentAdvice.content}}</text>
-      <view class="advice-drawer-status {{currentAdvice.status === 'read' ? 'is-read' : 'is-unread'}}">
+      <text class="drawer-title">{{currentAdvice.title}}</text>
+      <text class="drawer-content">{{currentAdvice.content}}</text>
+      <view class="drawer-status {{currentAdvice.status === 'read' ? 'is-read' : 'is-unread'}}">
         {{currentAdvice.status === 'read' ? '已读' : '未读'}}
       </view>
       <view class="modal-actions">
-        <button class="action-btn ghost sm" bindtap="onAdviceClose">关闭</button>
+        <button class="btn-ghost" bindtap="onAdviceClose">关闭</button>
       </view>
     </view>
   </view>
