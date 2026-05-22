@@ -1,0 +1,192 @@
+.page {
+  min-height: 100vh;
+  background: #EEF2F6;
+  padding: 24rpx;
+}
+
+.page-header {
+  margin-bottom: 24rpx;
+}
+
+.page-title {
+  display: block;
+  color: #16202D;
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.page-desc {
+  display: block;
+  margin-top: 10rpx;
+  color: #6D7A89;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.group-section {
+  margin-bottom: 28rpx;
+}
+
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 0 6rpx 18rpx;
+}
+
+.group-title {
+  color: #16202D;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.group-count {
+  color: #237BE8;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.timeline-side {
+  width: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  margin-top: 22rpx;
+  background: #C8D3E0;
+}
+
+.timeline-dot.active {
+  background: #F59B23;
+  box-shadow: 0 0 0 8rpx rgba(245, 155, 35, 0.12);
+}
+
+.timeline-dot.done {
+  background: #37B88F;
+}
+
+.timeline-dot.expired {
+  background: #A2AFBF;
+}
+
+.timeline-line {
+  width: 2rpx;
+  flex: 1;
+  margin-top: 12rpx;
+  background: #D9E1EA;
+}
+
+.timeline-main {
+  flex: 1;
+}
+
+.task-card,
+.empty-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 28rpx 28rpx 26rpx;
+  box-shadow: 0 10rpx 28rpx rgba(39, 63, 94, 0.05);
+}
+
+.active-card {
+  border-color: #F7D7A1;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF9F1 100%);
+}
+
+.empty-text,
+.summary-text,
+.source-text,
+.detail-text {
+  color: #6D7A89;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.time-text {
+  display: block;
+  color: #7D8896;
+  font-size: 22rpx;
+  margin-bottom: 8rpx;
+}
+
+.title-text {
+  display: block;
+  color: #16202D;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.source-text {
+  display: block;
+  margin-top: 14rpx;
+  color: #237BE8;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.summary-text {
+  display: block;
+  margin-top: 12rpx;
+  color: #425063;
+}
+
+.badge {
+  flex: none;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.badge.active {
+  background: #FFF2DD;
+  color: #C46A00;
+}
+
+.badge.done {
+  background: #E9F8F2;
+  color: #209C73;
+}
+
+.badge.expired {
+  background: #EDF2F8;
+  color: #627084;
+}
+
+.expand-body {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid #EEF2F6;
+}
+
+.detail-card {
+  padding: 22rpx;
+  border-radius: 18rpx;
+  background: #F7FAFD;
+}
+
+.detail-label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #16202D;
+  font-size: 24rpx;
+  font-weight: 800;
+}

@@ -54,6 +54,14 @@ const dietOptions = [
   '以上全无'
 ].map((label) => ({ label, value: label, exclusive: label === '以上全无' }))
 
+const diseaseDurationOptions = [
+  { label: '1年以内', value: '1年以内' },
+  { label: '1-3年', value: '1-3年' },
+  { label: '3-5年', value: '3-5年' },
+  { label: '5-10年', value: '5-10年' },
+  { label: '10年以上', value: '10年以上' }
+]
+
 const steps = [
   {
     name: '基础信息',
@@ -107,19 +115,6 @@ const steps = [
     desc: '这些信息将帮助我们更准确地评估您的健康风险',
     fields: [
       { code: 'disease', label: '您是否确诊以下慢性疾病？（可多选）', kind: 'multiple', required: true, options: diseaseOptions, extraInput: 'otherDisease', extraPlaceholder: '请填写其他慢性疾病名称（如有）' },
-      {
-        code: 'diseaseDuration',
-        label: '您确诊高血压/糖尿病已有多少年？',
-        kind: 'single',
-        options: [
-          { label: '1年以内', value: '1年以内' },
-          { label: '1-3年', value: '1-3年' },
-          { label: '3-5年', value: '3-5年' },
-          { label: '5-10年', value: '5-10年' },
-          { label: '10年以上', value: '10年以上' }
-        ],
-        visibleWhenAny: { code: 'disease', values: ['高血压', '糖尿病'] }
-      },
       {
         code: 'surgery',
         label: '您是否有过重大手术史？',
@@ -346,7 +341,7 @@ const initialAnswers = {
   maritalStatus: '',
   education: '',
   disease: [],
-  diseaseDuration: '',
+  diseaseDurations: {},
   otherDisease: '',
   surgery: '',
   surgeryNote: '',
@@ -450,6 +445,7 @@ Page({
     if (this.data.currentIndex === this.data.steps.length - 1) {
       const result = this.calculateResult()
       wx.setStorageSync('screeningResult', result)
+      wx.setStorageSync('screeningAnswers', this.data.answers)
       this.appendAssessmentHistory(result)
       wx.removeStorageSync('screeningDraft')
       this.setData({ result, showResult: true })
@@ -475,6 +471,10 @@ Page({
 
   onSingleSelect(event) {
     const { code, value } = event.currentTarget.dataset
+    if (code.startsWith('diseaseDuration:')) {
+      this.updateAnswer(code, value)
+      return
+    }
     const updates = { [code]: value }
     if (code === 'regularSports' && value === '无') updates.sportsTime = ''
     if (code === 'alcoholic' && value === '否') updates.drink = ''
@@ -490,7 +490,12 @@ Page({
     } else {
       next = current.includes(value) ? current.filter((item) => item !== value) : [...current.filter((item) => !this.isExclusiveOption(code, item)), value]
     }
-    this.setData({ answers: { ...this.data.answers, [code]: next } }, () => this.refreshStep())
+    const updates = { [code]: next }
+    if (code === 'disease') {
+      updates.diseaseDurations = this.pruneDiseaseDurations(next)
+      if (!next.includes('其他')) updates.otherDisease = ''
+    }
+    this.setData({ answers: { ...this.data.answers, ...updates } }, () => this.refreshStep())
   },
 
   restart() {
@@ -514,6 +519,22 @@ Page({
   },
 
   updateAnswer(code, value) {
+    if (code.startsWith('diseaseDuration:')) {
+      const disease = code.split(':').slice(1).join(':')
+      this.setData(
+        {
+          answers: {
+            ...this.data.answers,
+            diseaseDurations: {
+              ...(this.data.answers.diseaseDurations || {}),
+              [disease]: value
+            }
+          }
+        },
+        () => this.refreshStep()
+      )
+      return
+    }
     this.setData({ answers: { ...this.data.answers, [code]: value } }, () => this.refreshStep())
   },
 
@@ -524,8 +545,8 @@ Page({
 
   refreshStep() {
     const currentStep = this.data.steps[this.data.currentIndex]
-    const visibleFields = currentStep.fields.filter((field) => this.isVisible(field)).map((field) => {
-      const value = this.data.answers[field.code]
+    const visibleFields = this.expandDiseaseDurationFields(currentStep.fields.filter((field) => this.isVisible(field))).map((field) => {
+      const value = this.getAnswerValue(field.code)
       if (field.kind === 'single' || field.kind === 'segment') {
         return {
           ...field,
@@ -595,10 +616,47 @@ Page({
   canContinue(fields) {
     return fields.every((field) => {
       if (!field.required) return true
-      const value = this.data.answers[field.code]
+      const value = this.getAnswerValue(field.code)
       if (Array.isArray(value)) return value.length > 0
       return value !== undefined && value !== null && `${value}`.trim() !== ''
     })
+  },
+
+  expandDiseaseDurationFields(fields) {
+    const selectedDiseases = (this.data.answers.disease || []).filter((disease) => disease !== '无')
+    if (!selectedDiseases.length) return fields
+
+    return fields.reduce((allFields, field) => {
+      allFields.push(field)
+      if (field.code !== 'disease') return allFields
+
+      selectedDiseases.forEach((disease) => {
+        allFields.push({
+          code: `diseaseDuration:${disease}`,
+          label: `您确诊${disease === '其他' ? '该慢性疾病' : disease}已有多少年？`,
+          kind: 'single',
+          required: true,
+          options: diseaseDurationOptions
+        })
+      })
+      return allFields
+    }, [])
+  },
+
+  getAnswerValue(code) {
+    if (!code.startsWith('diseaseDuration:')) return this.data.answers[code]
+    const disease = code.split(':').slice(1).join(':')
+    return (this.data.answers.diseaseDurations || {})[disease]
+  },
+
+  pruneDiseaseDurations(selectedDiseases) {
+    const currentDurations = this.data.answers.diseaseDurations || {}
+    return selectedDiseases
+      .filter((disease) => disease !== '无')
+      .reduce((durations, disease) => {
+        if (currentDurations[disease]) durations[disease] = currentDurations[disease]
+        return durations
+      }, {})
   },
 
   validateRanges() {

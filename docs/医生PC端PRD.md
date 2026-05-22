@@ -3309,6 +3309,7 @@ P0 必须支持的任务生成结果：
 | `/api/doctor/patients/{id}/collaborators` | GET/POST | 查询或添加转诊/会诊协作医生 |
 | `/api/doctor/patients/{id}/primary-doctor-transfer` | POST | 发起主责医生变更 |
 | `/api/doctor/patients/{id}` | GET | 患者 360 总览 |
+| `/api/doctor/patients/{id}/profile` | GET/PUT | 查看或更新患者健康档案 |
 | `/api/doctor/patients/{id}/timeline` | GET | 患者时间轴 |
 | `/api/doctor/patients/{id}/digital-twin` | GET | 数字孪生画像 |
 | `/api/doctor/patients/{id}/disease-tags` | GET | 疾病风险标签和医生确认疾病 |

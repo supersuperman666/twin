@@ -1,0 +1,28 @@
+<view class="page">
+  <view wx:if="{{!adviceList.length}}" class="empty-card">
+    <text class="empty-text">当前还没有历史医生建议</text>
+  </view>
+
+  <view wx:for="{{adviceList}}" wx:key="id" class="advice-card" bindtap="toggleCard" data-id="{{item.id}}">
+    <view class="card-top">
+      <view>
+        <text class="time-text">{{item.sentAt}}</text>
+        <text class="title-text">{{item.title}}</text>
+      </view>
+      <view class="badge {{item.status === 'sent' ? 'unread' : 'read'}}">{{item.status === 'sent' ? '未读' : '已读'}}</view>
+    </view>
+    <text class="from-text">{{item.doctorName}}</text>
+    <text class="summary-text">{{item.content}}</text>
+
+    <view wx:if="{{expandedId === item.id}}" class="expand-body">
+      <view wx:if="{{item.reason}}" class="detail-block">
+        <text class="detail-label">发送原因</text>
+        <text class="detail-text">{{item.reason}}</text>
+      </view>
+      <view class="detail-block">
+        <text class="detail-label">建议内容</text>
+        <text class="detail-text">{{item.content}}</text>
+      </view>
+    </view>
+  </view>
+</view>

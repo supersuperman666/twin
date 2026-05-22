@@ -12,6 +12,8 @@ Page({
     ],
     menus: [
       { label: '我的医生' },
+      { label: '医生建议', path: '/pages/me/advice/index' },
+      { label: '我的任务', path: '/pages/me/tasks/index' },
       { label: '报告与检查' },
       { label: '用药管理' },
       { label: '隐私与授权' },
@@ -27,5 +29,18 @@ Page({
 
   goDevice() {
     wx.navigateTo({ url: '/pages/device/index/index' })
+  },
+
+  goProfile() {
+    wx.navigateTo({ url: '/pages/profile/index' })
+  },
+
+  onMenuTap(e) {
+    const { path } = e.currentTarget.dataset
+    if (path) {
+      wx.navigateTo({ url: path })
+      return
+    }
+    wx.showToast({ title: '功能建设中', icon: 'none' })
   }
 })

@@ -10,9 +10,9 @@
 
   <view class="section-head">
     <text>健康档案</text>
-    <button>编辑</button>
+    <button bindtap="goProfile">维护</button>
   </view>
-  <view class="info-grid">
+  <view class="info-grid" bindtap="goProfile">
     <view wx:for="{{profileItems}}" wx:key="label" class="info-card">
       <text>{{item.label}}</text>
       <text>{{item.value}}</text>
@@ -38,7 +38,7 @@
     <text>服务与设置</text>
   </view>
   <view class="menu-list">
-    <view wx:for="{{menus}}" wx:key="label" class="menu-item">
+    <view wx:for="{{menus}}" wx:key="label" class="menu-item" bindtap="onMenuTap" data-path="{{item.path}}">
       <text>{{item.label}}</text>
       <text>›</text>
     </view>

@@ -64,11 +64,9 @@
         </view>
       </view>
     </view>
-    <view class="hero-note">医生方案第 3 周：控糖稳定期，重点观察睡眠低氧对晨起血糖的影响。</view>
+    <view class="hero-note">首页只展示今天最需要你处理的信息；当前方案明细、最近医生安排和随访准备请到方案页查看。</view>
     <view class="hero-metrics">
-      <view class="metric"><text>空腹血糖</text><text class="value">7.2<text class="warn">偏高</text></text></view>
-      <view class="metric"><text>最低血氧</text><text class="value">88%<text class="warn">预警</text></text></view>
-      <view class="metric"><text>咳喘评分</text><text class="value">3分<text class="warn">轻度</text></text></view>
+      <view wx:for="{{managedSummary}}" wx:key="label" class="metric"><text>{{item.label}}</text><text class="value">{{item.value}}</text></view>
     </view>
   </view>
   </view>
@@ -94,25 +92,6 @@
         </view>
       </view>
       <text>{{item.label}}</text>
-    </view>
-  </view>
-
-  <!-- 医生建议卡 -->
-  <view wx:if="{{adviceList.length}}" class="module-card advice-module">
-    <view class="module-title">
-      <view class="title-left">
-        <view class="title-symbol advice-symbol">医</view>
-        <text>医生提醒</text>
-      </view>
-    </view>
-    <view wx:for="{{adviceList}}" wx:key="id" class="home-advice-item" bindtap="onAdviceTap" data-id="{{item.id}}">
-      <view class="home-advice-header">
-        <view class="home-advice-avatar">医</view>
-        <text class="home-advice-from">{{item.doctorName}}</text>
-        <view class="home-advice-badge {{item.status === 'sent' ? 'unread' : 'read'}}">{{item.status === 'sent' ? '未读' : '已读'}}</view>
-      </view>
-      <text class="home-advice-title">{{item.title}}</text>
-      <text class="home-advice-summary">{{item.content}}</text>
     </view>
   </view>
 
@@ -144,66 +123,26 @@
     </view>
   </view>
 
-  <view class="module-card medicine-module">
-    <view class="module-title">
-      <view class="title-left">
-        <text>今日用药建议</text>
-      </view>
-    </view>
-    <view class="medicine-item">
-      <view class="medicine-icon active">
-        <view class="capsule-symbol"></view>
-      </view>
-      <view class="medicine-info">
-        <text class="medicine-name">二甲双胍缓释片</text>
-        <text class="medicine-desc">0.5g / 次，每日2次，餐中服用</text>
-        <text class="medicine-note success">今日已服用 07:35</text>
-      </view>
-      <text class="medicine-tag taken">已服用</text>
-    </view>
-    <view class="medicine-item">
-      <view class="medicine-icon">
-        <view class="capsule-symbol muted"></view>
-      </view>
-      <view class="medicine-info">
-        <text class="medicine-name">格列美脲片</text>
-        <text class="medicine-desc">2mg / 次，每日1次，早餐前服用</text>
-        <text class="medicine-note warning">建议今日 08:00 前服用</text>
-      </view>
-      <text class="medicine-tag waiting">待服用</text>
-    </view>
-    <view class="doctor-advice">
-      <view class="doctor-icon">医</view>
-      <view>
-        <text class="advice-title">王医生 今日调整建议</text>
-        <text class="advice-desc">近期血糖波动较大，建议增加血糖监测频率，每日测量4次（空腹、三餐后2小时）</text>
-      </view>
-    </view>
-  </view>
-
   <!-- 随访提醒 -->
-  <view wx:if="{{activeFollowups.length}}" class="module-card follow-module">
+  <view wx:if="{{nearestFollowup}}" class="module-card follow-module">
     <view class="module-title">
       <view class="title-left">
         <view class="title-symbol calendar-symbol"></view>
         <text>随访安排</text>
       </view>
     </view>
-    <view wx:for="{{activeFollowups}}" wx:key="id" class="home-followup-item">
+    <view class="home-followup-item">
       <view class="home-fu-header">
         <view class="home-fu-icon">随</view>
-        <text class="home-fu-title">{{item.title}}</text>
+        <text class="home-fu-title">{{nearestFollowup.title}}</text>
       </view>
       <view class="home-fu-info">
-        <text class="home-fu-time">{{item.dueAt}}</text>
-        <view class="home-fu-method">{{item.method}}</view>
+        <text class="home-fu-time">{{nearestFollowup.dueAt}}</text>
+        <view class="home-fu-method">{{nearestFollowup.method}}</view>
       </view>
-      <text wx:if="{{item.patientInstruction}}" class="home-fu-instruction">{{item.patientInstruction}}</text>
+      <text wx:if="{{nearestFollowup.patientInstruction}}" class="home-fu-instruction">{{nearestFollowup.patientInstruction}}</text>
       <view class="home-fu-prepare-row">
-        <view class="home-fu-prepare-badge {{followupPrepareStatus[item.id].prepareStatus}}">
-          {{followupPrepareStatus[item.id].prepareStatus === 'ready' ? '已准备' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? '已部分完成' : '待准备'}}
-        </view>
-        <view class="home-fu-btn" bindtap="onFollowupPrepareTap" data-id="{{item.id}}">查看准备项</view>
+        <view class="home-fu-btn" bindtap="onFollowupRecords">去查看</view>
       </view>
     </view>
   </view>

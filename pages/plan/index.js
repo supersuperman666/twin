@@ -310,7 +310,19 @@ Page({
 
   onFollowupPrepareTap(e) {
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: `/pages/followup/detail/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/followup/records/index?highlight=${id}` });
+  },
+
+  onGoFollowupRecords() {
+    wx.navigateTo({ url: '/pages/followup/records/index' });
+  },
+
+  onGoAdviceHistory() {
+    wx.navigateTo({ url: '/pages/me/advice/index' });
+  },
+
+  onGoHistoryPlans() {
+    wx.navigateTo({ url: '/pages/plan/history/index' });
   },
 
   onGoHomeTasks() {

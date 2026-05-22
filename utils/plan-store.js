@@ -1,5 +1,6 @@
 const PLAN_KEY = 'patientActivePlan';
 const TASK_PREFIX = 'planTaskStatus_';
+const HISTORY_PLAN_KEY = 'patientHistoryPlans';
 
 const SEED_PLAN = {
   id: 'PL002',
@@ -116,6 +117,34 @@ function getPlan() {
   return plan;
 }
 
+function getHistoryPlans() {
+  let plans = wx.getStorageSync(HISTORY_PLAN_KEY);
+  if (!plans || !plans.length) {
+    plans = [
+      {
+        id: 'PL001',
+        title: '糖尿病管理方案',
+        disease: '糖尿病',
+        status: '已完成',
+        objective: '稳定空腹血糖，减少血糖波动',
+        period: { startDate: '2026-04-01', endDate: '2026-04-30', days: 30 },
+        modules: SEED_PLAN.modules,
+      },
+      {
+        id: 'PL000',
+        title: '血糖观察方案',
+        disease: '糖尿病',
+        status: '已替换',
+        objective: '建立初始血糖记录习惯',
+        period: { startDate: '2026-03-10', endDate: '2026-03-31', days: 21 },
+        modules: SEED_PLAN.modules,
+      }
+    ];
+    wx.setStorageSync(HISTORY_PLAN_KEY, plans);
+  }
+  return plans;
+}
+
 function confirmPlan() {
   const plan = getPlan();
   plan.patientStatus = 'active';
@@ -141,4 +170,4 @@ function completeTask(taskId) {
   return status;
 }
 
-module.exports = { getPlan, confirmPlan, reportQuestion, getTaskStatus, completeTask };
+module.exports = { getPlan, getHistoryPlans, confirmPlan, reportQuestion, getTaskStatus, completeTask };

@@ -1,0 +1,82 @@
+<view class="page">
+  <view class="page-header">
+    <text class="page-title">我的任务</text>
+    <text class="page-desc">查看仍在进行中的任务，以及已经完成或结束的历史任务。</text>
+  </view>
+
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">进行中</text>
+      <text class="group-count">{{pendingTasks.length}}</text>
+    </view>
+
+    <view wx:if="{{!pendingTasks.length}}" class="empty-card">
+      <text class="empty-text">当前没有进行中的任务</text>
+    </view>
+
+    <view wx:for="{{pendingTasks}}" wx:key="id" wx:for-item="task" class="timeline-item">
+      <view class="timeline-side">
+        <view class="timeline-dot active"></view>
+        <view class="timeline-line"></view>
+      </view>
+      <view class="timeline-main">
+        <view class="task-card active-card" bindtap="toggleCard" data-id="{{task.id}}">
+          <view class="card-top">
+            <view>
+              <text class="time-text">{{task.time}}</text>
+              <text class="title-text">{{task.title}}</text>
+            </view>
+            <view class="badge active">{{task.status}}</view>
+          </view>
+          <text class="source-text">{{task.source}}</text>
+          <text class="summary-text">{{task.summary}}</text>
+
+          <view wx:if="{{expandedId === task.id}}" class="expand-body">
+            <view class="detail-card">
+              <text class="detail-label">任务说明</text>
+              <text class="detail-text">{{task.detail}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">历史任务</text>
+      <text class="group-count">{{historyTasks.length}}</text>
+    </view>
+
+    <view wx:if="{{!historyTasks.length}}" class="empty-card">
+      <text class="empty-text">当前还没有历史任务</text>
+    </view>
+
+    <view wx:for="{{historyTasks}}" wx:key="id" wx:for-item="task" class="timeline-item">
+      <view class="timeline-side">
+        <view class="timeline-dot {{task.statusKey === 'done' ? 'done' : 'expired'}}"></view>
+        <view class="timeline-line"></view>
+      </view>
+      <view class="timeline-main">
+        <view class="task-card" bindtap="toggleCard" data-id="{{task.id}}">
+          <view class="card-top">
+            <view>
+              <text class="time-text">{{task.time}}</text>
+              <text class="title-text">{{task.title}}</text>
+            </view>
+            <view class="badge {{task.statusKey === 'done' ? 'done' : 'expired'}}">{{task.status}}</view>
+          </view>
+          <text class="source-text">{{task.source}}</text>
+          <text class="summary-text">{{task.summary}}</text>
+
+          <view wx:if="{{expandedId === task.id}}" class="expand-body">
+            <view class="detail-card">
+              <text class="detail-label">任务记录</text>
+              <text class="detail-text">{{task.detail}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

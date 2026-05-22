@@ -1,6 +1,7 @@
 const ADVICE_KEY = 'patientAdvice';
 const RECHECK_KEY = 'patientRecheckPlans';
 const FOLLOWUP_KEY = 'patientFollowups';
+const TASK_HISTORY_KEY = 'patientTaskHistory';
 
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
@@ -64,6 +65,14 @@ function getAdviceList() {
     return (b.sentAt || '').localeCompare(a.sentAt || '');
   });
   return list;
+}
+
+function getCurrentAdviceList(limit = 3) {
+  return getAdviceList().slice(0, limit);
+}
+
+function getHistoricalAdviceList() {
+  return getAdviceList();
 }
 
 function getAdviceById(id) {
@@ -235,11 +244,24 @@ function loadFollowups() {
 }
 
 function getActiveFollowups() {
-  return loadFollowups().filter(f => f.status === 'pending_patient_prepare' || f.status === 'pending_doctor');
+  return loadFollowups()
+    .filter(f => f.status === 'pending_patient_prepare' || f.status === 'pending_doctor')
+    .sort((a, b) => (a.dueAt || '').localeCompare(b.dueAt || ''));
 }
 
 function getFollowupById(id) {
   return loadFollowups().find(f => f.id === id) || null;
+}
+
+function getAllFollowups() {
+  return loadFollowups().slice().sort((a, b) => {
+    const now = todayStr();
+    const da = (a.dueAt || '').slice(0, 10);
+    const db = (b.dueAt || '').slice(0, 10);
+    const diffA = Math.abs((new Date(da) - new Date(now.replace(/-/g, '/'))) || 0);
+    const diffB = Math.abs((new Date(db) - new Date(now.replace(/-/g, '/'))) || 0);
+    return diffA - diffB;
+  });
 }
 
 function computeFollowupPrepareStatus(followupId) {
@@ -251,13 +273,13 @@ function computeFollowupPrepareStatus(followupId) {
 
   if (followup.prepareItems.includes('检查报告')) {
     const reportUploaded = wx.getStorageSync('followupReport_' + followupId);
-    specialItems.push({ type: 'report', label: '检查报告', done: !!reportUploaded });
+    specialItems.push({ type: 'report', label: '检查报告', done: !!reportUploaded, followupId });
   }
 
   if (followup.prepareItems.includes('量表问卷') && followup.scales && followup.scales.length) {
     followup.scales.forEach(scale => {
       const scaleDone = wx.getStorageSync('followupScale_' + followupId + '_' + scale);
-      specialItems.push({ type: 'scale', label: `${scale} 量表`, scaleCode: scale, done: !!scaleDone });
+      specialItems.push({ type: 'scale', label: `${scale} 量表`, scaleCode: scale, done: !!scaleDone, followupId });
     });
   }
 
@@ -269,6 +291,33 @@ function computeFollowupPrepareStatus(followupId) {
   return { normalItems, specialItems, prepareStatus };
 }
 
+function splitFollowupsByState() {
+  const all = getAllFollowups();
+  const pending = [];
+  const completed = [];
+  all.forEach(item => {
+    if (item.status === 'pending_patient_prepare' || item.status === 'pending_doctor') {
+      pending.push(item);
+    } else {
+      completed.push(item);
+    }
+  });
+  completed.sort((a, b) => (b.dueAt || '').localeCompare(a.dueAt || ''));
+  return { pending, completed };
+}
+
+function completeFollowup(followupId, summary) {
+  const list = loadFollowups();
+  const item = list.find(f => f.id === followupId);
+  if (item) {
+    item.status = 'completed';
+    item.resultSummary = summary || '本次随访已完成，建议继续当前方案。';
+    item.nextAdvice = '继续按医生方案完成当前阶段记录。';
+    item.completedAt = nowISO();
+    wx.setStorageSync(FOLLOWUP_KEY, list);
+  }
+}
+
 function markFollowupReportUploaded(followupId) {
   wx.setStorageSync('followupReport_' + followupId, nowISO());
 }
@@ -277,8 +326,70 @@ function markFollowupScaleDone(followupId, scaleCode) {
   wx.setStorageSync('followupScale_' + followupId + '_' + scaleCode, nowISO());
 }
 
+function loadTaskHistory() {
+  let data = wx.getStorageSync(TASK_HISTORY_KEY);
+  if (!data || !data.length) {
+    data = [
+      {
+        id: 'TH001',
+        title: '复测指标',
+        type: 'recheck',
+        status: '进行中',
+        statusKey: 'active',
+        source: '预警后安排',
+        time: '2026-05-19',
+        summary: '血糖（空腹、睡前）/ SpO2（静息）',
+        detail: '连续 3 天完成复测，今日仍需继续记录。',
+      },
+      {
+        id: 'TH002',
+        title: '检查报告上传',
+        type: 'followup_prepare',
+        status: '已完成',
+        statusKey: 'done',
+        source: '随访准备',
+        time: '2026-05-18',
+        summary: '已补充最近一次肺功能检查报告',
+        detail: '检查报告已上传，医生会在随访时结合症状和血氧情况一起评估。',
+      },
+      {
+        id: 'TH003',
+        title: 'STOP-Bang 量表',
+        type: 'scale',
+        status: '已完成',
+        statusKey: 'done',
+        source: '随访准备',
+        time: '2026-05-18',
+        summary: '睡眠呼吸障碍风险量表已填写',
+        detail: '量表结果已提交，后续会在随访中结合睡眠报告一起解读。',
+      },
+      {
+        id: 'TH004',
+        title: '复测指标',
+        type: 'recheck',
+        status: '已到期',
+        statusKey: 'expired',
+        source: '方案观察',
+        time: '2026-05-10',
+        summary: '血压（晨起、睡前）连续 2 天复测',
+        detail: '复测周期已结束，记录结果已保留在历史任务中。',
+      },
+    ];
+    wx.setStorageSync(TASK_HISTORY_KEY, data);
+  }
+  return data;
+}
+
+function getTaskHistoryList() {
+  return loadTaskHistory()
+    .slice()
+    .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+}
+
 module.exports = {
   getAdviceList,
+  getCurrentAdviceList,
+  getHistoricalAdviceList,
   getAdviceById,
   markAdviceRead,
   getActiveRecheckPlans,
@@ -287,8 +398,12 @@ module.exports = {
   computeRecheckSummary,
   markRecheckTodayDone,
   getActiveFollowups,
+  getAllFollowups,
+  splitFollowupsByState,
   getFollowupById,
   computeFollowupPrepareStatus,
   markFollowupReportUploaded,
   markFollowupScaleDone,
+  completeFollowup,
+  getTaskHistoryList,
 };

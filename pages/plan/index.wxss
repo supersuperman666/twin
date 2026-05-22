@@ -270,6 +270,39 @@ page { background: #EEF2F6; }
   margin-bottom: 20rpx;
 }
 
+.section-head-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-head-inline .section-title {
+  margin-bottom: 0;
+}
+
+.ghost-link {
+  color: #237BE8;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.section-link-row {
+  margin-top: 8rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.followup-current-card {
+  margin-bottom: 0;
+}
+
+.bottom-links-block {
+  display: flex;
+  justify-content: center;
+}
+
 .item-list {
   display: flex;
   flex-direction: column;

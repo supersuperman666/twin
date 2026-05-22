@@ -1,0 +1,278 @@
+<view class="profile-page">
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <text class="hero-title">健康档案</text>
+        <text class="hero-desc">已根据健康筛查为你生成，可继续补充和更新</text>
+      </view>
+      <view class="completion">
+        <text>{{completionRate}}%</text>
+        <text>完整度</text>
+      </view>
+    </view>
+    <view class="hero-meta">
+      <text>最近更新</text>
+      <text>{{updatedAtText}}</text>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <text class="section-title">基础信息</text>
+    <view class="field">
+      <text class="field-label">性别</text>
+      <view class="segment-grid two">
+        <button wx:for="{{options.sex}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="sex" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <picker mode="date" value="{{profile.birthDate}}" bindchange="onDateChange">
+      <view class="picker-row">
+        <text>出生年月日</text>
+        <view><text>{{profile.birthDate || '请选择'}}</text><text class="chevron">›</text></view>
+      </view>
+    </picker>
+    <view class="metric-grid">
+      <view class="metric-cell">
+        <text>年龄</text>
+        <text>{{ageDisplay}}</text>
+      </view>
+      <view class="metric-cell">
+        <text>BMI</text>
+        <text>{{bmiDisplay}}</text>
+      </view>
+    </view>
+    <view class="number-grid">
+      <view class="number-field">
+        <text>身高</text>
+        <view class="input-box"><input type="digit" value="{{profile.height}}" placeholder="请输入" data-code="height" bindinput="onInput" /><text>cm</text></view>
+      </view>
+      <view class="number-field">
+        <text>体重</text>
+        <view class="input-box"><input type="digit" value="{{profile.weight}}" placeholder="请输入" data-code="weight" bindinput="onInput" /><text>kg</text></view>
+      </view>
+      <view class="number-field">
+        <text>腰围</text>
+        <view class="input-box"><input type="digit" value="{{profile.waistline}}" placeholder="请输入" data-code="waistline" bindinput="onInput" /><text>cm</text></view>
+      </view>
+      <view class="number-field">
+        <text>颈围</text>
+        <view class="input-box"><input type="digit" value="{{profile.neckCircumference}}" placeholder="选填" data-code="neckCircumference" bindinput="onInput" /><text>cm</text></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <text class="section-title">既往史</text>
+    <view class="field">
+      <text class="field-label">已确诊慢性疾病</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.disease}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="disease" data-value="{{item.value}}" data-exclusive="{{item.exclusive}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+    <view wx:for="{{diseaseDurationRows}}" wx:for-item="row" wx:key="disease" class="field duration-field">
+      <text class="field-label">{{row.label}}确诊年限</text>
+      <view class="option-list">
+        <button wx:for="{{row.options}}" wx:for-item="durationOption" wx:key="value" class="option-row {{durationOption.selected ? 'selected' : ''}}" data-disease="{{row.disease}}" data-value="{{durationOption.value}}" bindtap="onDurationSelect">
+          <view class="radio-dot"></view>
+          <text>{{durationOption.label}}</text>
+        </button>
+      </view>
+    </view>
+    <view wx:if="{{showOtherDisease}}" class="field">
+      <text class="field-label">其他疾病补充</text>
+      <view class="text-input"><input value="{{profile.otherDisease}}" placeholder="请填写其他慢性疾病名称" data-code="otherDisease" bindinput="onInput" /></view>
+    </view>
+    <view class="field">
+      <text class="field-label">重大手术史</text>
+      <view class="segment-grid two">
+        <button wx:for="{{options.yesNo}}" wx:key="value" class="segment-option {{profile.surgery === item.value ? 'selected' : ''}}" data-code="surgery" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{showSurgeryNote}}" class="field">
+      <text class="field-label">手术史补充</text>
+      <textarea class="textarea" value="{{profile.surgeryNote}}" auto-height placeholder="请填写手术名称、时间" data-code="surgeryNote" bindinput="onInput"></textarea>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <text class="section-title">家族史</text>
+    <text class="section-desc">直系亲属是否有以下疾病史</text>
+    <view class="tag-wrap">
+      <button wx:for="{{options.family}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="family" data-value="{{item.value}}" data-exclusive="{{item.exclusive}}" bindtap="onMultipleToggle">{{item.label}}</button>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <text class="section-title">过敏史</text>
+    <view class="field">
+      <text class="field-label">是否有药物或食物过敏史</text>
+      <view class="segment-grid two">
+        <button wx:for="{{options.yesNo}}" wx:key="value" class="segment-option {{profile.allergy === item.value ? 'selected' : ''}}" data-code="allergy" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{showAllergyNote}}" class="field">
+      <text class="field-label">过敏史补充</text>
+      <textarea class="textarea" value="{{profile.allergyNote}}" auto-height placeholder="请填写过敏原、过敏反应" data-code="allergyNote" bindinput="onInput"></textarea>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <text class="section-title">生活方式</text>
+    <view class="field">
+      <text class="field-label">吸烟情况</text>
+      <view class="option-list">
+        <button wx:for="{{options.smoke}}" wx:key="value" class="option-row {{item.selected ? 'selected' : ''}}" data-code="smoke" data-value="{{item.value}}" bindtap="onSingleSelect"><view class="radio-dot"></view><text>{{item.label}}</text></button>
+      </view>
+    </view>
+    <view wx:if="{{smokeNeedsDetail}}" class="inline-columns">
+      <view class="field compact">
+        <text class="field-label">吸烟年限</text>
+        <view class="tag-wrap tight">
+          <button wx:for="{{options.smokingYears}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="smokingYears" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+      </view>
+      <view class="field compact">
+        <text class="field-label">日均吸烟量</text>
+        <view class="tag-wrap tight">
+          <button wx:for="{{options.cigarettesPerDay}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="cigarettesPerDay" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{isQuitSmoking}}" class="field">
+      <text class="field-label">戒烟时间</text>
+      <view class="tag-wrap tight">
+        <button wx:for="{{options.quitSmokingTime}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="quitSmokingTime" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">饮酒情况</text>
+      <view class="option-list">
+        <button wx:for="{{options.alcoholic}}" wx:key="value" class="option-row {{item.selected ? 'selected' : ''}}" data-code="alcoholic" data-value="{{item.value}}" bindtap="onSingleSelect"><view class="radio-dot"></view><text>{{item.label}}</text></button>
+      </view>
+    </view>
+    <view wx:if="{{drinksAlcohol}}" class="field">
+      <text class="field-label">每日饮酒量</text>
+      <view class="segment-grid two">
+        <button wx:for="{{options.drink}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="drink" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">每周运动次数</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.regularSports}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="regularSports" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{hasExercise}}" class="field">
+      <text class="field-label">单次运动时间</text>
+      <view class="segment-grid">
+        <button wx:for="{{options.sportsTime}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="sportsTime" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">饮食习惯</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.regularDietary}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="regularDietary" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">平均每日睡眠时间</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.sleep}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="sleep" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">睡眠质量</text>
+      <view class="rating-row">
+        <button wx:for="{{ratingOptions}}" wx:key="*this" class="star {{profile.sleepQuality >= item ? 'selected' : ''}}" data-value="{{item}}" bindtap="onRatingSelect">★</button>
+      </view>
+    </view>
+    <view class="field split-field">
+      <view>
+        <text class="field-label">长期精神高度紧张</text>
+        <view class="segment-grid two">
+          <button wx:for="{{options.yesNo}}" wx:key="value" class="segment-option {{profile.nervousness === item.value ? 'selected' : ''}}" data-code="nervousness" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+      </view>
+      <view>
+        <text class="field-label">每日静坐时长</text>
+        <view class="segment-grid two">
+          <button wx:for="{{options.sit}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="sit" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">职业/粉尘/烟雾暴露史</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.exposureHistory}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="exposureHistory" data-value="{{item.value}}" data-exclusive="{{item.exclusive}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-card screening-card">
+    <text class="section-title">筛查健康概况</text>
+    <text class="section-desc">以下信息来自最近一次健康筛查。日常血糖、血压和症状趋势请前往记录页查看。</text>
+    <view class="field">
+      <text class="field-label">近1个月不适症状</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.symptoms}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="symptoms" data-value="{{item.value}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+    <view wx:if="{{showSymptomNote}}" class="field">
+      <text class="field-label">其他症状补充</text>
+      <textarea class="textarea" value="{{profile.symptomNote}}" auto-height placeholder="请补充描述" data-code="symptomNote" bindinput="onInput"></textarea>
+    </view>
+    <view class="field">
+      <text class="field-label">当前规律服用药物</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.medications}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="medications" data-value="{{item.value}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">药物补充</text>
+      <textarea class="textarea" value="{{profile.medicationNote}}" auto-height placeholder="可补充药物名称、剂量" data-code="medicationNote" bindinput="onInput"></textarea>
+    </view>
+    <view class="field">
+      <text class="field-label">最近一次体检时间</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.checkupTime}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="checkupTime" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">最近体检异常</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.examAbnormal}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="examAbnormal" data-value="{{item.value}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="field">
+      <text class="field-label">最希望改善的健康问题</text>
+      <view class="tag-wrap">
+        <button wx:for="{{options.healthGoals}}" wx:key="value" class="tag-option {{item.selected ? 'selected' : ''}}" data-code="healthGoals" data-value="{{item.value}}" bindtap="onMultipleToggle">{{item.label}}</button>
+      </view>
+    </view>
+    <view class="screening-metrics">
+      <view class="metric-block">
+        <text class="field-label">血压异常情况</text>
+        <view class="segment-grid">
+          <button wx:for="{{options.bpAbnormal}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="bpAbnormal" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+        <view class="number-grid metric-numbers">
+          <view class="number-field"><text>收缩压</text><view class="input-box"><input type="digit" value="{{profile.sbp}}" placeholder="选填" data-code="sbp" bindinput="onInput" /><text>mmHg</text></view></view>
+          <view class="number-field"><text>舒张压</text><view class="input-box"><input type="digit" value="{{profile.dbp}}" placeholder="选填" data-code="dbp" bindinput="onInput" /><text>mmHg</text></view></view>
+        </view>
+      </view>
+      <view class="metric-block">
+        <text class="field-label">血糖异常情况</text>
+        <view class="segment-grid">
+          <button wx:for="{{options.bsAbnormal}}" wx:key="value" class="segment-option {{item.selected ? 'selected' : ''}}" data-code="bsAbnormal" data-value="{{item.value}}" bindtap="onSingleSelect">{{item.label}}</button>
+        </view>
+        <view class="number-grid metric-numbers">
+          <view class="number-field"><text>空腹血糖</text><view class="input-box"><input type="digit" value="{{profile.fpg}}" placeholder="选填" data-code="fpg" bindinput="onInput" /><text>mmol/L</text></view></view>
+          <view class="number-field"><text>餐后2h</text><view class="input-box"><input type="digit" value="{{profile.pbg2h}}" placeholder="选填" data-code="pbg2h" bindinput="onInput" /><text>mmol/L</text></view></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="save-bar">
+    <button class="save-btn {{hasChanges ? '' : 'quiet'}}" bindtap="saveProfile">保存健康档案</button>
+  </view>
+</view>

@@ -1,11 +1,4 @@
 <view class="page">
-  <!-- Top Status Bar -->
-  <view class="status-bar">
-    <view class="status-badge {{prepareStatus === 'ready' ? 'ready' : prepareStatus === 'partial' ? 'partial' : 'pending'}}">
-      {{prepareLabel}}
-    </view>
-  </view>
-
   <!-- Section 1: Followup Basics -->
   <view class="section-card">
     <view class="section-head">

@@ -165,9 +165,6 @@
           <view class="followup-header">
             <view class="followup-icon">随</view>
             <text class="followup-title">随访安排</text>
-            <view class="badge badge-{{followupPrepareStatus[item.id].prepareStatus === 'ready' ? 'ready' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? 'partial' : 'pending'}}">
-              {{followupPrepareStatus[item.id].prepareStatus === 'ready' ? '已准备' : followupPrepareStatus[item.id].prepareStatus === 'partial' ? '已部分完成' : '待准备'}}
-            </view>
           </view>
           <text class="followup-time">{{item.dueAt}}</text>
           <view class="followup-method-tag">{{item.method}}</view>
@@ -175,6 +172,31 @@
           <view class="card-action-btn" bindtap="onFollowupPrepareTap" data-id="{{item.id}}">查看准备项</view>
         </view>
 
+        <view wx:if="{{adviceList.length || recheckPlans.length || activeFollowups.length}}" class="section-link-row">
+          <view class="ghost-link" bindtap="onGoAdviceHistory">查看历史医生建议</view>
+        </view>
+
+      </view>
+
+      <!-- 2A. 随访记录入口 -->
+      <view class="section-block">
+        <view class="section-head-inline">
+          <text class="section-title">随访安排</text>
+          <view class="ghost-link" bindtap="onGoFollowupRecords">查看全部随访</view>
+        </view>
+        <view wx:if="{{nearestFollowup}}" class="card followup-current-card" bindtap="onGoFollowupRecords">
+          <view class="followup-header">
+            <view class="followup-icon">随</view>
+            <text class="followup-title">{{nearestFollowup.title}}</text>
+          </view>
+          <text class="followup-time">{{nearestFollowup.dueAt}}</text>
+          <text class="followup-instruction">{{nearestFollowup.patientInstruction}}</text>
+          <view class="card-action-btn">查看全部随访</view>
+        </view>
+        <view wx:else class="empty-section">
+          <text class="empty-section-text">当前没有需要准备的随访</text>
+          <view class="ghost-link" bindtap="onGoFollowupRecords">查看全部随访</view>
+        </view>
       </view>
 
       <!-- 3. 今日任务轻入口 -->
@@ -253,6 +275,10 @@
           <view class="detail-dot warn-dot"></view>
           <text>{{abnormalHandling}}</text>
         </view>
+      </view>
+
+      <view class="section-block bottom-links-block">
+        <view class="ghost-link" bindtap="onGoHistoryPlans">查看历史方案</view>
       </view>
 
     </view>

@@ -670,6 +670,7 @@ stateDiagram-v2
 | `/api/doctor/dashboard` | GET | 医生工作台 |
 | `/api/doctor/patients` | GET | 患者列表 |
 | `/api/doctor/patients/{id}` | GET | 患者详情 |
+| `/api/doctor/patients/{id}/profile` | GET/PUT | 查看或更新患者健康档案 |
 | `/api/doctor/alerts` | GET | 预警列表 |
 | `/api/doctor/alerts/{id}/handle` | POST | 处理预警 |
 | `/api/doctor/patients/{id}/plans` | POST/PUT | 创建或更新方案 |

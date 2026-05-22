@@ -1,0 +1,97 @@
+<view class="page">
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">待处理</text>
+      <text class="group-count">{{pendingList.length}}</text>
+    </view>
+
+    <view wx:if="{{!pendingList.length}}" class="empty-card">
+      <text class="empty-text">当前没有需要准备的随访</text>
+    </view>
+
+    <view wx:for="{{pendingList}}" wx:key="id" wx:for-item="followup" class="timeline-item">
+      <view class="timeline-side">
+        <view class="timeline-dot active"></view>
+        <view class="timeline-line"></view>
+      </view>
+      <view class="timeline-main">
+        <view class="follow-card" bindtap="toggleCard" data-id="{{followup.id}}">
+          <view class="card-top">
+            <view>
+              <text class="time-text">{{followup.dueAt}}</text>
+              <text class="card-title">{{followup.title}}</text>
+            </view>
+          </view>
+          <text class="card-sub">{{followup.method}}</text>
+          <text class="card-desc">{{followup.patientInstruction}}</text>
+
+          <view wx:if="{{expandedId === followup.id}}" class="expand-body">
+            <view class="sub-section" wx:if="{{prepareStatusMap[followup.id].normalItems.length}}">
+              <text class="sub-title">准备项</text>
+              <view wx:for="{{prepareStatusMap[followup.id].normalItems}}" wx:key="*this" wx:for-item="normalItem" class="bullet-row">
+                <view class="bullet"></view>
+                <text>{{normalItem}}</text>
+              </view>
+            </view>
+
+            <view class="sub-section" wx:if="{{prepareStatusMap[followup.id].specialItems.length}}">
+              <text class="sub-title">需要完成的操作</text>
+              <view wx:for="{{prepareStatusMap[followup.id].specialItems}}" wx:key="label" wx:for-item="specialItem" class="action-row">
+                <view>
+                  <text class="action-label">{{specialItem.label}}</text>
+                  <text class="action-state {{specialItem.done ? 'done' : 'pending'}}">{{specialItem.done ? '已完成' : '待完成'}}</text>
+                </view>
+                <view wx:if="{{!specialItem.done}}" class="action-btn" bindtap="{{specialItem.type === 'report' ? 'onUploadReport' : 'onFillScale'}}" data-id="{{specialItem.followupId}}" data-code="{{specialItem.scaleCode}}">
+                  {{specialItem.type === 'report' ? '去上传' : '去填写'}}
+                </view>
+                <view wx:else class="done-tag">已完成</view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">已完成</text>
+      <text class="group-count">{{completedList.length}}</text>
+    </view>
+
+    <view wx:if="{{!completedList.length}}" class="empty-card">
+      <text class="empty-text">还没有历史随访记录</text>
+    </view>
+
+    <view wx:for="{{completedList}}" wx:key="id" wx:for-item="followup" class="timeline-item">
+      <view class="timeline-side">
+        <view class="timeline-dot finished"></view>
+        <view class="timeline-line"></view>
+      </view>
+      <view class="timeline-main">
+        <view class="follow-card" bindtap="toggleCard" data-id="{{followup.id}}">
+          <view class="card-top">
+            <view>
+              <text class="time-text">{{followup.dueAt}}</text>
+              <text class="card-title">{{followup.title}}</text>
+            </view>
+            <view class="status-badge finished">{{followup.status === 'completed' ? '已完成' : followup.status === 'rescheduled' ? '已改期' : '已结束'}}</view>
+          </view>
+          <text class="card-sub">{{followup.method}}</text>
+          <text class="card-desc">{{followup.resultSummary || followup.patientInstruction}}</text>
+
+          <view wx:if="{{expandedId === followup.id}}" class="expand-body">
+            <view class="sub-section">
+              <text class="sub-title">结果摘要</text>
+              <text class="result-text">{{followup.resultSummary || '本次随访已结束。'}}</text>
+            </view>
+            <view wx:if="{{followup.nextAdvice}}" class="sub-section">
+              <text class="sub-title">后续建议</text>
+              <text class="result-text">{{followup.nextAdvice}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

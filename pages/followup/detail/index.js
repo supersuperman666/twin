@@ -5,8 +5,6 @@ Page({
     followup: null,
     normalItems: [],
     specialItems: [],
-    prepareStatus: 'pending',
-    prepareLabel: '待准备',
   },
 
   onLoad(options) {
@@ -25,20 +23,12 @@ Page({
       return;
     }
 
-    const { normalItems, specialItems, prepareStatus } = interventionStore.computeFollowupPrepareStatus(id);
-
-    const prepareLabelMap = {
-      pending: '待准备',
-      partial: '已部分完成',
-      ready: '已准备',
-    };
+    const { normalItems, specialItems } = interventionStore.computeFollowupPrepareStatus(id);
 
     this.setData({
       followup,
       normalItems,
       specialItems,
-      prepareStatus,
-      prepareLabel: prepareLabelMap[prepareStatus] || '待准备',
     });
   },
 

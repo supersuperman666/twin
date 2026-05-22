@@ -1,0 +1,43 @@
+<view class="page">
+  <view class="page-header">
+    <text class="page-title">历史方案</text>
+    <text class="page-desc">查看之前执行过的方案版本，方案明细展示逻辑与当前方案保持一致。</text>
+  </view>
+
+  <view wx:if="{{!plans.length}}" class="empty-card">
+    <text class="empty-text">当前还没有历史方案</text>
+  </view>
+
+  <view wx:for="{{plans}}" wx:key="id" wx:for-item="planItem" class="timeline-item">
+    <view class="timeline-side">
+      <view class="timeline-dot"></view>
+      <view class="timeline-line"></view>
+    </view>
+    <view class="timeline-main">
+      <view class="plan-card" bindtap="toggleCard" data-id="{{planItem.id}}">
+        <view class="card-top">
+          <view>
+            <text class="time-text">{{planItem.period.startDate}} 至 {{planItem.period.endDate}}</text>
+            <text class="title-text">{{planItem.title}}</text>
+          </view>
+          <view class="badge {{planItem.status === '已完成' ? 'done' : 'replaced'}}">{{planItem.status}}</view>
+        </view>
+        <view class="meta-row">
+          <text class="meta-chip">{{planItem.disease}}</text>
+          <text class="meta-chip">周期 {{planItem.period.days}} 天</text>
+        </view>
+        <text class="summary-text">{{planItem.objective}}</text>
+
+        <view wx:if="{{expandedId === planItem.id}}" class="expand-body">
+          <view wx:for="{{planItem.modules}}" wx:key="key" wx:for-item="moduleItem" class="detail-group" wx:if="{{moduleItem.items && moduleItem.items.length}}">
+            <text class="detail-title">{{moduleItem.name}}</text>
+            <view wx:for="{{moduleItem.items}}" wx:key="index" wx:for-item="line" class="detail-row">
+              <view class="bullet"></view>
+              <text>{{line}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

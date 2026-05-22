@@ -39,11 +39,10 @@ Page({
       { label: '设备绑定', mark: '设', color: '#6b73e8', path: '/pages/device/index/index' }
     ],
     healthTags: ['2型糖尿病', '慢阻肺稳定期', '睡眠呼吸障碍风险', '绑定血氧仪'],
-    adviceList: [],
     recheckPlans: [],
     recheckProgress: {},
     activeFollowups: [],
-    followupPrepareStatus: {},
+    nearestFollowup: null,
     showAdviceDrawer: false,
     currentAdvice: null,
   },
@@ -65,18 +64,25 @@ Page({
   },
 
   loadInterventionData() {
-    const adviceList = interventionStore.getAdviceList();
     const recheckPlans = interventionStore.getActiveRecheckPlans();
     const recheckProgress = {};
     recheckPlans.forEach(r => {
       recheckProgress[r.id] = interventionStore.computeRecheckProgress(r.id);
     });
     const activeFollowups = interventionStore.getActiveFollowups();
-    const followupPrepareStatus = {};
-    activeFollowups.forEach(f => {
-      followupPrepareStatus[f.id] = interventionStore.computeFollowupPrepareStatus(f.id);
+    const todayTaskCount = recheckPlans.length;
+    const managedSummary = [
+      { label: '健康分', value: '78 分' },
+      { label: '今日待办', value: todayTaskCount ? `${todayTaskCount} 项` : '暂无' },
+      { label: '下次随访', value: activeFollowups[0] ? activeFollowups[0].dueAt.slice(5, 10) : '暂无' }
+    ];
+    this.setData({
+      recheckPlans,
+      recheckProgress,
+      activeFollowups,
+      nearestFollowup: activeFollowups[0] || null,
+      managedSummary,
     });
-    this.setData({ adviceList, recheckPlans, recheckProgress, activeFollowups, followupPrepareStatus });
   },
 
   loadAssessmentResult(options = {}) {
@@ -187,6 +193,10 @@ Page({
 
   onFollowupPrepareTap(e) {
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: `/pages/followup/detail/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/followup/records/index?highlight=${id}` });
+  },
+
+  onFollowupRecords() {
+    wx.navigateTo({ url: '/pages/followup/records/index' });
   },
 })
