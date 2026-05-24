@@ -1,0 +1,56 @@
+<view class="page">
+
+  <!-- 评分展示 -->
+  <view class="score-card">
+    <text class="score-label">CAT 评分</text>
+    <view class="score-display">
+      <text class="score-number" style="color: {{levelColor}};">{{totalScore}}</text>
+      <text class="score-max">/ {{maxTotal}}</text>
+    </view>
+  </view>
+
+  <!-- 影响等级色带 -->
+  <view class="bar-card">
+    <view class="bar-container">
+      <view wx:for="{{barSegments}}" wx:key="label"
+        class="bar-segment {{activeBarIndex === index ? 'bar-active' : ''}}"
+        style="background: {{item.color}}; width: {{item.width}};">
+        <text class="bar-label">{{item.label}}</text>
+      </view>
+    </view>
+    <view class="bar-indicator-row">
+      <text class="bar-min">0</text>
+      <text class="bar-max">40</text>
+    </view>
+  </view>
+
+  <!-- 影响等级 -->
+  <view class="level-card" style="background: {{levelColor}}; opacity: 0.06;">
+  </view>
+  <view class="level-content">
+    <view class="level-badge-row">
+      <view class="level-badge" style="background: {{levelColor}}; color: #FFFFFF;">{{levelName}}</view>
+    </view>
+    <text class="level-desc">{{levelDesc}}</text>
+  </view>
+
+  <!-- GOLD 分组说明 -->
+  <view class="info-card">
+    <text class="info-title">GOLD 分组</text>
+    <text class="info-text">{{goldGroup}}</text>
+    <text class="info-text">{{goldAdvice}}</text>
+  </view>
+
+  <!-- MCID 说明 -->
+  <view class="info-card">
+    <text class="info-title">评分说明</text>
+    <text class="info-text">{{mcidNote}}</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button class="btn-detail" bindtap="goDetail">查看明细</button>
+    <button class="btn-home" bindtap="goHome">返回首页</button>
+  </view>
+
+</view>

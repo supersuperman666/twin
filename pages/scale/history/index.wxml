@@ -1,0 +1,31 @@
+<view class="page">
+
+  <view wx:if="{{records.length}}" class="record-list">
+    <view wx:for="{{records}}" wx:key="id" class="record-card" bindtap="onRecordTap" data-route="{{item.route}}">
+      <view class="record-left">
+        <view class="record-timeline-dot" style="background: {{item.levelColor}};"></view>
+        <view class="record-timeline-line"></view>
+      </view>
+      <view class="record-content">
+        <view class="record-header">
+          <text class="record-name">{{item.scaleName}}</text>
+          <view class="record-badge" style="background: {{item.levelColor}}; color: #FFFFFF;">{{item.levelName}}</view>
+        </view>
+        <text class="record-score">得分 {{item.scoreDisplay}}</text>
+        <text class="record-date">{{item.dateDisplay}}</text>
+        <view class="record-action">查看详情 ›</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="empty-state">
+    <view class="empty-icon-box">
+      <view class="empty-icon-inner">
+        <text class="empty-icon-text">评</text>
+      </view>
+    </view>
+    <text class="empty-title">暂无评估记录</text>
+    <text class="empty-desc">完成评估后，记录将在这里展示</text>
+  </view>
+
+</view>

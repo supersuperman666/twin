@@ -37,6 +37,7 @@
 - [患者端-记录页SPEC](./spec/患者端-记录页SPEC.md)
 - [医生PC端-医生建议SPEC](./spec/医生PC端-医生建议SPEC.md)
 - [医生PC端-设备与报告SPEC](./spec/医生PC端-设备与报告SPEC.md)
+- [医生PC端-睡眠呼吸深度分析页SPEC](./spec/医生PC端-睡眠呼吸深度分析页SPEC.md)
 
 适合：
 

@@ -1,0 +1,45 @@
+<view class="page">
+
+  <!-- 进度条 -->
+  <view class="progress-bar-wrap">
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
+    </view>
+    <text class="progress-text">{{currentIndex + 1}} / {{totalCount}}</text>
+  </view>
+
+  <!-- 当前题目 -->
+  <view class="question-area {{isTransitioning ? 'fade-out' : 'fade-in'}}">
+    <view class="question-header">
+      <view class="question-num-badge">Q{{currentQuestion.id}}</view>
+      <text class="question-title">{{currentQuestion.title}}</text>
+    </view>
+    <text class="question-text">{{currentQuestion.text}}</text>
+
+    <!-- 选项列表 -->
+    <view class="option-list">
+      <view
+        wx:for="{{currentQuestion.options}}"
+        wx:key="score"
+        class="option-item {{selectedIndex === index ? 'option-selected' : ''}}"
+        bindtap="onOptionTap"
+        data-index="{{index}}"
+      >
+        <view class="option-score-badge">{{item.score}}</view>
+        <text class="option-text">{{item.label}}</text>
+        <view wx:if="{{selectedIndex === index}}" class="option-check"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部导航 -->
+  <view class="bottom-nav">
+    <view class="nav-btn nav-prev" bindtap="goPrev">
+      <text>{{currentIndex > 0 ? '上一题' : '返回'}}</text>
+    </view>
+    <view wx:if="{{currentIndex < totalCount - 1 && selectedIndex !== null}}" class="nav-btn nav-next" bindtap="goNext">
+      <text>下一题</text>
+    </view>
+  </view>
+
+</view>

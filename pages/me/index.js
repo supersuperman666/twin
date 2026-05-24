@@ -12,6 +12,7 @@ Page({
     ],
     menus: [
       { label: '我的医生' },
+      { label: '评估量表', path: '/pages/scale/index/index' },
       { label: '医生建议', path: '/pages/me/advice/index' },
       { label: '我的任务', path: '/pages/me/tasks/index' },
       { label: '报告与检查' },

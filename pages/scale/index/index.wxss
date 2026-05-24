@@ -1,0 +1,142 @@
+/* ─── 页面基础 ─── */
+page { background: #EEF2F6; }
+
+.page {
+  min-height: 100vh;
+  background: #EEF2F6;
+  padding: 24rpx 32rpx 120rpx;
+  color: #16202D;
+}
+
+/* ─── 页面头部 ─── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+}
+
+.page-title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #16202D;
+}
+
+.history-link {
+  color: #237BE8;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+/* ─── 量表卡片 ─── */
+.scale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.scale-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 28rpx 32rpx;
+  box-shadow: 0 2rpx 0 rgba(20, 36, 54, 0.02);
+}
+
+.scale-card-top {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.scale-icon {
+  width: 80rpx;
+  height: 80rpx;
+  flex: 0 0 80rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scale-icon-text {
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.scale-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.scale-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #16202D;
+  margin-bottom: 4rpx;
+}
+
+.scale-full-name {
+  display: block;
+  font-size: 22rpx;
+  color: #8D99A8;
+  margin-bottom: 8rpx;
+}
+
+.scale-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #5D6A7A;
+  line-height: 1.5;
+}
+
+/* ─── 卡片底部 ─── */
+.scale-card-bottom {
+  border-top: 1rpx solid #E7ECF2;
+  padding-top: 16rpx;
+}
+
+.scale-meta-row {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 12rpx;
+}
+
+.scale-meta {
+  font-size: 24rpx;
+  color: #8D99A8;
+}
+
+.scale-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 36rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.badge-pending {
+  background: #EDF2F8;
+  color: #627084;
+}
+
+.scale-last-score {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #3A4A5A;
+}
+
+.scale-last-date {
+  font-size: 22rpx;
+  color: #8D99A8;
+}

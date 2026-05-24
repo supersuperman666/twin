@@ -260,6 +260,108 @@ export const seedHealthData = {
       createdAt: "2026-05-19 09:00"
     }
   ],
+  sleepReports: [
+    {
+      id: "SR005",
+      patientId: "P001",
+      reportType: "睡眠呼吸监测报告",
+      deviceModel: "ZG-M11A",
+      monitorDate: "2026-05-22",
+      reportTime: "2026-05-22 07:30",
+      status: "异常",
+      riskSummary: "夜间低氧与睡眠呼吸事件负担持续，后半夜异常更集中。",
+      effectiveHours: "7 小时 18 分",
+      ahi: "18.2",
+      odi: "18.6",
+      minSpo2: "86%",
+      avgSpo2: "93%",
+      respiratoryEvents: "38 次",
+      apneaCount: "12 次",
+      hypopneaCount: "26 次",
+      heartRate: "平均 76 次/分",
+      movementSummary: "体动 14 段",
+      sleepStageSummary: "浅睡 48% / 深睡 17% / REM 20%",
+      spo2Series: [95, 94, 93, 91, 88, 86, 90, 92, 89, 93, 94, 92]
+    },
+    {
+      id: "SR004",
+      patientId: "P001",
+      reportType: "睡眠血氧报告",
+      deviceModel: "ZG-P11H",
+      monitorDate: "2026-05-21",
+      reportTime: "2026-05-21 07:18",
+      status: "异常",
+      riskSummary: "夜间氧减仍在持续，建议结合睡眠呼吸监测报告复核。",
+      effectiveHours: "6 小时 56 分",
+      odi: "16.4",
+      minSpo2: "88%",
+      avgSpo2: "94%",
+      respiratoryEvents: "睡眠呼吸事件异常",
+      pulseRate: "平均 74 次/分",
+      spo2Series: [96, 95, 94, 93, 90, 88, 91, 92, 90, 93, 95, 94]
+    },
+    {
+      id: "SR003",
+      patientId: "P001",
+      reportType: "睡眠呼吸监测报告",
+      deviceModel: "ZG-M11A",
+      monitorDate: "2026-05-20",
+      reportTime: "2026-05-20 07:42",
+      status: "异常",
+      riskSummary: "呼吸事件较前一晚略回落，最低血氧仍低于目标。",
+      effectiveHours: "7 小时 05 分",
+      ahi: "16.8",
+      odi: "15.9",
+      minSpo2: "89%",
+      avgSpo2: "94%",
+      respiratoryEvents: "34 次",
+      apneaCount: "10 次",
+      hypopneaCount: "24 次",
+      heartRate: "平均 73 次/分",
+      movementSummary: "体动 11 段",
+      sleepStageSummary: "浅睡 46% / 深睡 19% / REM 18%",
+      spo2Series: [96, 95, 94, 92, 90, 89, 91, 93, 91, 94, 95, 94]
+    },
+    {
+      id: "SR002",
+      patientId: "P001",
+      reportType: "睡眠血氧报告",
+      deviceModel: "ZG-P11G",
+      monitorDate: "2026-05-19",
+      reportTime: "2026-05-19 07:30",
+      status: "异常",
+      riskSummary: "低氧事件触发睡眠预警，需优先确认复测与随访动作。",
+      effectiveHours: "6 小时 42 分",
+      odi: "18.6",
+      minSpo2: "86%",
+      avgSpo2: "93%",
+      respiratoryEvents: "睡眠呼吸事件异常",
+      pulseRate: "平均 80 次/分",
+      spo2Series: [95, 94, 92, 90, 87, 86, 89, 91, 90, 92, 93, 92]
+    },
+    {
+      id: "SR001",
+      patientId: "P001",
+      reportType: "睡眠呼吸监测报告",
+      deviceModel: "ZG-M11A",
+      monitorDate: "2026-05-18",
+      reportTime: "2026-05-18 07:25",
+      status: "待复核",
+      riskSummary: "存在一段信号缺失，趋势可参考，报告需复核。",
+      effectiveHours: "5 小时 58 分",
+      ahi: "14.7",
+      odi: "13.2",
+      minSpo2: "90%",
+      avgSpo2: "95%",
+      respiratoryEvents: "29 次",
+      apneaCount: "8 次",
+      hypopneaCount: "21 次",
+      heartRate: "平均 72 次/分",
+      movementSummary: "体动 9 段",
+      sleepStageSummary: "浅睡 44% / 深睡 21% / REM 19%",
+      spo2Series: [96, 95, 95, 94, 93, 91, 90, 92, 94, 95, 94, 95]
+    }
+  ],
   plans: [
     {
       id: "PL001",
@@ -555,3 +657,155 @@ export const seedHealthData = {
     { id: "T005", patientId: "P004", type: "筛查", time: "2026-05-14 08:30", text: "完成高血压风险筛查" }
   ]
 };
+
+const sleepReportEnhancements = {
+  SR005: {
+    sleepEfficiency: "81%",
+    deepSleepRatio: "17%",
+    remRatio: "20%",
+    movementIndex: "1.9 次/小时",
+    snoreIndex: "28%",
+    snoreSummary: "中重度鼾声 42 分钟，后半夜更集中",
+    snoreSeries: [18, 24, 31, 45, 62, 68, 44, 36, 59, 40, 26, 20],
+    movementSeries: [1, 2, 1, 3, 4, 2, 1, 3, 5, 2, 1, 0],
+    eventSeries: [0, 1, 1, 2, 4, 5, 2, 1, 3, 2, 1, 0],
+    sleepStageSegments: [
+      ["清醒", 8], ["浅睡", 26], ["深睡", 12], ["浅睡", 18], ["REM", 14], ["浅睡", 22]
+    ]
+  },
+  SR004: {
+    snoreSummary: "当前血氧设备未输出鼾声",
+    movementSummary: "当前血氧设备未输出体动",
+    snoreSeries: [],
+    movementSeries: [],
+    eventSeries: [0, 0, 1, 1, 3, 4, 2, 1, 2, 1, 0, 0]
+  },
+  SR003: {
+    sleepEfficiency: "84%",
+    deepSleepRatio: "19%",
+    remRatio: "18%",
+    movementIndex: "1.6 次/小时",
+    snoreIndex: "24%",
+    snoreSummary: "中度鼾声 36 分钟",
+    snoreSeries: [14, 20, 28, 35, 52, 54, 39, 30, 46, 36, 22, 18],
+    movementSeries: [1, 1, 1, 2, 3, 2, 1, 2, 4, 2, 1, 0],
+    eventSeries: [0, 1, 0, 1, 3, 4, 2, 1, 2, 1, 0, 0],
+    sleepStageSegments: [
+      ["清醒", 7], ["浅睡", 24], ["深睡", 14], ["浅睡", 22], ["REM", 13], ["浅睡", 20]
+    ]
+  },
+  SR002: {
+    snoreSummary: "当前血氧设备未输出鼾声",
+    movementSummary: "当前血氧设备未输出体动",
+    snoreSeries: [],
+    movementSeries: [],
+    eventSeries: [0, 1, 1, 2, 4, 4, 3, 1, 2, 1, 0, 0]
+  },
+  SR001: {
+    sleepEfficiency: "78%",
+    deepSleepRatio: "21%",
+    remRatio: "19%",
+    movementIndex: "1.5 次/小时",
+    snoreIndex: "20%",
+    snoreSummary: "轻中度鼾声 29 分钟，信号缺失段需复核",
+    snoreSeries: [12, 18, 22, 30, 38, 42, 26, 24, 35, 28, 18, 12],
+    movementSeries: [0, 1, 1, 2, 2, 2, 1, 2, 3, 1, 1, 0],
+    eventSeries: [0, 0, 1, 1, 2, 3, 2, 0, 1, 1, 0, 0],
+    sleepStageSegments: [
+      ["清醒", 10], ["浅睡", 22], ["深睡", 16], ["浅睡", 20], ["REM", 15], ["浅睡", 17]
+    ]
+  }
+};
+
+const olderSleepReports = [
+  {
+    id: "SR000",
+    patientId: "P001",
+    reportType: "睡眠呼吸监测报告",
+    deviceModel: "ZG-M11B",
+    monitorDate: "2026-05-16",
+    reportTime: "2026-05-16 07:34",
+    status: "异常",
+    riskSummary: "呼吸事件和氧减负担处于中度异常区间，需继续观察。",
+    effectiveHours: "6 小时 48 分",
+    ahi: "15.6",
+    odi: "14.8",
+    minSpo2: "89%",
+    avgSpo2: "94%",
+    respiratoryEvents: "31 次",
+    apneaCount: "9 次",
+    hypopneaCount: "22 次",
+    heartRate: "平均 74 次/分",
+    movementSummary: "体动 10 段",
+    sleepStageSummary: "浅睡 45% / 深睡 20% / REM 18%",
+    sleepEfficiency: "83%",
+    deepSleepRatio: "20%",
+    remRatio: "18%",
+    movementIndex: "1.5 次/小时",
+    snoreIndex: "22%",
+    snoreSummary: "中度鼾声 32 分钟",
+    spo2Series: [96, 95, 94, 92, 90, 89, 91, 93, 92, 94, 95, 94],
+    snoreSeries: [10, 16, 24, 32, 44, 50, 32, 24, 42, 30, 20, 14],
+    movementSeries: [0, 1, 1, 2, 3, 1, 1, 2, 3, 1, 0, 0],
+    eventSeries: [0, 0, 1, 1, 3, 3, 2, 1, 2, 1, 0, 0],
+    sleepStageSegments: [["清醒", 8], ["浅睡", 24], ["深睡", 15], ["浅睡", 21], ["REM", 14], ["浅睡", 18]]
+  },
+  {
+    id: "SR-0512",
+    patientId: "P001",
+    reportType: "睡眠呼吸监测报告",
+    deviceModel: "ZG-M11A",
+    monitorDate: "2026-05-12",
+    reportTime: "2026-05-12 07:26",
+    status: "待复核",
+    riskSummary: "呼吸事件负担边缘偏高，报告存在短暂信号波动。",
+    effectiveHours: "6 小时 12 分",
+    ahi: "13.8",
+    odi: "12.9",
+    minSpo2: "90%",
+    avgSpo2: "95%",
+    respiratoryEvents: "27 次",
+    apneaCount: "7 次",
+    hypopneaCount: "20 次",
+    heartRate: "平均 71 次/分",
+    movementSummary: "体动 8 段",
+    sleepStageSummary: "浅睡 43% / 深睡 22% / REM 18%",
+    sleepEfficiency: "80%",
+    deepSleepRatio: "22%",
+    remRatio: "18%",
+    movementIndex: "1.3 次/小时",
+    snoreIndex: "18%",
+    snoreSummary: "轻中度鼾声 24 分钟",
+    spo2Series: [96, 96, 95, 94, 92, 90, 91, 93, 94, 95, 95, 94],
+    snoreSeries: [8, 12, 18, 24, 34, 38, 24, 20, 30, 22, 14, 10],
+    movementSeries: [0, 1, 0, 1, 2, 2, 1, 1, 2, 1, 0, 0],
+    eventSeries: [0, 0, 0, 1, 2, 2, 1, 0, 1, 1, 0, 0],
+    sleepStageSegments: [["清醒", 9], ["浅睡", 21], ["深睡", 17], ["浅睡", 22], ["REM", 14], ["浅睡", 17]]
+  },
+  {
+    id: "SR-0502",
+    patientId: "P001",
+    reportType: "睡眠血氧报告",
+    deviceModel: "ZG-P11H",
+    monitorDate: "2026-05-02",
+    reportTime: "2026-05-02 07:20",
+    status: "异常",
+    riskSummary: "夜间血氧仍有低于 90% 片段，建议继续结合症状随访。",
+    effectiveHours: "6 小时 36 分",
+    odi: "15.2",
+    minSpo2: "88%",
+    avgSpo2: "94%",
+    respiratoryEvents: "睡眠呼吸事件异常",
+    pulseRate: "平均 76 次/分",
+    movementSummary: "当前血氧设备未输出体动",
+    snoreSummary: "当前血氧设备未输出鼾声",
+    spo2Series: [96, 95, 94, 93, 91, 88, 90, 92, 91, 93, 94, 94],
+    snoreSeries: [],
+    movementSeries: [],
+    eventSeries: [0, 0, 1, 1, 3, 3, 2, 1, 1, 0, 0, 0]
+  }
+];
+
+seedHealthData.sleepReports = [...seedHealthData.sleepReports, ...olderSleepReports]
+  .map((report) => ({ ...report, ...(sleepReportEnhancements[report.id] || {}) }))
+  .sort((a, b) => b.monitorDate.localeCompare(a.monitorDate));

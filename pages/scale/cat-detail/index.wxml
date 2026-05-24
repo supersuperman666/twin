@@ -1,0 +1,44 @@
+<view class="page">
+
+  <!-- 总分摘要 -->
+  <view class="summary-card">
+    <view class="summary-left">
+      <text class="summary-score" style="color: {{levelColor}};">{{totalScore}}</text>
+      <text class="summary-max">/ {{maxTotal}}</text>
+    </view>
+    <view class="summary-right">
+      <view class="level-badge" style="background: {{levelColor}}; color: #FFFFFF;">{{levelName}}</view>
+    </view>
+  </view>
+
+  <!-- 各题明细 -->
+  <view class="detail-list">
+    <view wx:for="{{details}}" wx:key="id" class="detail-card">
+      <view class="detail-header">
+        <view class="detail-num">Q{{item.id}}</view>
+        <text class="detail-title">{{item.title}}</text>
+        <text class="detail-score" style="color: {{item.score >= 3 ? '#EF4444' : item.score >= 1 ? '#F59E0B' : '#10B981'}};">{{item.score !== null ? item.score + ' 分' : '--'}}</text>
+      </view>
+      <text class="detail-question">{{item.text}}</text>
+      <view class="detail-answer">
+        <text class="detail-answer-label">{{item.selectedOption}}</text>
+      </view>
+      <!-- 分数条 -->
+      <view class="score-bar-wrap">
+        <view class="score-bar">
+          <view class="score-bar-fill" style="width: {{(item.score || 0) / 5 * 100}}%; background: {{item.score >= 3 ? '#EF4444' : item.score >= 1 ? '#F59E0B' : '#10B981'}};"></view>
+        </view>
+        <view class="score-bar-labels">
+          <text class="score-bar-min">0</text>
+          <text class="score-bar-max">5</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button class="btn-back" bindtap="goBack">返回结果页</button>
+  </view>
+
+</view>

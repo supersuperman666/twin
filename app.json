@@ -23,7 +23,12 @@
     "pages/me/advice/index",
     "pages/me/tasks/index",
     "pages/followup/detail/index",
-    "pages/followup/records/index"
+    "pages/followup/records/index",
+    "pages/scale/index/index",
+    "pages/scale/cat/index",
+    "pages/scale/cat-result/index",
+    "pages/scale/cat-detail/index",
+    "pages/scale/history/index"
   ],
   "window": {
     "navigationBarTitleText": "慢病管家",

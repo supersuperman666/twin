@@ -1,0 +1,144 @@
+/* ─── 页面基础 ─── */
+page { background: #EEF2F6; }
+
+.page {
+  min-height: 100vh;
+  background: #EEF2F6;
+  padding: 24rpx 32rpx 120rpx;
+  color: #16202D;
+}
+
+/* ─── 记录列表 ─── */
+.record-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-card {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.record-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24rpx;
+  flex: 0 0 24rpx;
+  padding-top: 28rpx;
+}
+
+.record-timeline-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  flex: 0 0 20rpx;
+  box-shadow: 0 0 0 6rpx rgba(31, 130, 255, 0.15);
+}
+
+.record-timeline-line {
+  width: 4rpx;
+  flex: 1;
+  background: #E7ECF2;
+  margin-top: 8rpx;
+  border-radius: 2rpx;
+}
+
+.record-card:last-child .record-timeline-line {
+  background: transparent;
+}
+
+.record-content {
+  flex: 1;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 24rpx 28rpx;
+}
+
+.record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.record-name {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #16202D;
+}
+
+.record-badge {
+  display: inline-flex;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.record-score {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #3A4A5A;
+  margin-bottom: 8rpx;
+}
+
+.record-date {
+  display: block;
+  font-size: 24rpx;
+  color: #8D99A8;
+  margin-bottom: 8rpx;
+}
+
+.record-action {
+  color: #237BE8;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+/* ─── 空状态 ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx 60rpx;
+}
+
+.empty-icon-box {
+  margin-bottom: 48rpx;
+}
+
+.empty-icon-inner {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: #E9F3FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon-text {
+  font-size: 56rpx;
+  font-weight: 800;
+  color: #1F82FF;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #16202D;
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+
+.empty-desc {
+  font-size: 26rpx;
+  color: #5D6A7A;
+  line-height: 1.6;
+  text-align: center;
+}

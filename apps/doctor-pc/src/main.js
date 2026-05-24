@@ -14,6 +14,9 @@ let planTagFilter = "全部";
 let planSourceFilter = "全部";
 let planDiseaseFilter = "全部";
 let planSearchQuery = "";
+let sleepTimeWindow = "7";
+let sleepTrendMetric = "ODI";
+let selectedSleepReportIds = {};
 let paginationState = {
   patients: { page: 1, pageSize: 20, jump: "" },
   alerts: { page: 1, pageSize: 20, jump: "" },
@@ -74,6 +77,7 @@ const alertsOf = (patientId) => state.alerts.filter((item) => item.patientId ===
 const plansOf = (patientId) => state.plans.filter((item) => item.patientId === patientId);
 const followupsOf = (patientId) => state.followups.filter((item) => item.patientId === patientId);
 const adviceOf = (patientId) => state.advice?.filter((item) => item.patientId === patientId) || [];
+const sleepReportsOf = (patientId) => (state.sleepReports || []).filter((item) => item.patientId === patientId);
 
 const PLAN_STATUSES = ["全部", "草稿", "已下发待患者确认", "执行中", "已驳回", "已停用", "已完成"];
 const PLAN_REMINDER_TAGS = ["全部", "患者未确认", "患者有疑问", "患者无法执行", "即将到期", "待复盘"];
@@ -148,6 +152,11 @@ function toneOf(value) {
     紧急: "red",
     重要: "orange",
     提醒: "blue",
+    异常: "red",
+    偏高: "orange",
+    待复核: "orange",
+    待报告: "gray",
+    观察: "blue",
     待处理: "red",
     已处理: "green",
     稳定: "green",
@@ -166,6 +175,7 @@ function toneOf(value) {
     已停用: "gray",
     已完成: "green",
     待随访: "blue",
+    待患者准备: "orange",
     逾期: "red",
     已取消: "gray",
     达标: "green",
@@ -177,6 +187,122 @@ function toneOf(value) {
     已读: "green"
   };
   return map[value] || "gray";
+}
+
+function hasSleepBreathingDisorder(patient) {
+  return [...(patient.diseases || []), ...(patient.screening?.confirmed || [])].some((item) => /睡眠呼吸(障碍|暂停)|OSA/i.test(item));
+}
+function hasDiabetes(patient) {
+  return [...(patient.diseases || []), ...(patient.screening?.confirmed || [])].some((item) => /糖尿病|diabetes/i.test(item));
+}
+
+// Chart.js CDN loader — loads once, resolves immediately on subsequent calls
+let _chartJsReady = null;
+function loadChartJs() {
+  if (_chartJsReady) return _chartJsReady;
+  _chartJsReady = new Promise((resolve) => {
+    if (window.Chart) { resolve(window.Chart); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js";
+    s.onload = () => resolve(window.Chart);
+    document.head.appendChild(s);
+  });
+  return _chartJsReady;
+}
+
+function initGlucoseCharts(patientId) {
+  const agpCanvas = document.getElementById("g-agp-chart");
+  if (!agpCanvas) return;
+
+  loadChartJs().then((Chart) => {
+    if (window._gAgpChart) { window._gAgpChart.destroy(); window._gAgpChart = null; }
+
+    const period = window._gAgpPeriod || 14;
+
+    // Synthetic AGP data with dawn phenomenon
+    const labels = Array.from({length:24},(_,h) => String(h).padStart(2,"0")+":00");
+    const median = [7.2,6.8,6.4,6.2,6.0,5.9,5.8,6.5,8.2,9.1,8.8,8.3,7.9,8.5,9.2,9.8,9.0,8.4,7.9,8.8,10.2,9.6,8.4,7.6];
+    const scale  = period===7 ? 1.05 : period===30 ? 0.96 : 1;
+    const scaled = median.map(v => +(v*scale).toFixed(1));
+    const p25    = scaled.map(v => +(v - 1.2).toFixed(1));
+    const p75    = scaled.map(v => +(v + 1.5).toFixed(1));
+    const today  = scaled.map(v => +(v + (Math.random()-.5)*1.5).toFixed(1));
+
+    if (patientId === "P001") {
+      // Boost values for P001 (poor control)
+      for (let i=0;i<scaled.length;i++) { scaled[i]=+(scaled[i]+1.2).toFixed(1); p25[i]=+(p25[i]+1.2).toFixed(1); p75[i]=+(p75[i]+1.2).toFixed(1); }
+    }
+
+    const bgBands = {
+      id:"bgBands",
+      beforeDraw(chart) {
+        const { ctx, chartArea: ca, scales: { y } } = chart;
+        if (!ca) return;
+        const toY = v => y.getPixelForValue(v);
+        ctx.save();
+        ctx.fillStyle = "rgba(255,77,79,.06)";
+        ctx.fillRect(ca.left, toY(3.9), ca.width, toY(2.5)-toY(3.9));
+        ctx.fillStyle = "rgba(82,196,26,.06)";
+        ctx.fillRect(ca.left, toY(10.0), ca.width, toY(3.9)-toY(10.0));
+        ctx.fillStyle = "rgba(250,140,22,.06)";
+        ctx.fillRect(ca.left, toY(18), ca.width, toY(10.0)-toY(18));
+        // Green dashed ref lines
+        ctx.strokeStyle = "rgba(82,196,26,.4)"; ctx.lineWidth=1;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(ca.left,toY(3.9));  ctx.lineTo(ca.right,toY(3.9));  ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ca.left,toY(10.0)); ctx.lineTo(ca.right,toY(10.0)); ctx.stroke();
+        ctx.setLineDash([]); ctx.restore();
+      }
+    };
+
+    window._gAgpChart = new Chart(agpCanvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label:"P75", data:p75, borderColor:"transparent", backgroundColor:"rgba(22,119,255,.12)", fill:"+1", pointRadius:0, tension:.4, order:3 },
+          { label:"P25", data:p25, borderColor:"transparent", backgroundColor:"rgba(22,119,255,.12)", fill:false, pointRadius:0, tension:.4, order:4 },
+          { label:"中位数", data:scaled, borderColor:"#1677FF", backgroundColor:"transparent", borderWidth:2.5, fill:false, pointRadius:0, tension:.4, order:1 },
+          { label:"当日曲线", data:today, borderColor:"#86909C", backgroundColor:"transparent", borderWidth:1.5, borderDash:[5,4], fill:false, pointRadius:0, tension:.4, order:2 }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false, responsive: true,
+        interaction: { mode:"index", intersect:false },
+        plugins: {
+          legend: { display:false },
+          tooltip: {
+            backgroundColor:"rgba(29,33,41,.85)",
+            titleFont:{size:11}, bodyFont:{size:11},
+            padding:8, borderColor:"#E5E6EB", borderWidth:1,
+            callbacks: { label: ctx => { if (ctx.dataset.label==="P75"||ctx.dataset.label==="P25") return null; return ctx.dataset.label+": "+ctx.parsed.y+" mmol/L"; } }
+          }
+        },
+        scales: {
+          x: { grid:{color:"#F0F0F0"}, ticks:{font:{size:10},color:"#86909C",maxTicksLimit:8}, border:{display:false} },
+          y: { min:2.5, max:18, grid:{color:"#F0F0F0"}, ticks:{font:{size:10},color:"#86909C"}, border:{display:false} }
+        }
+      },
+      plugins: [bgBands]
+    });
+  });
+}
+
+function workbenchStat(label, value, note, tone = "") {
+  return `<article class="workbench-stat ${tone}">
+    <span>${label}</span>
+    <strong>${value}</strong>
+    <small>${note}</small>
+  </article>`;
+}
+
+function followupStatusLabel(status) {
+  const map = {
+    pending_patient_prepare: "待患者准备",
+    pending_doctor_followup: "待随访",
+    overdue: "逾期"
+  };
+  return map[status] || status;
 }
 
 function render() {
@@ -193,6 +319,10 @@ function render() {
     detail: renderPatientDetail
   };
   renderers[currentView]();
+  // Initialise Chart.js charts after glucose tab renders
+  if (currentView === "detail" && detailTab === "glucose") {
+    setTimeout(() => initGlucoseCharts(selectedPatientId), 50);
+  }
 }
 
 function patientStats() {
@@ -1114,7 +1244,8 @@ function renderPatientDetail() {
     ["overview", "总览"],
     ["profile", "健康档案"],
     ["screening", "健康筛查"],
-    ["analysis", "数据分析"],
+    ...(hasDiabetes(patient) ? [["digital-twin", "数字孪生融合分析"], ["glucose", "血糖深度分析"]] : []),
+    ...(hasSleepBreathingDisorder(patient) ? [["analysis", "睡眠深度分析"]] : []),
     ["alerts", "预警记录"],
     ["plans", "管理方案"],
     ["followups", "随访记录"],
@@ -1150,6 +1281,8 @@ function renderDetailTab(patient) {
     overview: renderOverview,
     profile: renderProfile,
     screening: renderScreening,
+    "digital-twin": renderDigitalTwin,
+    glucose: renderGlucoseAnalysis,
     analysis: renderAnalysis,
     alerts: renderPatientAlerts,
     plans: renderPatientPlans,
@@ -1159,6 +1292,828 @@ function renderDetailTab(patient) {
   };
   return map[detailTab](patient);
 }
+
+
+/* ============================================================
+   血糖深度分析 — 数据 & 渲染（设计稿高保真还原）
+   ============================================================ */
+
+function getGlucoseData(patient) {
+  if (patient.id === "P001") {
+    return {
+      hasCGM: true, hasFingertip: true,
+      deviceBrand: "雅培 FreeStyle Libre 3",
+      deviceUpdated: "2026-05-22 08:32",
+      cgm: {
+        tir:        { value: 68,    unit: "%",       state: "orange", label: "轻度不达标", tip: "近14天监测",  goal: "≥ 70%" },
+        avgGlucose: { value: "8.2", unit: "mmol/L",  state: "orange", label: "偏高",       tip: "近14天均值", goal: "< 7.8 mmol/L" },
+        cv:         { value: 38,    unit: "%",        state: "orange", label: "波动偏大",   tip: "近14天稳定性", goal: "< 36%" },
+        tar:        { value: 6,     tarTbr: { tar1: 6, tar2: 3, tir: 68, tbr1: 20, tbr2: 3 }, state: "red", label: "重度高糖超标", tip: "近14天监测" },
+        eA1c:       { value: "7.5", unit: "%",        state: "red",    label: "控制不佳",   tip: "14天算法估算", goal: "< 7.0%" }
+      },
+      fingertip: {
+        fasting:  { value: "6.8",  unit: "mmol/L", state: "orange", label: "偏高",   tip: "近14天均值",   goal: "< 6.1 mmol/L" },
+        pp2h:     { value: "10.2", unit: "mmol/L", state: "red",    label: "超标",   tip: "近14天均值",   goal: "< 7.8 mmol/L" },
+        reach:    { value: 65,     unit: "%",       state: "orange", label: "不达标", tip: "近14天达标率", goal: "≥ 70%" },
+        maxHigh:  { value: "15.6", unit: "mmol/L", state: "red",    label: "危险高值", tip: "记录于 01-12 20:30", goal: "晚餐后2h" },
+        hypo:     { value: 3,      unit: "次/周",   state: "orange", label: "偏高",   tip: "近14天共 9 次",goal: "< 1次/周" }
+      },
+      aiCards: [
+        { seq:"01", ico:"orange", title:"血糖波动性分析",
+          body:'患者近14天血糖波动明显，<span class="g-tag g-tag-orange" style="display:inline;padding:1px 6px;font-size:12px;">CV偏高</span> 38%（目标&lt;36%），夜间02:00–04:00频繁出现<span class="g-tag g-tag-red" style="display:inline;padding:1px 6px;font-size:12px;">黎明现象</span>，晨起血糖普遍高于目标范围，提示需关注基础胰岛素时效覆盖。',
+          tags: [["orange","CV偏高"],["red","黎明现象"],["orange","夜间波动大"]]
+        },
+        { seq:"02", ico:"red", title:"低血糖风险评估", badge:["orange","中等风险"],
+          body:'过去14天出现低血糖（&lt;3.9 mmol/L）事件 <strong>23次</strong>，其中夜间（00:00–06:00）占 <strong>61%</strong>。TBR达23%，高于安全阈值4%。建议晚餐后调整基础胰岛素用量，设置夜间低血糖警报。',
+          riskMeter: ["#52C41A","#FA8C16","#F0F0F0"]
+        },
+        { seq:"03", ico:"purple", title:"餐后血糖反应分析",
+          body:'三餐后血糖反应差异显著。早餐及晚餐后血糖峰值偏高（分别为 12.3 和 13.1 mmol/L），午餐后控制相对理想。建议关注早餐碳水摄入及晚餐时间节律。',
+          tags: [["orange","早餐后偏高"],["green","午餐后正常"],["red","晚餐后偏高"]]
+        },
+        { seq:"04", ico:"blue", title:"整体控糖趋势",
+          body:'综合TIR、CV、eA1c三项核心指标，本周控糖较上周有所改善，整体呈<strong>缓慢向好</strong>趋势。TIR由上周65%提升至本周68%，黎明现象发生频率有所下降。',
+          trend: [["#52C41A","▲ 3%","TIR较上周"],["#52C41A","▼ 0.3%","eA1c较上周"],["#FA8C16","→ 持平","CV较上周"]]
+        }
+      ],
+      cgmRows: [
+        { ts:"2026-05-22 08:30", val:9.2,  trend:"↗", tags:["餐后"],       status:"正常",   note:"早餐后2h" },
+        { ts:"2026-05-22 06:00", val:7.8,  trend:"→", tags:["校准"],       status:"正常",   note:"" },
+        { ts:"2026-05-22 03:15", val:3.5,  trend:"↓", tags:["低血糖警报"], status:"警报",   note:"夜间低血糖" },
+        { ts:"2026-05-22 00:00", val:5.9,  trend:"↘", tags:["睡前"],       status:"正常",   note:"" },
+        { ts:"2026-05-21 20:30", val:13.1, trend:"↑", tags:["餐后"],       status:"正常",   note:"晚餐后" },
+        { ts:"2026-05-21 18:00", val:7.2,  trend:"→", tags:["餐前"],       status:"正常",   note:"" },
+        { ts:"2026-05-21 12:30", val:10.8, trend:"↗", tags:["餐后"],       status:"正常",   note:"午餐后2h" },
+        { ts:"2026-05-21 08:00", val:6.5,  trend:"↑", tags:["餐前"],       status:"正常",   note:"空腹" },
+        { ts:"2026-05-21 02:30", val:3.2,  trend:"↓", tags:["低血糖警报"], status:"警报",   note:"夜间低血糖" },
+        { ts:"2026-05-20 20:00", val:14.8, trend:"↑", tags:["餐后"],       status:"正常",   note:"晚餐后偏高" }
+      ],
+      fpRows: [
+        { ts:"2026-05-22 07:30", val:7.2,  timing:"空腹",  status:"达标", doctor:"护士小李", note:"晨起" },
+        { ts:"2026-05-22 09:30", val:10.5, timing:"餐后2h",status:"超标", doctor:"护士小李", note:"早餐后" },
+        { ts:"2026-05-21 22:00", val:8.1,  timing:"睡前",  status:"达标", doctor:"护士小王", note:"" },
+        { ts:"2026-05-21 11:30", val:9.8,  timing:"餐后2h",status:"超标", doctor:"王医生",   note:"午餐后" },
+        { ts:"2026-05-21 07:15", val:6.9,  timing:"空腹",  status:"偏高", doctor:"护士小李", note:"" },
+        { ts:"2026-05-20 20:30", val:15.6, timing:"餐后2h",status:"危险", doctor:"王医生",   note:"晚餐后峰值" }
+      ],
+      symptoms: {
+        low:    ["多汗 ×5","心悸 ×3","颤抖 ×2","头晕 ×2","饥饿感 ×1"],
+        high:   ["多尿 ×8","口渴 ×6","疲乏 ×4","视物模糊 ×3","体重下降 ×1"],
+        compl:  ["视物模糊 ×2","手足麻木 ×1","下肢浮肿 ×1"]
+      },
+      meds: [
+        { name:"二甲双胍",   tags:[["blue","500mg"],["gray","每日2次"],["gray","口服"]],     meta:"起始：2023-06-01 · 持续用药 229天" },
+        { name:"格列美脲",   tags:[["blue","2mg"],  ["gray","每日1次"],["gray","口服"]],     meta:"起始：2023-09-15 · 持续用药 122天" },
+        { name:"甘精胰岛素", tags:[["orange","10U"],["gray","每晚1次"],["purple","皮下注射"]],meta:"起始：2023-12-01 · 持续用药 45天" }
+      ],
+      adviceTl: [
+        { date:"2026-05-22", doctor:"王医生", active:true,  full:"建议患者加强餐后运动，每餐后步行30分钟以改善餐后血糖控制。同时注意夜间低血糖风险，建议睡前监测血糖，如低于6.0 mmol/L可适量补充碳水。" },
+        { date:"2026-05-15", doctor:"李医生", active:false, preview:"调整胰岛素剂量至12U，观察一周后评估...", full:"调整胰岛素剂量至12U，观察一周后评估血糖控制效果。如夜间低血糖频率未改善，考虑更换为德谷胰岛素。" },
+        { date:"2026-05-10", doctor:"王医生", active:false, preview:"建议患者记录三餐饮食日记，重点关注...", full:"建议患者记录三餐饮食日记，重点关注早餐碳水化合物摄入量，目标控制在30–45g以内，并减少精制糖摄入。" },
+        { date:"2026-04-28", doctor:"赵医生", active:false, preview:"增加甘精胰岛素，起始剂量10U，每晚睡前注射..." },
+        { date:"2026-04-15", doctor:"王医生", active:false, preview:"复查HbA1c 7.8%，较3个月前8.2%有所改善..." }
+      ]
+    };
+  }
+  if (patient.id === "P002") {
+    return {
+      hasCGM: false, hasFingertip: true,
+      deviceBrand: null, deviceUpdated: null,
+      cgm: null,
+      fingertip: {
+        fasting:  { value: "8.7",  unit: "mmol/L", state: "red",    label: "显著偏高", tip: "近7天均值",   goal: "4.4–7.0 mmol/L" },
+        pp2h:     { value: "10.4", unit: "mmol/L", state: "orange", label: "偏高",     tip: "近7天均值",   goal: "< 10.0 mmol/L" },
+        reach:    { value: 58,     unit: "%",       state: "orange", label: "轻度不达标", tip: "近30天达标率", goal: "≥ 70%" },
+        maxHigh:  { value: "11.1", unit: "mmol/L", state: "orange", label: "偏高",     tip: "近7天最高记录", goal: "< 10.0 mmol/L" },
+        hypo:     { value: 0,      unit: "次",      state: "green",  label: "正常",     tip: "近7天低血糖频次", goal: "0次" }
+      },
+      aiCards: [
+        { seq:"01", ico:"orange", title:"整体血糖评估",
+          body:'近期血糖基本可控，但存在部分指标临界不达标情况，空腹血糖持续偏高是主要问题。胰腺代谢负荷略有升高，无急性血糖损伤风险，建议优化基础降糖方案。',
+          tags: [["orange","空腹偏高"],["orange","达标率不足"]]
+        },
+        { seq:"02", ico:"blue", title:"隐匿异常识别",
+          body:'深度数据拆解发现轻度黎明现象，晨起空腹血糖偏高与夜间基础胰岛素分泌偏弱有关。多为间歇性出现，无持续性损伤，需针对性优化夜间管控策略。',
+          tags: [["orange","轻度黎明现象"],["gray","间歇性发作"]]
+        },
+        { seq:"03", ico:"purple", title:"并发症风险评估",
+          body:'患者当前血糖波动幅度基本可控，变异系数在临界范围内。无明显并发症风险信号，但长期管控不规范会缓慢累积慢性糖损伤，需持续监测。',
+          tags: [["green","波动基本可控"],["orange","长期风险待关注"]]
+        },
+        { seq:"04", ico:"blue", title:"多病种融合分析",
+          body:'患者无合并睡眠呼吸障碍等共病，血糖异常为单纯糖尿病自身代谢问题，管控逻辑简单可控。当前以优化生活方式和口服药为主策略。',
+          trend: [["#52C41A","正常","睡眠状态"],["#52C41A","正常","多病联动风险"]]
+        }
+      ],
+      cgmRows: [],
+      fpRows: [
+        { ts:"2026-05-22 07:05", val:8.7,  timing:"空腹",  status:"偏高", doctor:"护士小李", note:"晨起" },
+        { ts:"2026-05-22 09:10", val:10.4, timing:"餐后2h",status:"超标", doctor:"护士小李", note:"早餐后" },
+        { ts:"2026-05-21 07:20", val:8.2,  timing:"空腹",  status:"偏高", doctor:"护士小王", note:"" },
+        { ts:"2026-05-21 09:25", val:11.1, timing:"餐后2h",status:"超标", doctor:"王医生",   note:"午餐后" },
+        { ts:"2026-05-20 12:50", val:7.4,  timing:"随机",  status:"达标", doctor:"护士小李", note:"" }
+      ],
+      symptoms: {
+        low:   [],
+        high:  ["口干 ×3","轻度乏力 ×2"],
+        compl: []
+      },
+      meds: [
+        { name:"二甲双胍", tags:[["blue","500mg"],["gray","每日两次"],["gray","口服"]], meta:"起始：2024-01-01 · 持续用药" }
+      ],
+      adviceTl: [
+        { date:"2026-05-20", doctor:"王医生", active:true, full:"建议患者控制晚餐碳水摄入，睡前适当补充蛋白质，改善晨起空腹血糖偏高情况。同时加强餐后步行运动。" },
+        { date:"2026-05-10", doctor:"李医生", active:false, preview:"调整二甲双胍至每日三次...", full:"调整二甲双胍至每日三次，观察血糖变化，2周后复查。" }
+      ]
+    };
+  }
+  return null;
+}
+
+function gStateClass(state) {
+  if (state === "green") return "green";
+  if (state === "orange") return "orange";
+  return "red";
+}
+
+function gTagClass(state) {
+  if (state === "green")  return "g-tag-green";
+  if (state === "orange") return "g-tag-orange";
+  return "g-tag-red";
+}
+
+function glucoseValColor(val) {
+  if (val < 3.9)  return "#FF4D4F";
+  if (val > 10.0) return "#FA8C16";
+  return "#52C41A";
+}
+
+/* ---------- 指标卡片 ---------- */
+function cgmMetricCards(cgm) {
+  const tarTbr = cgm.tar.tarTbr;
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="g-section-title">CGM 核心指标</span>
+        <span class="g-tag g-tag-blue">近14天</span>
+      </div>
+      <span class="g-section-sub">数据来源：${document._gDevBrand || "雅培 FreeStyle Libre 3"} · 有效监测率 94.2%</span>
+    </div>
+    <div class="g-metric-grid">
+      <!-- TIR -->
+      <div class="g-mcard s-${gStateClass(cgm.tir.state)} linked" data-action="enter-twin">
+        <span class="g-link-icon">↗</span>
+        <div class="g-mcard-label">🎯 TIR 目标范围时间</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:${cgm.tir.state==="green"?"#52C41A":cgm.tir.state==="orange"?"#FA8C16":"#FF4D4F"};">${cgm.tir.value}</span>
+          <span class="g-mcard-unit">%</span>
+        </div>
+        <span class="g-tag ${gTagClass(cgm.tir.state)}">${cgm.tir.label}</span>
+        <div class="g-progress"><div class="g-progress-fill" style="width:${cgm.tir.value}%;background:linear-gradient(90deg,#52C41A,#95DE64);"></div></div>
+        <div style="font-size:11px;color:#86909C;">${cgm.tir.tip}</div>
+        <div style="font-size:11px;color:#86909C;">控制目标：<strong style="color:#1D2129;">${cgm.tir.goal}</strong></div>
+      </div>
+      <!-- 平均血糖 -->
+      <div class="g-mcard s-${gStateClass(cgm.avgGlucose.state)} linked" data-action="enter-twin">
+        <span class="g-link-icon">↗</span>
+        <div class="g-mcard-label">📈 平均血糖 GMI</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:${cgm.avgGlucose.state==="orange"?"#FA8C16":"#FF4D4F"};">${cgm.avgGlucose.value}</span>
+          <span class="g-mcard-unit">${cgm.avgGlucose.unit}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="g-tag ${gTagClass(cgm.avgGlucose.state)}">${cgm.avgGlucose.label}</span>
+          <span style="color:${cgm.avgGlucose.state==="orange"?"#FA8C16":"#FF4D4F"};font-size:16px;font-weight:700;">↑</span>
+        </div>
+        <div style="font-size:11px;color:#86909C;margin-top:4px;">${cgm.avgGlucose.tip}</div>
+        <div style="font-size:11px;color:#86909C;">控制目标：<strong style="color:#1D2129;">${cgm.avgGlucose.goal}</strong></div>
+      </div>
+      <!-- CV -->
+      <div class="g-mcard s-${gStateClass(cgm.cv.state)}">
+        <div class="g-mcard-label">〰️ 血糖变异系数 CV</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:#FA8C16;">${cgm.cv.value}</span>
+          <span class="g-mcard-unit">%</span>
+        </div>
+        <span class="g-tag ${gTagClass(cgm.cv.state)}">${cgm.cv.label}</span>
+        <div style="font-size:11px;color:#86909C;margin-top:4px;">${cgm.cv.tip}</div>
+        <div style="font-size:11px;color:#86909C;">控制目标：<strong style="color:#1D2129;">${cgm.cv.goal}</strong></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+          <div style="flex:1;height:4px;background:#F0F0F0;border-radius:2px;overflow:hidden;">
+            <div style="width:${cgm.cv.value}%;height:100%;background:#FA8C16;border-radius:2px;"></div>
+          </div>
+          <span style="font-size:10px;color:#FA8C16;">警戒线36%</span>
+        </div>
+      </div>
+      <!-- TAR/TBR -->
+      <div class="g-mcard s-${gStateClass(cgm.tar.state)}">
+        <div class="g-mcard-label">📊 TAR / TBR 占比</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div>
+            <div style="font-size:10px;color:#FA8C16;font-weight:600;">TAR 高血糖</div>
+            <div class="g-mcard-val-sm" style="color:#FA8C16;">${tarTbr.tar1}<span class="g-mcard-unit">%</span></div>
+          </div>
+          <div style="width:1px;height:36px;background:#E5E6EB;"></div>
+          <div>
+            <div style="font-size:10px;color:#FF4D4F;font-weight:600;">TBR 低血糖</div>
+            <div class="g-mcard-val-sm" style="color:#FF4D4F;">${tarTbr.tbr1+tarTbr.tbr2}<span class="g-mcard-unit">%</span></div>
+          </div>
+        </div>
+        <span class="g-tag ${gTagClass(cgm.tar.state)}">${cgm.tar.label}</span>
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:4px;gap:1px;">
+          <div style="width:${tarTbr.tbr2}%;background:#FF4D4F;"></div>
+          <div style="width:${tarTbr.tbr1}%;background:#FF7875;"></div>
+          <div style="width:${tarTbr.tir}%;background:#52C41A;opacity:.5;"></div>
+          <div style="width:${tarTbr.tar1}%;background:#FA8C16;"></div>
+          <div style="width:${tarTbr.tar2}%;background:#FF4D4F;"></div>
+        </div>
+        <div style="font-size:11px;color:#86909C;margin-top:2px;">${cgm.tar.tip} · 严控高低血糖</div>
+      </div>
+      <!-- eA1c -->
+      <div class="g-mcard s-${gStateClass(cgm.eA1c.state)} linked" data-action="enter-twin">
+        <span class="g-link-icon">↗</span>
+        <div class="g-mcard-label">🧪 eA1c 估算糖化</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:#FF4D4F;">${cgm.eA1c.value}</span>
+          <span class="g-mcard-unit">%</span>
+        </div>
+        <span class="g-tag ${gTagClass(cgm.eA1c.state)}">${cgm.eA1c.label}</span>
+        <div style="font-size:11px;color:#86909C;margin-top:4px;">${cgm.eA1c.tip}</div>
+        <div style="font-size:11px;color:#86909C;">控制目标：<strong style="color:#1D2129;">${cgm.eA1c.goal}</strong></div>
+      </div>
+    </div>`;
+}
+
+function ftMetricCards(ft) {
+  function ftCard(label, icon, val, unit, state, tip, goal, extra) {
+    return `
+      <div class="g-mcard s-${gStateClass(state)}">
+        <div class="g-mcard-label">${icon} ${label}</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:${state==="green"?"#52C41A":state==="orange"?"#FA8C16":"#FF4D4F"};">${val}</span>
+          <span class="g-mcard-unit">${unit}</span>
+        </div>
+        <span class="g-tag ${gTagClass(state)}">${tip.label||"—"}</span>
+        <div style="font-size:11px;color:#86909C;margin-top:4px;">${tip.tip}</div>
+        <div style="font-size:11px;color:#86909C;">控制目标：<strong style="color:#1D2129;">${goal}</strong></div>
+        ${extra || ""}
+      </div>`;
+  }
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="g-section-title">指尖血糖核心指标</span>
+        <span class="g-tag g-tag-gray">近14天</span>
+      </div>
+      <span class="g-section-sub">共记录 <strong style="color:#1D2129;">142</strong> 次测量</span>
+    </div>
+    <div class="g-metric-grid">
+      ${ftCard("空腹血糖均值","🌙",ft.fasting.value,ft.fasting.unit,ft.fasting.state,{tip:ft.fasting.tip,label:ft.fasting.label},ft.fasting.goal)}
+      ${ftCard("餐后2h血糖均值","🍽️",ft.pp2h.value,ft.pp2h.unit,ft.pp2h.state,{tip:ft.pp2h.tip,label:ft.pp2h.label},ft.pp2h.goal)}
+      <div class="g-mcard s-${gStateClass(ft.reach.state)}">
+        <div class="g-mcard-label">% 血糖达标率</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="g-mcard-val" style="color:${ft.reach.state==="green"?"#52C41A":ft.reach.state==="orange"?"#FA8C16":"#FF4D4F"};">${ft.reach.value}</span>
+          <span class="g-mcard-unit">%</span>
+        </div>
+        <span class="g-tag ${gTagClass(ft.reach.state)}">${ft.reach.label}</span>
+        <div class="g-progress" style="margin-top:4px;">
+          <div class="g-progress-fill" style="width:${ft.reach.value}%;background:linear-gradient(90deg,#FA8C16,#FFC069);"></div>
+        </div>
+        <div style="font-size:11px;color:#86909C;margin-top:2px;">控制目标：<strong style="color:#1D2129;">${ft.reach.goal}</strong></div>
+      </div>
+      ${ftCard("最高血糖记录","⬆️",ft.maxHigh.value,ft.maxHigh.unit,ft.maxHigh.state,{tip:ft.maxHigh.tip,label:ft.maxHigh.label||""},ft.maxHigh.goal)}
+      ${ftCard("低血糖发生次数","⚠️",ft.hypo.value,ft.hypo.unit,ft.hypo.state,{tip:ft.hypo.tip,label:ft.hypo.label},ft.hypo.goal,
+        `<div style="font-size:11px;color:#86909C;">近14天共 <strong style="color:#FF4D4F;">${ft.hypo.value*2}</strong> 次</div>`)}
+    </div>`;
+}
+
+function buildTIRDistribution(tarTbr) {
+  const rows = [
+    { label:"TAR2 &gt;13.9", color:"#FF4D4F", pct:tarTbr.tar2, hrs:(tarTbr.tar2*24/100).toFixed(1) },
+    { label:"TAR1 10.0–13.9",color:"#FA8C16", pct:tarTbr.tar1, hrs:(tarTbr.tar1*24/100).toFixed(1) },
+    { label:"TIR 3.9–10.0",  color:"#52C41A", pct:tarTbr.tir,  hrs:(tarTbr.tir*24/100).toFixed(1), main:true },
+    { label:"TBR1 3.0–3.9",  color:"#FF7875", pct:tarTbr.tbr1, hrs:(tarTbr.tbr1*24/100).toFixed(1) },
+    { label:"TBR2 &lt;3.0",  color:"#FF4D4F", pct:tarTbr.tbr2, hrs:(tarTbr.tbr2*24/100).toFixed(1) }
+  ];
+  return `
+    <div class="g-tir-bars">
+      ${rows.map((r,i) => `
+        <div class="g-tir-row" style="margin-bottom:${i<rows.length-1?"6px":"0"};">
+          <div class="g-tir-label" style="color:${r.color};">${r.label}</div>
+          <div class="g-tir-track" style="${r.main?"height:28px;":""}">
+            <div class="${r.main?"g-tir-fill-main":"g-tir-fill"}" style="width:${r.pct}%;background:${r.main?"linear-gradient(90deg,#52C41A,#95DE64)":r.color};">
+              ${r.main?`<span style="font-size:12px;font-weight:700;color:#fff;">${r.pct}%</span>`:""}
+            </div>
+          </div>
+          <span class="g-tir-pct" style="color:${r.color};">${r.pct}%</span>
+          <span class="g-tir-hrs">${r.hrs}h/天</span>
+        </div>`).join("")}
+    </div>
+    <div class="g-tir-summary">
+      <div class="g-tir-summary-label">综合分布示意</div>
+      <div class="g-tir-full-bar">
+        <div style="width:${tarTbr.tbr2}%;background:#FF4D4F;" title="TBR2"></div>
+        <div style="width:${tarTbr.tbr1}%;background:#FF7875;" title="TBR1"></div>
+        <div style="width:${tarTbr.tir}%;background:#52C41A;"  title="TIR"></div>
+        <div style="width:${tarTbr.tar1}%;background:#FA8C16;" title="TAR1"></div>
+        <div style="width:${tarTbr.tar2}%;background:#FF4D4F;" title="TAR2"></div>
+      </div>
+    </div>
+    <div class="g-tir-tip">
+      <span style="color:#FA8C16;flex-shrink:0;margin-top:1px;">⚠️</span>
+      <span>低血糖时间（TBR）占比 <strong>${tarTbr.tbr1+tarTbr.tbr2}%</strong>，显著超出推荐值 &lt;4%，建议调整夜间胰岛素剂量。</span>
+    </div>`;
+}
+
+function buildAICards(aiCards) {
+  const icoColors = { orange:"#FFF7E6", red:"#FFF1F0", purple:"#F9F0FF", blue:"#E6F4FF" };
+  const icoTexts  = { orange:"🔥", red:"⚠️", purple:"🍽️", blue:"📈" };
+  return aiCards.map((c, i) => `
+    <div class="g-ai-card">
+      <div class="g-ai-seq">${c.seq}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+        <div class="g-ai-card-head">
+          <div class="g-ai-card-ico ${c.ico}" style="background:${icoColors[c.ico]||"#F2F3F5"};">${icoTexts[c.ico]||"🔬"}</div>
+          <span class="g-ai-card-title">${c.title}</span>
+        </div>
+        ${c.badge ? `<span class="g-badge g-badge-${c.badge[0]}">${c.badge[1]}</span>` : ""}
+      </div>
+      <p class="g-ai-body">${c.body}</p>
+      ${c.tags ? `<div class="g-ai-tag-row">${c.tags.map(t=>`<span class="g-tag g-tag-${t[0]}">${t[1]}</span>`).join("")}</div>` : ""}
+      ${c.riskMeter ? `<div class="g-risk-meter">${c.riskMeter.map(col=>`<div class="g-risk-bar" style="background:${col};"></div>`).join("")}</div>` : ""}
+      ${c.trend ? `<div style="display:flex;gap:16px;flex-wrap:wrap;">${c.trend.map(t=>`<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:${t[0]};">${t[1]}</div><div style="font-size:11px;color:#86909C;">${t[2]}</div></div>`).join("")}</div>` : ""}
+      <div class="g-ai-footer">AI生成内容，仅供参考</div>
+    </div>`).join("");
+}
+
+function buildCGMTable(rows) {
+  if (!rows.length) return `<tr><td colspan="6" style="text-align:center;color:#86909C;padding:24px;">暂无CGM明细记录</td></tr>`;
+  return rows.map(r => {
+    const isLow = r.val < 3.9, isHigh = r.val > 10.0;
+    const rowCls = isLow ? "row-low" : isHigh ? "row-high" : "";
+    const color = glucoseValColor(r.val);
+    const tagHtml = r.tags.map(t => {
+      const cls = t==="低血糖警报"?"g-tag-red":t==="餐后"?"g-tag-orange":t==="校准"?"g-tag-blue":"g-tag-gray";
+      return `<span class="g-tag ${cls}" style="font-size:11px;">${t}</span>`;
+    }).join(" ");
+    const statusTag = r.status==="警报"?`<span class="g-tag g-tag-red" style="font-size:11px;">警报</span>`:`<span class="g-tag g-tag-green" style="font-size:11px;">正常</span>`;
+    const trendColor = r.trend==="↑"||r.trend==="↗"?"#FA8C16":r.trend==="↓"||r.trend==="↘"?"#FF4D4F":"#86909C";
+    return `<tr class="${rowCls}">
+      <td style="font-size:13px;color:#4E5969;font-family:monospace;">${r.ts}</td>
+      <td><span style="font-size:15px;font-weight:700;color:${color};">${r.val}</span><span style="font-size:12px;color:#86909C;margin-left:3px;">mmol/L</span></td>
+      <td style="font-size:18px;font-weight:700;color:${trendColor};">${r.trend}</td>
+      <td>${tagHtml}</td>
+      <td>${statusTag}</td>
+      <td style="font-size:13px;color:#86909C;">${r.note||"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+function buildFPTable(rows) {
+  if (!rows.length) return `<tr><td colspan="6" style="text-align:center;color:#86909C;padding:24px;">暂无指尖血糖记录</td></tr>`;
+  const statusMap = { "达标":"g-tag-green","偏高":"g-tag-orange","超标":"g-tag-orange","危险":"g-tag-red" };
+  return rows.map(r => {
+    const isLow = r.val < 3.9, isHigh = r.val > 10.0;
+    const rowCls = isLow ? "row-low" : isHigh ? "row-high" : "";
+    const color = glucoseValColor(r.val);
+    const statusTag = `<span class="g-tag ${statusMap[r.status]||"g-tag-gray"}" style="font-size:11px;">${r.status}</span>`;
+    const timingCls = r.timing==="空腹"?"g-tag-blue":r.timing==="餐后2h"?"g-tag-orange":"g-tag-gray";
+    return `<tr class="${rowCls}">
+      <td style="font-size:13px;color:#4E5969;font-family:monospace;">${r.ts}</td>
+      <td><span style="font-size:15px;font-weight:700;color:${color};">${r.val}</span><span style="font-size:12px;color:#86909C;margin-left:3px;">mmol/L</span></td>
+      <td><span class="g-tag ${timingCls}" style="font-size:11px;">${r.timing}</span></td>
+      <td>${statusTag}</td>
+      <td style="font-size:13px;color:#1D2129;">${r.doctor}</td>
+      <td style="font-size:13px;color:#86909C;">${r.note||"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+function buildHeatmapHTML() {
+  const symptomData = [[0,2,1,3,0,5,2],[1,0,4,2,1,3,0],[0,3,2,1,5,2,1],[2,1,0,3,2,4,1],[0,1,2,0,3,1,0]];
+  const symptomDetails = [
+    [[],["多尿","心悸"],["多汗"],["多尿","口渴","疲乏"],[],["多汗×2","心悸×2","多尿"],["口渴","多尿"]],
+    [["多汗"],[],["多尿×2","口渴×2"],["多汗","心悸"],["多尿"],["多尿×2","视物模糊"],[]],
+    [[],["多汗","心悸","口渴"],["多尿","疲乏"],["多汗"],["多汗×2","口渴×2","疲乏"],["多尿","心悸"],["疲乏"]],
+    [["多尿","口渴"],["多汗"],[],["多汗","心悸","疲乏"],["多尿","口渴"],["多汗×2","心悸","多尿"],["视物模糊"]],
+    [[],["多汗"],["多尿","心悸"],[],["多汗","心悸","多尿"],["疲乏"],[]],
+  ];
+  const colors = ["#F0F0F0","#FFD591","#FFA940","#FA8C16","#D46B08","#AD4E00"];
+  const weeks  = ["第1周","第2周","第3周","第4周","第5周"];
+  return symptomData.map((week, wi) => `
+    <div class="g-hm-row">
+      <div class="g-hm-week">${weeks[wi]}</div>
+      ${week.map((count, di) => {
+        const cidx = Math.min(count, colors.length-1);
+        const tip = count===0 ? "无症状记录" : `<strong>${count}次症状</strong><br>${symptomDetails[wi][di].join("<br>")}`;
+        return `<div class="g-hm-cell" style="background:${colors[cidx]};"><div class="g-hm-tooltip">${tip}</div></div>`;
+      }).join("")}
+    </div>`).join("");
+}
+
+function buildMedsHTML(meds) {
+  const tagCls = { blue:"g-tag-blue", orange:"g-tag-orange", gray:"g-tag-gray", purple:"g-tag-purple" };
+  return meds.map(m => `
+    <div class="g-desc-row">
+      <div class="g-med-detail">
+        <div class="g-med-tags">
+          <span class="g-med-name">${m.name}</span>
+          ${m.tags.map(t=>`<span class="g-tag ${tagCls[t[0]]||"g-tag-gray"}">${t[1]}</span>`).join("")}
+        </div>
+        <span class="g-med-meta">${m.meta}</span>
+      </div>
+    </div>`).join("");
+}
+
+function buildAdviceTimeline(tl) {
+  return tl.map((item, i) => `
+    <div class="g-tl-item">
+      <div class="g-tl-line"></div>
+      <div class="g-tl-dot ${item.active?"active":"past"}"></div>
+      <div class="g-tl-body">
+        <div class="g-tl-meta">
+          <span class="g-tl-date">${item.date}</span>
+          <span class="g-tl-doctor">${item.doctor}</span>
+          ${item.active?`<span class="g-tag g-tag-blue" style="padding:1px 6px;font-size:11px;">最新</span>`:""}
+        </div>
+        ${item.active
+          ? `<p class="g-tl-content">${item.full}</p>`
+          : item.full
+            ? `<div class="g-tl-expand-row">
+                <p class="g-tl-preview" id="g-tl-prev-${i}">${item.preview}</p>
+                <button class="g-btn g-btn-text" style="font-size:12px;padding:2px 8px;flex-shrink:0;" data-action="tl-expand" data-idx="${i}">展开</button>
+               </div>
+               <p id="g-tl-full-${i}" class="g-tl-content" style="display:none;margin-top:6px;">${item.full}</p>`
+            : `<p class="g-tl-preview">${item.preview||""}</p>`
+        }
+      </div>
+    </div>`).join("");
+}
+
+/* ============================================================
+   主渲染函数
+   ============================================================ */
+function renderGlucoseAnalysis(patient) {
+  const gd = getGlucoseData(patient);
+  if (!gd) return `<div style="padding:48px;text-align:center;color:#86909C;">暂无血糖监测数据</div>`;
+
+  const subTab = (window._glucoseSubTab && window._glucoseSubTab[patient.id]) || (gd.hasCGM ? "cgm" : "fingertip");
+
+  // ── Module 1: 孪生速览横幅 ──
+  const twinBanner = `
+    <div class="g-twin-banner">
+      <div class="g-twin-inner">
+        <div class="g-twin-stats">
+          <div class="g-twin-title">
+            数字孪生融合速览
+            <span class="g-tag g-tag-ai" style="display:inline-flex;align-items:center;gap:3px;"><span style="font-size:10px;">🔬</span>AI孪生</span>
+          </div>
+          <div class="g-twin-stat-row">
+            <div class="g-twin-stat">
+              <div class="g-twin-stat-label">孪生血糖预测偏差</div>
+              <div class="g-twin-stat-value" style="color:#1677FF;">±3.2<span style="font-size:14px;font-weight:500;color:#86909C;">%</span></div>
+              <div class="g-twin-stat-sub" style="color:#52C41A;">✓ 高精准</div>
+            </div>
+            <div class="g-twin-stat">
+              <div class="g-twin-stat-label">综合风险等级</div>
+              <div class="g-twin-stat-value" style="color:#FA8C16;">中危<span style="font-size:13px;font-weight:500;color:#86909C;margin-left:2px;">风险</span></div>
+              <div class="g-twin-stat-sub" style="color:#FA8C16;">⚠️ 需关注</div>
+            </div>
+            <div class="g-twin-stat">
+              <div class="g-twin-stat-label">胰岛素敏感指数</div>
+              <div class="g-twin-stat-value" style="color:#1D2129;">0.68<span style="font-size:13px;font-weight:500;color:#86909C;margin-left:2px;">ISI</span></div>
+              <div class="g-twin-stat-sub" style="color:#FA8C16;">📉 偏低</div>
+            </div>
+            <div class="g-twin-stat">
+              <div class="g-twin-stat-label">β细胞功能指数</div>
+              <div class="g-twin-stat-value" style="color:#1D2129;">41<span style="font-size:13px;font-weight:500;color:#86909C;margin-left:2px;">%</span></div>
+              <div class="g-twin-stat-sub" style="color:#FF4D4F;">↓ 功能减退</div>
+            </div>
+          </div>
+        </div>
+        <div class="g-twin-wave">
+          <svg width="260" height="72" viewBox="0 0 280 72" fill="none">
+            <defs>
+              <linearGradient id="wg" x1="0" y1="0" x2="280" y2="0">
+                <stop offset="0%" stop-color="#1677FF" stop-opacity=".3"/>
+                <stop offset="50%" stop-color="#1677FF" stop-opacity=".8"/>
+                <stop offset="100%" stop-color="#1677FF" stop-opacity=".3"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,50 C20,50 25,20 40,22 C55,24 60,55 75,52 C90,49 95,15 115,18 C135,21 140,60 155,58 C170,56 175,25 195,22 C215,19 220,55 240,50 C260,45 265,28 280,30" stroke="url(#wg)" stroke-width="2.5" fill="none"/>
+            <path d="M0,52 C20,52 25,22 40,20 C55,18 60,58 75,54 C90,50 95,13 115,16 C135,19 140,58 155,56 C170,54 175,22 195,20 C215,18 220,52 240,48 C260,44 265,26 280,28" stroke="#52C41A" stroke-width="1.5" fill="none" stroke-dasharray="5,3" opacity=".6"/>
+            <circle cx="115" cy="16" r="3.5" fill="#FF4D4F" opacity=".8"/>
+            <circle cx="75"  cy="54" r="3"   fill="#FA8C16" opacity=".8"/>
+            <circle cx="195" cy="20" r="3"   fill="#FF4D4F" opacity=".8"/>
+            <path d="M0,42 C20,42 25,12 40,14 C55,16 60,48 75,46 C90,44 95,8 115,11 C135,14 140,52 155,50 C170,48 175,18 195,15 C215,12 220,46 240,42 C260,38 265,22 280,24 L280,36 C265,34 260,50 240,54 C220,58 215,26 195,29 C175,32 170,60 155,62 C140,64 135,28 115,25 C95,22 90,56 75,58 C60,60 55,28 40,30 C25,32 20,60 0,58Z" fill="#1677FF" opacity=".08"/>
+          </svg>
+        </div>
+        <div class="g-twin-actions">
+          <button class="g-btn g-btn-primary" style="font-size:14px;padding:10px 20px;font-weight:600;" data-action="enter-twin">
+            🔬 进入数字孪生分析 →
+          </button>
+          <div style="font-size:12px;color:#86909C;">已同步 <strong style="color:#1677FF;">${subTab==="cgm"?"287":"142"}</strong> 条血糖监测数据</div>
+        </div>
+      </div>
+      <div class="g-twin-footer">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="font-size:11px;">ℹ️</span> AI孪生模型 v2.1 · 更新于今日 06:00 · 基于近14天数据训练</span>
+        <div class="g-twin-footer-legend">
+          <span class="g-twin-legend-item"><span style="width:12px;height:2px;background:#1677FF;border-radius:2px;display:inline-block;"></span> 预测曲线</span>
+          <span class="g-twin-legend-item"><span style="width:12px;height:2px;background:#52C41A;border-radius:2px;display:inline-block;opacity:.6;"></span> 实测曲线</span>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Module 2/3: 指标卡 ──
+  const metricSection = subTab === "cgm" && gd.cgm
+    ? cgmMetricCards(gd.cgm)
+    : (gd.fingertip ? ftMetricCards(gd.fingertip) : `<div style="padding:24px;text-align:center;color:#86909C;">暂无指尖血糖数据</div>`);
+
+  // ── Module 4: 图表（CGM only） ──
+  const chartSection = subTab === "cgm" && gd.cgm ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="g-charts-2col">
+      <!-- AGP -->
+      <div class="g-card g-chart-section">
+        <div class="g-chart-header">
+          <div>
+            <div class="g-chart-title">动态血糖概率分布（AGP）</div>
+            <div class="g-chart-sub">P25–P75区间 · 中位数 · 当日曲线</div>
+          </div>
+          <div class="g-segmented" id="g-agp-period">
+            <button class="g-seg-item" data-period="7" data-action="agp-period">近7天</button>
+            <button class="g-seg-item active" data-period="14" data-action="agp-period">近14天</button>
+            <button class="g-seg-item" data-period="30" data-action="agp-period">近30天</button>
+          </div>
+        </div>
+        <div class="g-chart-legend">
+          <span class="g-legend-item"><span class="g-legend-line"></span>中位数</span>
+          <span class="g-legend-item"><span class="g-legend-band"></span>P25–P75</span>
+          <span class="g-legend-item"><span class="g-legend-dashed"></span>当日曲线</span>
+        </div>
+        <div class="g-chart-wrap" style="height:240px;">
+          <canvas id="g-agp-chart"></canvas>
+        </div>
+      </div>
+      <!-- TIR Distribution -->
+      <div class="g-card g-chart-section">
+        <div class="g-chart-header">
+          <div>
+            <div class="g-chart-title">血糖时间分布（TIR/TAR/TBR）</div>
+            <div class="g-chart-sub">近14天 · 每日平均分布</div>
+          </div>
+        </div>
+        ${buildTIRDistribution(gd.cgm.tar.tarTbr)}
+      </div>
+    </div>` : "";
+
+  // ── Module 5: AI分析 ──
+  const aiSection = `
+    <div class="g-card" style="padding:20px;">
+      <div class="g-ai-header">
+        <div class="g-ai-title-row">
+          <div class="g-ai-icon">🧠</div>
+          <span class="g-section-title">AI 智能分析报告</span>
+          <span class="g-tag g-tag-ai">GPT-Med v3.2</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:12px;color:#86909C;">生成于 2026-05-22 07:00</span>
+          <button class="g-btn g-btn-ghost" style="font-size:13px;padding:5px 12px;">🔄 刷新分析</button>
+        </div>
+      </div>
+      <div class="g-ai-grid">
+        ${buildAICards(gd.aiCards)}
+      </div>
+    </div>`;
+
+  // ── Module 6: 明细表 ──
+  const isCGM = subTab === "cgm";
+  const tableSection = `
+    <div class="g-card" style="padding:20px;">
+      <div class="g-table-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="g-section-title">血糖明细记录</span>
+          <span class="g-tag g-tag-blue">${isCGM ? `共 287 条 CGM 记录` : `共 142 条指尖血糖记录`}</span>
+        </div>
+      </div>
+      <div class="g-toolbar">
+        <div class="g-toolbar-left">
+          <div class="g-mock-input">📅 2026-05-08 ~ 2026-05-22 ▾</div>
+          <div class="g-mock-input">🔽 测量时机：全部 ▾</div>
+          ${isCGM ? `<div class="g-mock-input">🔌 设备：雅培 Libre 3 ▾</div>` : ""}
+        </div>
+        <button class="g-btn g-btn-ghost" style="font-size:13px;">⬇️ 导出 Excel</button>
+      </div>
+      <div style="overflow-x:auto;">
+        ${isCGM ? `
+          <table class="g-data-table">
+            <thead><tr><th>时间戳</th><th>葡萄糖值 (mmol/L)</th><th>趋势方向</th><th>数据标记</th><th>设备状态</th><th>备注</th></tr></thead>
+            <tbody>${buildCGMTable(gd.cgmRows)}</tbody>
+          </table>` : `
+          <table class="g-data-table">
+            <thead><tr><th>测量时间</th><th>血糖值 (mmol/L)</th><th>测量时机</th><th>达标状态</th><th>操作医生</th><th>备注</th></tr></thead>
+            <tbody>${buildFPTable(gd.fpRows)}</tbody>
+          </table>`}
+      </div>
+      <div class="g-pagination">
+        <span style="font-size:13px;color:#86909C;margin-right:8px;">共 ${isCGM?"287":"142"} 条</span>
+        <div class="g-page-btn">‹</div>
+        <div class="g-page-btn active">1</div>
+        <div class="g-page-btn">2</div>
+        <div class="g-page-btn">3</div>
+        <div class="g-page-btn">…</div>
+        <div class="g-page-btn">${isCGM?15:8}</div>
+        <div class="g-page-btn">›</div>
+      </div>
+    </div>`;
+
+  // ── Module 7: 症状区 ──
+  const hasSym = gd.symptoms.low.length || gd.symptoms.high.length || gd.symptoms.compl.length;
+  const symptomSection = `
+    <div class="g-card" style="padding:20px;">
+      <div class="g-table-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="g-section-title">症状记录</span>
+          <span class="g-tag g-tag-gray">近30天</span>
+        </div>
+        <button class="g-btn g-btn-dashed" style="font-size:13px;">＋ 录入症状</button>
+      </div>
+      ${hasSym ? `
+        <div class="g-sym-groups">
+          <div class="g-sym-group red">
+            <div class="g-sym-group-title" style="color:#FF4D4F;">🌡️ 低血糖症状组</div>
+            <div style="display:flex;flex-wrap:wrap;">
+              ${gd.symptoms.low.length ? gd.symptoms.low.map((s,i)=>{
+                const bg=["#FF4D4F","#FF7875","#FFA39E","#FFCCC7","#FFF1F0"][Math.min(i,4)];
+                const fc=i<3?"#fff":"#CF1322";
+                return `<span class="g-sym-tag" style="background:${bg};color:${fc};${i>=3?"border:1px solid #FFA39E;":""}">${s}</span>`;
+              }).join("") : "<span style='font-size:12px;color:#86909C;'>暂无</span>"}
+            </div>
+          </div>
+          <div class="g-sym-group orange">
+            <div class="g-sym-group-title" style="color:#FA8C16;">☀️ 高血糖症状组</div>
+            <div style="display:flex;flex-wrap:wrap;">
+              ${gd.symptoms.high.length ? gd.symptoms.high.map((s,i)=>{
+                const bg=["#FA8C16","#FFA940","#FFC069","#FFD591","#FFF7E6"][Math.min(i,4)];
+                const fc=i<3?"#fff":"#874D00";
+                return `<span class="g-sym-tag" style="background:${bg};color:${fc};${i>=3?"border:1px solid #FFD591;":""}">${s}</span>`;
+              }).join("") : "<span style='font-size:12px;color:#86909C;'>暂无</span>"}
+            </div>
+          </div>
+          <div class="g-sym-group purple">
+            <div class="g-sym-group-title" style="color:#722ED1;">🩺 并发症相关</div>
+            <div style="display:flex;flex-wrap:wrap;">
+              ${gd.symptoms.compl.length ? gd.symptoms.compl.map((s,i)=>{
+                const bg=["#722ED1","#B37FEB","#F9F0FF"][Math.min(i,2)];
+                const fc=i<2?"#fff":"#722ED1";
+                return `<span class="g-sym-tag" style="background:${bg};color:${fc};${i>=2?"border:1px solid #D3ADF7;":""}">${s}</span>`;
+              }).join("") : "<span style='font-size:12px;color:#86909C;'>暂无</span>"}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="g-heatmap-header">
+            <span style="font-size:13px;font-weight:500;color:#1D2129;">症状热力日历</span>
+            <div class="g-heatmap-legend">
+              <span>少</span>
+              <div class="g-heatmap-legend-cells">
+                ${["#F0F0F0","#FFD591","#FFA940","#FA8C16","#D46B08"].map(c=>`<div class="g-heatmap-legend-cell" style="background:${c};"></div>`).join("")}
+              </div>
+              <span>多</span>
+            </div>
+          </div>
+          <div class="g-heatmap-dow">
+            ${["一","二","三","四","五","六","日"].map(d=>`<div class="g-heatmap-dow-item">${d}</div>`).join("")}
+          </div>
+          <div id="g-heatmap-grid">${buildHeatmapHTML()}</div>
+        </div>` : `<div style="padding:20px;text-align:center;color:#86909C;font-size:13px;">患者暂无录入糖尿病相关症状</div>`}
+    </div>`;
+
+  // ── Module 8: 治疗 & 医生建议 ──
+  const treatmentSection = `
+    <div class="g-treatment-grid">
+      <!-- 当前治疗方案 -->
+      <div class="g-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span class="g-section-title">当前治疗方案</span>
+          <span style="font-size:12px;color:#86909C;">最近更新：2026-05-10</span>
+        </div>
+        ${gd.meds.length ? buildMedsHTML(gd.meds) : `<div style="color:#86909C;font-size:13px;">暂无录入降糖治疗方案</div>`}
+        <div class="g-info-box blue">
+          <span class="g-info-icon">💡</span>
+          <span>AI建议：根据近期夜间低血糖频率，考虑将甘精胰岛素剂量由10U调整至8U</span>
+        </div>
+        <button class="g-btn g-btn-primary" style="width:100%;justify-content:center;">✏️ 调整治疗方案</button>
+      </div>
+      <!-- 医生建议 -->
+      <div class="g-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="g-section-title">医生建议</span>
+            <span class="g-tag g-tag-gray">共${gd.adviceTl.length}条</span>
+          </div>
+        </div>
+        <div class="g-timeline">${buildAdviceTimeline(gd.adviceTl)}</div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F0F0F0;">
+          <button class="g-btn g-btn-primary" style="width:100%;justify-content:center;">＋ 新增建议</button>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Sub-tab bar ──
+  const deviceInfo = subTab === "cgm" && gd.hasCGM ? `
+    <div class="g-device-info">
+      <span class="g-device-tag">🔵 ${gd.deviceBrand}</span>
+      <span class="g-device-sync"><span class="g-sync-dot"></span> 最近同步：${gd.deviceUpdated}</span>
+    </div>` : "";
+
+  const subTabBar = `
+    <div class="g-subtab-bar">
+      <div class="g-tabs">
+        ${gd.hasCGM ? `<button class="g-tab-item ${subTab==="cgm"?"active":""}" data-action="glucose-subtab" data-patient="${patient.id}" data-tab="cgm">📈 CGM 动态血糖</button>` : ""}
+        ${gd.hasFingertip ? `<button class="g-tab-item ${subTab==="fingertip"?"active":""}" data-action="glucose-subtab" data-patient="${patient.id}" data-tab="fingertip">💧 指尖血糖</button>` : ""}
+      </div>
+      ${deviceInfo}
+    </div>`;
+
+  return `
+    <div class="g-page">
+      ${subTabBar}
+      <div class="g-content">
+        ${twinBanner}
+        ${metricSection}
+        ${chartSection}
+        ${aiSection}
+        ${tableSection}
+        ${symptomSection}
+        ${treatmentSection}
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   数字孪生融合分析 — 占位框架
+   ============================================================ */
+function renderDigitalTwin(patient) {
+  const gd = getGlucoseData(patient);
+  const hasBad = gd && gd.aiCards.some((c,i)=>i<2);
+
+  const riskTags = patient.diseases.includes("糖尿病") ? [
+    { cls:"red",    text:"血糖控制不佳" },
+    { cls:"red",    text:"并发症风险升高" },
+    { cls:"orange", text:"血糖波动偏大" },
+    ...(patient.diseases.includes("睡眠呼吸暂停") ? [{ cls:"orange", text:"睡眠缺氧联动损伤" }] : [])
+  ] : [{ cls:"green", text:"代谢状态良好" }];
+
+  const modules = [
+    { icon:"🫀", title:"全景孪生器官可视化", state:"red",
+      desc:"以人体简化孪生模型为核心，聚焦胰腺、血管、眼底、肾脏、末梢神经等糖尿病关联靶器官，根据患者血糖及慢病数据自动对异常器官进行彩色高亮与风险可视化展示。" },
+    { icon:"⚠️", title:"患者核心风险总览",   state:"red",
+      desc:"自动提炼当前患者最高优先级风险标签，覆盖血糖控制不佳、餐后高糖损伤、血糖波动偏大、黎明现象、低血糖风险等核心异常风险。" },
+    { icon:"🧬", title:"胰腺糖代谢深度溯源", state:"red",
+      desc:"精准拆解胰腺分泌、代谢、应答异常的底层机制，覆盖基础分泌功能、餐后胰岛素应答、血糖稳态调控、极端血糖耐受能力四大核心维度深度溯源分析。" },
+    { icon:"🫁", title:"全身靶器官并发症风险", state:"orange",
+      desc:"基于血糖长期管控状态，拆解血管内皮、肾脏、眼底视网膜、末梢神经、心脑血管等靶器官的累积损伤风险，实现血糖数据到器官损伤的具象化转化。" },
+    { icon:"🔗", title:"多慢病联动损伤分析",  state: patient.diseases.includes("睡眠呼吸暂停") ? "orange" : "green",
+      desc:"承接血糖+睡眠等跨病种联动分析，拆解共病叠加导致的代谢紊乱与器官损伤，解决单一数据无法解释的顽固血糖问题及胰岛素抵抗加重机制。" },
+    { icon:"📋", title:"溯源事件明细日志",    state:"orange",
+      desc:"记录患者周期内所有血糖异常、慢病异常事件，支撑医生精准复盘问题诱因，包含异常类型、关联行为时段、对应器官损伤提示、溯源来源等完整信息。" }
+  ];
+  const stateLabel = { green:"状态良好", orange:"存在风险", red:"风险较高" };
+  const stateCls   = { green:"g-tag-green", orange:"g-tag-orange", red:"g-tag-red" };
+
+  return `
+    <div class="g-page" style="padding:20px 0;">
+      <div class="g-dt-hero">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
+          <div class="g-dt-avatar">🧑‍⚕️</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.5px;">数字孪生体</div>
+        </div>
+        <div class="g-dt-hero-info">
+          <h3>${patient.name} 的数字孪生融合分析</h3>
+          <div class="g-dt-tags">
+            ${riskTags.map(t=>`<span class="g-dt-tag ${t.cls}">${t.text}</span>`).join("")}
+          </div>
+          <div class="g-dt-note">本页面基于患者血糖及慢病数据通过数字孪生技术还原器官损伤机制，为医生提供可视化病因溯源依据。</div>
+        </div>
+      </div>
+      <div style="padding:20px 0;display:flex;flex-direction:column;gap:16px;">
+        <div class="g-dt-module-grid">
+          ${modules.map(m=>`
+            <div class="g-card g-dt-module-card" style="padding:18px 20px;">
+              <h4>${m.icon} ${m.title}</h4>
+              <p>${m.desc}</p>
+              <span class="g-tag ${stateCls[m.state]}">${stateLabel[m.state]}</span>
+            </div>`).join("")}
+        </div>
+        <div style="text-align:center;padding:20px 24px;color:#86909C;font-size:13px;background:#fff;border-radius:12px;border:1px dashed #E5E6EB;">
+          🚧 数字孪生三维器官可视化模型开发中，当前展示框架结构 · V1.0 占位。<br>
+          从血糖/睡眠深度分析页点击「进入孪生分析」可自动定位对应模块。
+        </div>
+      </div>
+    </div>`;
+}
+
 
 function renderOverview(patient) {
   const activePlan = plansOf(patient.id).find((item) => item.id === patient.activePlanId);
@@ -1222,38 +2177,347 @@ function renderScreening(patient) {
 }
 
 function renderAnalysis(patient) {
-  return `<section class="analysis-page">
-    <div class="analysis-controls">
-      ${["近 7 天", "近 30 天", "近 90 天", "自定义"].map((item, index) => `<button class="chip ${index === 1 ? "active" : ""}">${item}</button>`).join("")}
-      ${["全部", ...patient.diseases].map((item, index) => `<button class="chip ${index === 0 ? "active" : ""}">${item}</button>`).join("")}
-      ${["全部来源", "手动记录", "设备采集"].map((item, index) => `<button class="chip ${index === 0 ? "active" : ""}">${item}</button>`).join("")}
-    </div>
-    <section class="panel clinical-summary">
-      <div class="panel-hd"><strong>临床摘要</strong><button class="btn" data-action="send-advice" data-patient="${patient.id}">生成医生建议</button></div>
-      <div class="summary-list">${patient.analysis.summary.map((item) => `<p>${item}</p>`).join("")}</div>
-    </section>
-    <div class="content-grid">
-      <section class="panel chart-panel">
-        <div class="panel-hd"><strong>疾病专题趋势</strong><span>近 30 天</span></div>
-        <div class="chart-lines">
-          <span style="height:52%"></span><span style="height:68%"></span><span style="height:45%"></span><span style="height:72%"></span><span style="height:58%"></span><span style="height:80%"></span><span style="height:62%"></span>
-        </div>
-        <div class="event-band"><span>症状</span><span>预警</span><span>方案</span><span>随访</span></div>
-      </section>
-      <section class="panel">
-        <div class="panel-hd"><strong>多指标关联</strong></div>
-        <div class="relation-list">${patient.analysis.correlations.map((item) => `<button data-action="open-followup-drawer" data-patient="${patient.id}">${item}<small>创建随访</small></button>`).join("")}</div>
-      </section>
-    </div>
-    <section class="panel">
-      <div class="panel-hd"><strong>证据链 / 原始记录明细</strong></div>
-      <table class="table compact-table"><thead><tr><th>时间</th><th>指标</th><th>数值</th><th>来源</th><th>设备号</th><th>关联</th></tr></thead><tbody>
-        <tr><td>05.19 07:30</td><td>最低血氧</td><td>86%</td><td>设备采集</td><td>SL-2026-001</td><td>预警 A001</td></tr>
-        <tr><td>05.19 08:00</td><td>空腹血糖</td><td>8.7 mmol/L</td><td>手动记录</td><td>-</td><td>方案执行</td></tr>
-        <tr><td>05.18 22:10</td><td>CPAP 使用</td><td>2.1 小时</td><td>设备采集</td><td>CPAP-09</td><td>睡眠报告</td></tr>
-      </tbody></table>
-    </section>
+  if (!hasSleepBreathingDisorder(patient)) return renderOverview(patient);
+  const allReports = sleepReportsOf(patient.id).sort((a, b) => b.monitorDate.localeCompare(a.monitorDate));
+  const reports = filterSleepReportsByWindow(allReports, sleepTimeWindow);
+  if (!reports.length) return `<section class="panel sleep-empty">
+    <div class="panel-hd"><strong>睡眠呼吸深度分析</strong><span>暂无睡眠报告</span></div>
+    <div class="empty">当前暂无睡眠相关报告，可建议患者完成睡眠监测后再查看趋势。</div>
   </section>`;
+  const selectedId = selectedSleepReportIds[patient.id];
+  const latest = reports.find((item) => item.id === selectedId) || reports[0];
+  selectedSleepReportIds[patient.id] = latest.id;
+  const hasAhi = allReports.some((item) => item.ahi);
+  const trendMetric = normalizeSleepTrendMetric(sleepTrendMetric, reports);
+  const eventAlert = alertsOf(patient.id).find((item) => /睡眠|低氧/.test(`${item.type}${item.title}`));
+  const metrics = [
+    hasAhi ? sleepMetric("呼吸事件负担", `${latest.ahi || "--"} 次/小时`, "AHI", "breath", latest.ahi ? "偏高" : "待报告") : sleepMetric("睡眠呼吸事件", latest.respiratoryEvents || "--", "设备报告", "breath", "观察"),
+    sleepMetric("氧减负担", `${latest.odi || "--"} 次/小时`, "ODI", "oxygen", latest.odi ? "需关注" : "待报告"),
+    sleepMetric("最低血氧", latest.minSpo2 || "--", "夜间 SpO2", "spo2", latest.minSpo2 ? "异常" : "待报告"),
+    sleepMetric("体动/鼾声", sleepMotionSnoreHeadline(latest), latest.snoreSummary || latest.movementSummary || "睡眠证据", "activity", sleepMotionSnoreTone(latest)),
+    sleepMetric("报告有效性", latest.effectiveHours || "--", `${reports.length}/${sleepWindowDays(sleepTimeWindow)} 晚有报告`, "quality", latest.status)
+  ];
+  return `<section class="sleep-analysis-page">
+    <section class="panel sleep-analysis-head">
+      <div>
+        <div class="sleep-kicker"><span class="sleep-mark breath"></span>睡眠呼吸深度分析</div>
+        <h3>${patient.name} 最近睡眠风险观察</h3>
+        <p>${patient.sex} ${patient.age}岁 | 睡眠呼吸障碍 | 当前报告 ${latest.reportTime} | 数据来源 ${latest.deviceModel}</p>
+      </div>
+      <div class="sleep-actions">
+        <div class="sleep-window">${sleepWindowOptions().map((item) => `<button class="chip ${sleepTimeWindow === item.value ? "active" : ""}" data-action="set-sleep-window" data-window="${item.value}" data-patient="${patient.id}">${item.label}</button>`).join("")}</div>
+        <div class="actions">
+          <button class="btn" data-action="open-sleep-reports" data-patient="${patient.id}">历史报告列表</button>
+          <button class="btn" data-action="open-recheck-drawer" data-patient="${patient.id}">复测指标</button>
+          <button class="btn primary" data-action="open-followup-drawer" data-patient="${patient.id}">创建随访</button>
+        </div>
+      </div>
+    </section>
+    <section class="sleep-risk-banner">
+      <div>
+        <strong>当前睡眠风险摘要</strong>
+        <p>${latest.riskSummary}</p>
+      </div>
+      <div class="sleep-risk-evidence">
+        ${tag(latest.status, latest.status === "异常" ? "red" : "orange")}
+        ${eventAlert ? `<span>关联预警 ${eventAlert.id}</span>` : "<span>暂无关联预警</span>"}
+        <span>${latest.reportType}</span>
+      </div>
+    </section>
+    <div class="sleep-metric-grid extended">${metrics.join("")}</div>
+    <div class="sleep-analysis-grid">
+      <section class="panel sleep-trend-panel">
+        <div class="panel-hd"><strong>多晚趋势分析</strong><span>${reports.length}/${sleepWindowDays(sleepTimeWindow)} 晚有效</span></div>
+        <div class="sleep-trend-switch">${sleepTrendOptions(reports).map((item) => `<button class="chip ${trendMetric === item.value ? "active" : ""}" data-action="set-sleep-trend" data-metric="${item.value}">${item.label}</button>`).join("")}</div>
+        ${sleepTrendChart(reports, trendMetric, latest.id)}
+        <div class="sleep-chart-legend"><span>当前选择夜</span><span>异常阈值</span><span>缺失夜按断点处理</span></div>
+      </section>
+      <section class="panel sleep-report-summary">
+        <div class="panel-hd"><strong>当前报告摘要</strong><span>${latest.reportType}</span></div>
+        ${sleepSummaryGroup("呼吸事件", [
+          ["AHI", latest.ahi ? `${latest.ahi} 次/小时` : "当前报告未输出"],
+          ["呼吸暂停", latest.apneaCount || "当前报告未输出"],
+          ["低通气", latest.hypopneaCount || "当前报告未输出"],
+          ["睡眠呼吸事件", latest.respiratoryEvents || "待报告"]
+        ])}
+        ${sleepSummaryGroup("夜间血氧", [
+          ["最低血氧", latest.minSpo2 || "--"],
+          ["平均血氧", latest.avgSpo2 || "--"],
+          ["ODI", latest.odi ? `${latest.odi} 次/小时` : "--"]
+        ])}
+        ${sleepSummaryGroup("体动与鼾声", [
+          ["体动", latest.movementSummary || "当前设备未输出"],
+          ["体动指数", latest.movementIndex || "当前设备未输出"],
+          ["鼾声", latest.snoreSummary || "当前设备未输出"],
+          ["鼾声占比", latest.snoreIndex || "当前设备未输出"]
+        ])}
+      </section>
+    </div>
+    <div class="sleep-analysis-grid detail">
+      <section class="panel sleep-single-night">
+        <div class="panel-hd"><strong>单夜多轨分析</strong><span>${latest.monitorDate}</span></div>
+        ${sleepNightEvidenceChart(latest)}
+      </section>
+      <section class="panel sleep-structure-panel">
+        <div class="panel-hd"><strong>睡眠结构与证据</strong><span>${latest.deviceModel}</span></div>
+        ${sleepStageBand(latest.sleepStageSegments)}
+        <div class="sleep-structure-list">
+          <div><span>有效监测</span><strong>${latest.effectiveHours || "--"}</strong></div>
+          <div><span>睡眠分期</span><strong>${latest.sleepStageSummary || "当前设备未输出"}</strong></div>
+          <div><span>体动</span><strong>${latest.movementSummary || "当前设备未输出"}</strong></div>
+          <div><span>鼾声</span><strong>${latest.snoreSummary || "当前设备未输出"}</strong></div>
+          <div><span>${latest.heartRate ? "心率" : "脉率"}</span><strong>${latest.heartRate || latest.pulseRate || "--"}</strong></div>
+        </div>
+      </section>
+    </div>
+    <div class="sleep-analysis-grid detail">
+      <section class="panel">
+        <div class="panel-hd"><strong>异常与临床关联</strong><button class="btn" data-action="send-advice" data-patient="${patient.id}">发送医生建议</button></div>
+        <div class="sleep-association-list">
+          ${patient.analysis.summary.filter((item) => /睡眠|血氧|CPAP|设备/.test(item)).map((item) => `<article><span class="sleep-mark report"></span><p>${item}</p></article>`).join("")}
+          ${patient.analysis.correlations.filter((item) => /睡眠|血氧|CPAP/.test(item)).map((item) => `<article><span class="sleep-mark followup"></span><p>${item}</p></article>`).join("")}
+        </div>
+      </section>
+      <section class="panel sleep-history">
+        <div class="panel-hd"><strong>历史报告列表</strong><button class="btn" data-action="open-sleep-reports" data-patient="${patient.id}">查看全部</button></div>
+        <div class="sleep-report-list">
+          ${allReports.slice(0, 6).map((item) => sleepReportRow(item, latest.id)).join("")}
+        </div>
+      </section>
+    </div>
+  </section>`;
+}
+
+function sleepWindowOptions() {
+  return [
+    { label: "最近 1 晚", value: "1" },
+    { label: "最近 7 晚", value: "7" },
+    { label: "最近 14 晚", value: "14" },
+    { label: "最近 30 晚", value: "30" }
+  ];
+}
+
+function sleepWindowDays(value) {
+  return Number(value) || 7;
+}
+
+function filterSleepReportsByWindow(reports, windowValue) {
+  const count = sleepWindowDays(windowValue);
+  if (count === 1) return reports.slice(0, 1);
+  const latestDate = new Date(`${reports[0]?.monitorDate || ""}T00:00:00`);
+  if (Number.isNaN(latestDate.getTime())) return reports.slice(0, count);
+  const minDate = new Date(latestDate);
+  minDate.setDate(latestDate.getDate() - count + 1);
+  return reports.filter((item) => new Date(`${item.monitorDate}T00:00:00`) >= minDate);
+}
+
+function sleepTrendOptions(reports) {
+  const options = [];
+  if (reports.some((item) => item.ahi)) options.push({ label: "AHI", value: "ahi" });
+  if (reports.some((item) => item.odi)) options.push({ label: "ODI", value: "odi" });
+  if (reports.some((item) => item.minSpo2)) options.push({ label: "最低血氧", value: "minSpo2" });
+  if (reports.some((item) => item.movementSeries?.length || item.movementIndex)) options.push({ label: "体动", value: "movement" });
+  if (reports.some((item) => item.snoreSeries?.length || item.snoreIndex)) options.push({ label: "鼾声", value: "snore" });
+  return options.length ? options : [{ label: "ODI", value: "odi" }];
+}
+
+function normalizeSleepTrendMetric(metric, reports) {
+  const options = sleepTrendOptions(reports).map((item) => item.value);
+  if (options.includes(metric)) return metric;
+  sleepTrendMetric = options[0] || "odi";
+  return sleepTrendMetric;
+}
+
+function numberValue(value) {
+  const match = String(value || "").match(/[\d.]+/);
+  return match ? Number(match[0]) : null;
+}
+
+function sleepTrendValue(report, metric) {
+  if (metric === "minSpo2") return numberValue(report.minSpo2);
+  if (metric === "movement") return numberValue(report.movementIndex) ?? (report.movementSeries || []).reduce((sum, item) => sum + Number(item || 0), 0);
+  if (metric === "snore") return numberValue(report.snoreIndex) ?? maxSeries(report.snoreSeries || []);
+  return numberValue(report[metric]);
+}
+
+function sleepTrendMeta(metric) {
+  const map = {
+    ahi: { label: "AHI", unit: "次/小时", threshold: 15, highBad: true },
+    odi: { label: "ODI", unit: "次/小时", threshold: 15, highBad: true },
+    minSpo2: { label: "最低血氧", unit: "%", threshold: 90, highBad: false },
+    movement: { label: "体动指数", unit: "次/小时", threshold: 2, highBad: true },
+    snore: { label: "鼾声占比", unit: "%", threshold: 30, highBad: true }
+  };
+  return map[metric] || map.odi;
+}
+
+function sleepTrendChart(reports, metric, selectedId) {
+  const chronological = reports.slice().reverse();
+  const values = chronological.map((item) => sleepTrendValue(item, metric));
+  const validValues = values.filter((item) => item !== null);
+  const meta = sleepTrendMeta(metric);
+  const max = Math.max(meta.threshold, ...validValues, 1);
+  const min = metric === "minSpo2" ? Math.min(80, ...validValues) : 0;
+  const range = Math.max(max - min, 1);
+  const points = values.map((value, index) => {
+    if (value === null) return null;
+    const x = chronological.length === 1 ? 50 : 8 + (index / (chronological.length - 1)) * 84;
+    const y = 88 - ((value - min) / range) * 68;
+    return { x, y, value, report: chronological[index] };
+  });
+  const polyline = points.filter(Boolean).map((point) => `${point.x},${point.y}`).join(" ");
+  const thresholdY = 88 - ((meta.threshold - min) / range) * 68;
+  return `<div class="sleep-trend-chart">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="${meta.label}趋势">
+      <line class="threshold-line" x1="6" y1="${thresholdY}" x2="94" y2="${thresholdY}"></line>
+      <polyline class="trend-line" points="${polyline}"></polyline>
+      ${points.filter(Boolean).map((point) => {
+        const abnormal = meta.highBad ? point.value >= meta.threshold : point.value < meta.threshold;
+        return `<circle class="${abnormal ? "abnormal" : ""} ${point.report.id === selectedId ? "selected" : ""}" cx="${point.x}" cy="${point.y}" r="${point.report.id === selectedId ? "2.8" : "2.2"}"><title>${point.report.monitorDate} ${meta.label} ${point.value}${meta.unit}</title></circle>`;
+      }).join("")}
+    </svg>
+    <div class="sleep-trend-points">
+      ${chronological.map((report) => {
+        const value = sleepTrendValue(report, metric);
+        return `<button class="${report.id === selectedId ? "active" : ""}" data-action="select-sleep-report" data-patient="${report.patientId}" data-report="${report.id}" title="${escapeAttr(report.riskSummary)}">
+          <strong>${report.monitorDate.slice(5)}</strong>
+          <span>${value === null ? "--" : `${value}${meta.unit}`}</span>
+        </button>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+function sleepMetric(label, value, meta, icon, state) {
+  return `<article class="sleep-metric-card">
+    <span class="sleep-mark ${icon}"></span>
+    <div><small>${label}</small><strong>${value}</strong><em>${meta}</em></div>
+    ${tag(state, toneOf(state))}
+  </article>`;
+}
+
+function sleepSummaryGroup(title, rows) {
+  return `<div class="sleep-summary-group"><h4>${title}</h4>${rows.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("")}</div>`;
+}
+
+function maxSeries(series) {
+  return Math.max(0, ...series.map((item) => Number(item || 0)));
+}
+
+function sleepMotionSnoreHeadline(report) {
+  if (report.movementIndex || report.snoreIndex) return [report.movementIndex, report.snoreIndex].filter(Boolean).join(" / ");
+  if (report.movementSummary || report.snoreSummary) return "有摘要";
+  return "未输出";
+}
+
+function sleepMotionSnoreTone(report) {
+  const movement = numberValue(report.movementIndex);
+  const snore = numberValue(report.snoreIndex);
+  if ((movement !== null && movement >= 2) || (snore !== null && snore >= 30)) return "需关注";
+  if (movement !== null || snore !== null) return "观察";
+  return "待报告";
+}
+
+function sleepNightEvidenceChart(report) {
+  return `<div class="sleep-evidence-chart">
+    <div class="sleep-track-labels"><span>22:00</span><span>01:00</span><span>04:00</span><span>07:00</span></div>
+    ${sleepLineTrack("SpO2", report.spo2Series || [], 84, 98, "%", "oxygen")}
+    ${sleepBarTrack("呼吸事件", report.eventSeries || [], "event")}
+    ${sleepBarTrack("体动", report.movementSeries || [], "movement")}
+    ${sleepBarTrack("鼾声", report.snoreSeries || [], "snore")}
+  </div>`;
+}
+
+function sleepLineTrack(label, series, min, max, unit, type) {
+  if (!series.length) return `<div class="sleep-track-row empty"><span>${label}</span><strong>当前报告未输出连续${label}曲线</strong></div>`;
+  const range = Math.max(max - min, 1);
+  const points = series.map((value, index) => {
+    const x = series.length === 1 ? 50 : (index / (series.length - 1)) * 100;
+    const y = 88 - ((Number(value) - min) / range) * 76;
+    return `${x},${Math.max(8, Math.min(92, y))}`;
+  }).join(" ");
+  return `<div class="sleep-track-row ${type}">
+    <span>${label}</span>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <line class="danger-line" x1="0" y1="${88 - ((90 - min) / range) * 76}" x2="100" y2="${88 - ((90 - min) / range) * 76}"></line>
+      <polyline points="${points}"></polyline>
+    </svg>
+    <strong>${Math.min(...series)}-${Math.max(...series)}${unit}</strong>
+  </div>`;
+}
+
+function sleepBarTrack(label, series, type) {
+  if (!series.length) return `<div class="sleep-track-row empty"><span>${label}</span><strong>当前设备未输出</strong></div>`;
+  const max = Math.max(1, ...series.map((item) => Number(item || 0)));
+  return `<div class="sleep-track-row ${type}">
+    <span>${label}</span>
+    <div class="sleep-track-bars">${series.map((value) => `<i style="height:${Math.max(8, (Number(value || 0) / max) * 78)}%"></i>`).join("")}</div>
+    <strong>${label === "鼾声" ? `${max}%峰值` : `${series.reduce((sum, item) => sum + Number(item || 0), 0)}段`}</strong>
+  </div>`;
+}
+
+function sleepStageBand(segments = []) {
+  if (!segments.length) return `<div class="sleep-stage-band empty">当前设备未输出睡眠分期</div>`;
+  const total = segments.reduce((sum, [, value]) => sum + Number(value || 0), 0) || 1;
+  return `<div class="sleep-stage-band">
+    ${segments.map(([stage, value]) => `<span class="${sleepStageClass(stage)}" style="flex:${Number(value || 0) / total}" title="${escapeAttr(`${stage} ${value}%`)}">${stage}</span>`).join("")}
+  </div>`;
+}
+
+function sleepStageClass(stage) {
+  if (stage.includes("深")) return "deep";
+  if (stage.includes("REM")) return "rem";
+  if (stage.includes("清醒")) return "awake";
+  return "light";
+}
+
+function sleepReportRow(report, selectedId) {
+  return `<button class="sleep-report-row ${report.id === selectedId ? "active" : ""}" data-action="select-sleep-report" data-patient="${report.patientId}" data-report="${report.id}">
+    <span><strong>${report.monitorDate}</strong><small>${report.reportTime} | ${report.reportType}</small></span>
+    <span>${report.deviceModel}</span>
+    <span>AHI ${report.ahi || "-"}</span>
+    <span>ODI ${report.odi || "-"}</span>
+    <span>最低 ${report.minSpo2 || "-"}</span>
+    ${tag(report.status, toneOf(report.status))}
+  </button>`;
+}
+
+function openSleepReportsModal(patientId) {
+  const patient = patientById(patientId);
+  const reports = sleepReportsOf(patientId).sort((a, b) => b.monitorDate.localeCompare(a.monitorDate));
+  openModal(
+    `${patient.name} 的历史睡眠报告`,
+    `<div class="sleep-report-modal">
+      <div class="sleep-report-modal-head">
+        <strong>报告列表</strong>
+        <span>点击某晚报告后，患者详情会切换为该晚的完整睡眠数据。</span>
+      </div>
+      <div class="sleep-report-list full">${reports.map((report) => sleepReportRow(report, selectedSleepReportIds[patientId])).join("")}</div>
+    </div>`,
+    `<button class="btn" data-action="close-modal">关闭</button>`
+  );
+}
+
+function selectSleepReport(patientId, reportId) {
+  selectedPatientId = patientId;
+  selectedSleepReportIds[patientId] = reportId;
+  detailTab = "analysis";
+  currentView = "detail";
+  closeModal();
+  render();
+  showToast("已切换到该晚报告详情");
+}
+
+function setSleepWindow(patientId, value) {
+  sleepTimeWindow = value;
+  const reports = filterSleepReportsByWindow(sleepReportsOf(patientId).sort((a, b) => b.monitorDate.localeCompare(a.monitorDate)), sleepTimeWindow);
+  if (!reports.some((item) => item.id === selectedSleepReportIds[patientId])) selectedSleepReportIds[patientId] = reports[0]?.id;
+  render();
+}
+
+function setSleepTrend(metric) {
+  sleepTrendMetric = metric;
+  render();
 }
 
 function renderPatientAlerts(patient) {
@@ -1285,13 +2549,29 @@ function renderAdvice(patient) {
 
 function renderAlerts() {
   const { pageItems } = paginateItems("alerts", state.alerts);
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>预警中心</strong><span>${state.alerts.filter((item) => item.status === "待处理").length} 条待处理</span></div><div class="card-list">${pageItems.map(alertCard).join("")}</div>${renderPagination("alerts", state.alerts.length)}</section>`;
+  const pendingCount = state.alerts.filter((item) => item.status === "待处理").length;
+  const urgentCount = state.alerts.filter((item) => item.status === "待处理" && item.level === "紧急").length;
+  const importantCount = state.alerts.filter((item) => item.status === "待处理" && item.level === "重要").length;
+  const closedLoopCount = state.alerts.filter((item) => item._actionSummary).length;
+  app.innerHTML = `<section class="page-stack operations-page alert-workbench">
+    <div class="workbench-summary">
+      ${workbenchStat("待处理预警", pendingCount, "先处理紧急与重要事件", "danger")}
+      ${workbenchStat("紧急", urgentCount, "存在安全边界风险", "urgent")}
+      ${workbenchStat("重要", importantCount, "需要医生判断处置", "warning")}
+      ${workbenchStat("已形成动作", closedLoopCount, "已关联复测、建议或随访", "success")}
+    </div>
+    <section class="panel operations-panel">
+      <div class="panel-hd"><strong>预警任务流</strong><span>${pendingCount} 条待处理，按优先级推进闭环</span></div>
+      <div class="card-list">${pageItems.map(alertCard).join("")}</div>
+      ${renderPagination("alerts", state.alerts.length)}
+    </section>
+  </section>`;
 }
 
 function alertCard(alert) {
   const disabled = alert.status !== "待处理" ? "disabled" : "";
   const actionSummary = alert._actionSummary ? `<div class="alert-action-summary">${alert._actionSummary}</div>` : "";
-  return `<article class="flow-card ${alert.level === "紧急" ? "urgent" : alert.level === "重要" ? "important" : ""}">
+  return `<article class="flow-card alert-card ${alert.level === "紧急" ? "urgent" : alert.level === "重要" ? "important" : ""}">
     <div class="card-top"><div><h3>${alert.title}</h3><p>${patientName(alert.patientId)} | ${alert.type} | ${alert.createdAt}</p></div><div>${tag(alert.level, toneOf(alert.level))}${tag(alert.status, toneOf(alert.status))}</div></div>
     <div class="evidence"><strong>触发规则</strong><span>${alert.rule}</span>${alert.evidence.map((item) => `<strong>证据</strong><span>${item}</span>`).join("")}</div>
     ${actionSummary}
@@ -1320,7 +2600,7 @@ function renderPlans() {
         ${planSearchQuery ? `<button data-action="clear-plan-search">清空</button>` : ""}
       </div>
       <div class="toolbar-actions">
-        <span class="sync-time">方案支持前端 Mock 流程闭环</span>
+        <span class="sync-time">数据更新 16:30</span>
         <button class="btn primary" data-action="open-create-plan">新建管理方案</button>
       </div>
     </div>
@@ -1351,6 +2631,10 @@ function renderPlans() {
           ${planDiseaseFilter !== "全部" ? `<button class="chip sm clear-chip" data-action="set-plan-disease" data-disease="全部">×</button>` : ""}
         </div>
       </div>
+    </div>
+    <div class="plan-result-meta">
+      <strong>当前结果：${plans.length} 个方案</strong>
+      <span>优先处理草稿、待患者确认与执行中调整。</span>
     </div>
     <section class="panel table-panel">
       ${pageItems.length ? `<table class="table plan-table">
@@ -2028,13 +3312,35 @@ function moduleSummaryFromFields(module) {
 
 function renderFollowups() {
   const { pageItems } = paginateItems("followups", state.followups);
-  app.innerHTML = `<section class="panel"><div class="panel-hd"><strong>随访计划</strong><span>待随访与逾期优先</span></div><div class="card-list">${pageItems.map(followupCard).join("")}</div>${renderPagination("followups", state.followups.length)}</section>`;
+  const upcomingCount = state.followups.filter((item) => ["待随访", "待患者准备"].includes(followupStatusLabel(item.status))).length;
+  const overdueCount = state.followups.filter((item) => followupStatusLabel(item.status) === "逾期").length;
+  const preparingCount = state.followups.filter((item) => followupStatusLabel(item.status) === "待患者准备").length;
+  const doneCount = state.followups.filter((item) => followupStatusLabel(item.status) === "已完成").length;
+  app.innerHTML = `<section class="page-stack operations-page followup-workbench">
+    <div class="workbench-summary followup-summary">
+      ${workbenchStat("待推进随访", upcomingCount, "随访前材料与执行任务", "primary")}
+      ${workbenchStat("已逾期", overdueCount, "需要优先回收结论", "danger")}
+      ${workbenchStat("待患者准备", preparingCount, "先补齐记录与材料", "warning")}
+      ${workbenchStat("已完成", doneCount, "已形成随访结论", "success")}
+    </div>
+    <section class="panel operations-panel">
+      <div class="panel-hd"><strong>随访任务流</strong><span>待随访与逾期优先</span></div>
+      <div class="card-list">${pageItems.map(followupCard).join("")}</div>
+      ${renderPagination("followups", state.followups.length)}
+    </section>
+  </section>`;
 }
 
 function followupCard(followup) {
+  const statusLabel = followupStatusLabel(followup.status);
   const nextStepSummary = [followup._lastAdviceSummary, followup._lastRecheckSummary, followup._nextFollowupSummary].filter(Boolean).join("；");
-  return `<article class="flow-card ${followup.status === "已完成" ? "done" : followup.status === "逾期" ? "urgent" : ""}">
-    <div class="card-top"><div><h3>${followup.title}</h3><p>${patientName(followup.patientId)} | ${followup.type} | ${followup.dueAt}</p></div>${tag(followup.status, toneOf(followup.status))}</div>
+  return `<article class="flow-card followup-card ${statusLabel === "已完成" ? "done" : statusLabel === "逾期" ? "urgent" : ""}">
+    <div class="card-top"><div><h3>${followup.title}</h3><p>${patientName(followup.patientId)} | ${followup.type} | ${followup.dueAt}</p></div>${tag(statusLabel, toneOf(statusLabel))}</div>
+    <div class="followup-meta">
+      <span>方式 ${followup.method || "-"}</span>
+      <span>负责人 ${followup.owner || followup.doctorName || "-"}</span>
+      <span>准备项 ${(followup.prepareItems || []).length}</span>
+    </div>
     <div class="pill-list">${followup.focus.map((item) => `<span>${item}</span>`).join("")}</div>
     ${nextStepSummary ? `<div class="alert-action-summary">${nextStepSummary}</div>` : ""}
     <div class="actions">
@@ -3299,7 +4605,7 @@ function openMore(patientId) {
   if (hasPendingDiseaseRisk(patient)) rows.push(`<button class="btn primary" data-action="view-patient-tab" data-patient="${patientId}" data-tab="screening">去确认疾病</button>`);
   if (plansOf(patientId).some((item) => item.status === "草稿")) rows.push(`<button class="btn primary" data-view-link="plans">去确认方案</button>`);
   if (followupsOf(patientId).some((item) => ["待随访", "逾期"].includes(item.status))) rows.push(`<button class="btn primary" data-view-link="followups">去完成随访</button>`);
-  if (hasDataIssue(patient)) rows.push(`<button class="btn" data-action="view-patient-tab" data-patient="${patientId}" data-tab="analysis">查看数据缺失</button>`);
+  if (hasDataIssue(patient)) rows.push(`<button class="btn" data-action="view-patient-tab" data-patient="${patientId}" data-tab="${hasSleepBreathingDisorder(patient) ? "analysis" : "overview"}">查看数据缺失</button>`);
   openModal(`${patient.name} 的待处理事项`, `<div class="action-stack">${rows.join("") || "暂无待处理事项"}</div>`, `<button class="btn" data-action="close-modal">关闭</button>`);
 }
 
@@ -3401,6 +4707,36 @@ document.body.addEventListener("click", (event) => {
     detailTab = target.dataset.tab;
     render();
   }
+  if (action === "glucose-subtab") {
+    if (!window._glucoseSubTab) window._glucoseSubTab = {};
+    window._glucoseSubTab[target.dataset.patient] = target.dataset.tab;
+    render();
+    // Init charts after render if switching to CGM
+    if (target.dataset.tab === "cgm") {
+      setTimeout(() => initGlucoseCharts(target.dataset.patient), 50);
+    }
+  }
+  if (action === "enter-twin") {
+    detailTab = "digital-twin";
+    render();
+  }
+  if (action === "agp-period") {
+    window._gAgpPeriod = parseInt(target.dataset.period, 10);
+    document.querySelectorAll("[data-action='agp-period']").forEach(b => b.classList.toggle("active", b === target));
+    initGlucoseCharts(selectedPatientId);
+  }
+  if (action === "tl-expand") {
+    const idx = target.dataset.idx;
+    const full = document.getElementById("g-tl-full-" + idx);
+    if (!full) return;
+    const isShown = full.style.display !== "none";
+    full.style.display = isShown ? "none" : "block";
+    target.textContent = isShown ? "展开" : "收起";
+  }
+  if (action === "set-sleep-window") setSleepWindow(target.dataset.patient || selectedPatientId, target.dataset.window);
+  if (action === "set-sleep-trend") setSleepTrend(target.dataset.metric);
+  if (action === "select-sleep-report") selectSleepReport(target.dataset.patient || selectedPatientId, target.dataset.report);
+  if (action === "open-sleep-reports") openSleepReportsModal(target.dataset.patient || selectedPatientId);
   if (action === "view-patient-tab") {
     selectedPatientId = target.dataset.patient;
     detailTab = target.dataset.tab;

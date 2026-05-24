@@ -8,7 +8,16 @@ export function loadState() {
   const cached = localStorage.getItem(STORAGE_KEY);
   if (!cached) return clone(seedHealthData);
   try {
-    return JSON.parse(cached);
+    const parsed = JSON.parse(cached);
+    if (!Array.isArray(parsed.sleepReports)) parsed.sleepReports = clone(seedHealthData.sleepReports || []);
+    else {
+      const cachedReports = parsed.sleepReports;
+      parsed.sleepReports = clone(seedHealthData.sleepReports || []).map((seedReport) => {
+        const cachedReport = cachedReports.find((item) => item.id === seedReport.id);
+        return cachedReport ? { ...seedReport, ...cachedReport } : seedReport;
+      });
+    }
+    return parsed;
   } catch {
     return clone(seedHealthData);
   }
