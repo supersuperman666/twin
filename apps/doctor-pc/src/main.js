@@ -17,11 +17,23 @@ let planSearchQuery = "";
 let sleepTimeWindow = "7";
 let sleepTrendMetric = "ODI";
 let selectedSleepReportIds = {};
+let metricDictSearchQuery = "";
+let metricDictCategoryFilter = "全部";
+let twinSelectedOrgan = null;
+let twinSelectedSource = null;
+let twinDemoMode = false;
+let twinDemoTemplate = "normal";
+let twinPlayingChain = null;
+let goalSearchQuery = "";
+let goalCategoryFilter = "全部";
+let goalStatusFilter = "全部";
 let paginationState = {
   patients: { page: 1, pageSize: 20, jump: "" },
   alerts: { page: 1, pageSize: 20, jump: "" },
   plans: { page: 1, pageSize: 20, jump: "" },
-  followups: { page: 1, pageSize: 20, jump: "" }
+  followups: { page: 1, pageSize: 20, jump: "" },
+  metricDictionary: { page: 1, pageSize: 20, jump: "" },
+  goalManagement: { page: 1, pageSize: 20, jump: "" }
 };
 let patientFilters = {
   important: "全部",
@@ -65,7 +77,9 @@ const viewMeta = {
   alerts: ["预警中心", "按异常事件集中处理预警，并形成随访或方案调整闭环"],
   plans: ["方案管理", "审核待确认方案，维护执行中方案和患者知晓状态"],
   followups: ["随访计划", "按时间任务管理待随访、逾期随访和随访结论"],
-  detail: ["患者详情", "查看患者档案、筛查、数据分析和管理记录"]
+  detail: ["患者详情", "查看患者档案、筛查、数据分析和管理记录"],
+  metricDictionary: ["指标字典", "系统全量预置慢病基础指标，统一平台指标规范"],
+  goalManagement: ["目标管理", "配置全局慢病目标阈值与启停状态，为患者目标初始化提供默认标准"]
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -78,6 +92,11 @@ const plansOf = (patientId) => state.plans.filter((item) => item.patientId === p
 const followupsOf = (patientId) => state.followups.filter((item) => item.patientId === patientId);
 const adviceOf = (patientId) => state.advice?.filter((item) => item.patientId === patientId) || [];
 const sleepReportsOf = (patientId) => (state.sleepReports || []).filter((item) => item.patientId === patientId);
+const oxygenReportsOf = (patientId) => (state.oxygenReports || []).filter((item) => item.patientId === patientId).sort((a, b) => b.monitorDate.localeCompare(a.monitorDate));
+const copdSymptomsOf = (patientId) => (state.copdSymptoms || []).find((item) => item.patientId === patientId)?.symptoms || [];
+const oxygenTrendOf = (patientId) => (state.oxygenTrend || []).find((item) => item.patientId === patientId)?.trend || [];
+const scaleRecordsOf = (patientId, code) => (state.scaleRecords || []).filter((item) => item.patientId === patientId && item.scaleCode === code).sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+const hasCOPD = (patient) => patient.diseases.some((d) => ["慢阻肺", "COPD", "慢性阻塞性肺疾病"].includes(d));
 
 const PLAN_STATUSES = ["全部", "草稿", "已下发待患者确认", "执行中", "已驳回", "已停用", "已完成"];
 const PLAN_REMINDER_TAGS = ["全部", "患者未确认", "患者有疑问", "患者无法执行", "即将到期", "待复盘"];
@@ -195,6 +214,9 @@ function hasSleepBreathingDisorder(patient) {
 function hasDiabetes(patient) {
   return [...(patient.diseases || []), ...(patient.screening?.confirmed || [])].some((item) => /糖尿病|diabetes/i.test(item));
 }
+function hasTwinSupportedDisease(patient) {
+  return hasDiabetes(patient) || hasSleepBreathingDisorder(patient) || hasCOPD(patient);
+}
 
 // Chart.js CDN loader — loads once, resolves immediately on subsequent calls
 let _chartJsReady = null;
@@ -288,6 +310,94 @@ function initGlucoseCharts(patientId) {
   });
 }
 
+function initCOPDCharts(patientId) {
+  loadChartJs().then((Chart) => {
+    const reports = oxygenReportsOf(patientId);
+    const latestReport = reports[0];
+    const trend = oxygenTrendOf(patientId);
+    const catRecords = scaleRecordsOf(patientId, "cat");
+
+    // SpO2 time-series
+    const spo2Canvas = document.getElementById("copdSpo2Chart");
+    if (spo2Canvas) {
+      if (window._copdSpo2Chart) window._copdSpo2Chart.destroy();
+      const labels = latestReport.timeLabels || [];
+      const spo2Data = latestReport.spo2Series || [];
+      const prData = latestReport.pulseRateSeries || [];
+      const colors = spo2Data.map(v => v < 85 ? "#EF4444" : v < 90 ? "#F59E0B" : "#10B981");
+      window._copdSpo2Chart = new Chart(spo2Canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "SpO₂ (%)", data: spo2Data, borderColor: "#5299ff", backgroundColor: "#5299ff20", borderWidth: 2, pointBackgroundColor: colors, pointRadius: 4, tension: 0.3, fill: false },
+            { label: "脉率 (bpm)", data: prData, borderColor: "#94A3B8", borderWidth: 1, pointRadius: 0, tension: 0.3, fill: false, yAxisID: "y2" }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: "#F0F0F0" }, ticks: { font: { size: 10 }, color: "#86909C", maxTicksLimit: 8 } },
+            y: { min: 80, max: 100, grid: { color: "#F0F0F0" }, ticks: { font: { size: 10 }, color: "#86909C" } },
+            y2: { position: "right", min: 50, max: 110, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 }, color: "#94A3B8" } }
+          },
+          plugins: {
+            annotation: {
+              annotations: { threshold90: { type: "line", yMin: 90, yMax: 90, borderColor: "#F59E0B", borderWidth: 1, borderDash: [4, 4], label: { display: true, content: "90%低氧参考线", font: { size: 10 }, position: "start" } } }
+            }
+          }
+        }
+      });
+    }
+
+    // Hypoxia trend + Ts90% overlay
+    const trendCanvas = document.getElementById("copdTrendChart");
+    if (trendCanvas && trend.length) {
+      if (window._copdTrendChart) window._copdTrendChart.destroy();
+      window._copdTrendChart = new Chart(trendCanvas, {
+        type: "line",
+        data: {
+          labels: trend.map(t => t.periodDate),
+          datasets: [
+            { label: "最低血氧 (%)", data: trend.map(t => t.minSpo2), borderColor: "#5299ff", borderWidth: 2, pointRadius: 3, tension: 0.3, spanGaps: false },
+            { label: "ODI (次/小时)", data: trend.map(t => t.odi), borderColor: "#F59E0B", borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, yAxisID: "y2", spanGaps: false },
+            { label: "Ts90% (%)", data: trend.map(t => t.ts90), borderColor: "#EF4444", borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: false }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: "#F0F0F0" }, ticks: { font: { size: 10 }, color: "#86909C" } },
+            y: { min: 80, max: 100, grid: { color: "#F0F0F0" }, ticks: { font: { size: 10 }, color: "#86909C" } },
+            y2: { position: "right", min: 0, max: 20, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 }, color: "#86909C" } }
+          },
+          plugins: { legend: { labels: { font: { size: 11 } } } }
+        }
+      });
+    }
+
+    // CAT trend
+    const catCanvas = document.getElementById("copdCatTrend");
+    if (catCanvas && catRecords.length >= 2) {
+      if (window._copdCatChart) window._copdCatChart.destroy();
+      window._copdCatChart = new Chart(catCanvas, {
+        type: "line",
+        data: {
+          labels: catRecords.map(r => r.completedAt.slice(0, 10)),
+          datasets: [{ label: "CAT评分", data: catRecords.map(r => r.totalScore), borderColor: "#7C3AED", borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: "#F0F0F0" } },
+            y: { min: 0, max: 40, grid: { color: "#F0F0F0" } }
+          }
+        }
+      });
+    }
+  });
+}
+
 function workbenchStat(label, value, note, tone = "") {
   return `<article class="workbench-stat ${tone}">
     <span>${label}</span>
@@ -311,17 +421,30 @@ function render() {
   pageTitle.textContent = title;
   pageSubTitle.textContent = subTitle;
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === currentView));
+  // Highlight parent nav-group when a sub-view is active
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const parentBtn = group.querySelector(".nav-parent");
+    const subActive = group.querySelector(`.sub-item[data-view="${currentView}"]`);
+    parentBtn.classList.toggle("active", !!subActive);
+    if (subActive) group.classList.add("open");
+    group.querySelectorAll(".sub-item").forEach((item) => item.classList.toggle("active", item.dataset.view === currentView));
+  });
   const renderers = {
     patients: renderPatients,
     alerts: renderAlerts,
     plans: renderPlans,
     followups: renderFollowups,
-    detail: renderPatientDetail
+    detail: renderPatientDetail,
+    metricDictionary: renderMetricDictionary,
+    goalManagement: renderGoalManagement
   };
   renderers[currentView]();
   // Initialise Chart.js charts after glucose tab renders
   if (currentView === "detail" && detailTab === "glucose") {
     setTimeout(() => initGlucoseCharts(selectedPatientId), 50);
+  }
+  if (currentView === "detail" && detailTab === "copd") {
+    setTimeout(() => initCOPDCharts(selectedPatientId), 50);
   }
 }
 
@@ -553,7 +676,7 @@ function renderPatients() {
               <tr>
                 <th>患者</th>
                 <th>疾病标签</th>
-                <th>健康风险分</th>
+                <th>孪生健康分</th>
                 <th>待处理事项</th>
                 <th>最新动态</th>
                 <th>方案/随访</th>
@@ -1208,6 +1331,7 @@ function patientRow(patient) {
   const currentPlan = plansOf(patient.id).find((item) => item.id === patient.activePlanId);
   const nextFollow = followupsOf(patient.id).find((item) => item.id === patient.nextFollowupId);
   const hasMore = pendingAlerts.length || pendingPlans.length || pendingFollowups.length || hasPendingDiseaseRisk(patient) || hasDataIssue(patient);
+  const trendArrow = patient.riskChange > 0 ? `<span class="trend-up">↑</span>` : patient.riskChange < 0 ? `<span class="trend-down">↓</span>` : `<span class="trend-flat">—</span>`;
   return `<tr>
     <td>
       <div class="patient-cell">
@@ -1216,10 +1340,10 @@ function patientRow(patient) {
       </div>
     </td>
     <td>
-      ${patient.screening.confirmed.map((item) => tag(item, "blue")).join("")}
+      ${patient.screening.confirmed.map((item) => tag(item, "muted")).join("")}
       ${patient.screening.pending.map((item) => tag(`${item}待确认`, "orange")).join("")}
     </td>
-    <td><div class="score-line"><b>${patient.riskScore}</b>${tag(patient.riskLevel, toneOf(patient.riskLevel))}<small>${patient.riskChange > 0 ? "+" : ""}${patient.riskChange} 较上周期</small></div></td>
+    <td><div class="score-line"><b>${patient.riskScore}</b>${trendArrow}${tag(patient.riskLevel, toneOf(patient.riskLevel))}</div></td>
     <td>
       ${pendingAlerts.length ? tag(`${pendingAlerts.length} 个预警`, "red") : ""}
       ${hasPendingDiseaseRisk(patient) ? tag("疾病待确认", "orange") : ""}
@@ -1244,8 +1368,10 @@ function renderPatientDetail() {
     ["overview", "总览"],
     ["profile", "健康档案"],
     ["screening", "健康筛查"],
-    ...(hasDiabetes(patient) ? [["digital-twin", "数字孪生融合分析"], ["glucose", "血糖深度分析"]] : []),
+    ...(hasTwinSupportedDisease(patient) ? [["digital-twin", "数字孪生融合分析"]] : []),
+    ...(hasDiabetes(patient) ? [["glucose", "血糖深度分析"]] : []),
     ...(hasSleepBreathingDisorder(patient) ? [["analysis", "睡眠深度分析"]] : []),
+    ...(hasCOPD(patient) ? [["copd", "慢阻肺深度分析"]] : []),
     ["alerts", "预警记录"],
     ["plans", "管理方案"],
     ["followups", "随访记录"],
@@ -1259,9 +1385,9 @@ function renderPatientDetail() {
         <div>
           <h2>${patient.name}</h2>
           <p>${patient.sex} ${patient.age}岁 | ${patient.phone} | ${patient.relation} | 绑定 ${patient.bindAt}</p>
-          <div class="tag-row">${patient.diseases.map((item) => tag(item, "blue")).join("")}${tag(patient.riskLevel, toneOf(patient.riskLevel))}${patient.important ? tag("重点关注", "orange") : ""}</div>
+          <div class="tag-row">${patient.diseases.map((item) => tag(item, "muted")).join("")}${tag(patient.riskLevel, toneOf(patient.riskLevel))}${patient.important ? tag("重点关注", "orange") : ""}</div>
         </div>
-        <div class="hero-score"><strong>${patient.riskScore}</strong><span>健康风险分</span></div>
+        <div class="hero-score"><strong>${patient.riskScore}</strong><span>孪生健康分</span></div>
         <div class="hero-actions">
           <button class="btn primary" data-action="quick-primary" data-patient="${patient.id}">优先处理</button>
           <button class="btn" data-action="send-advice" data-patient="${patient.id}">发送医生建议</button>
@@ -1284,6 +1410,7 @@ function renderDetailTab(patient) {
     "digital-twin": renderDigitalTwin,
     glucose: renderGlucoseAnalysis,
     analysis: renderAnalysis,
+    copd: renderCOPDAnalysis,
     alerts: renderPatientAlerts,
     plans: renderPatientPlans,
     followups: renderPatientFollowups,
@@ -2052,64 +2179,500 @@ function renderGlucoseAnalysis(patient) {
 }
 
 /* ============================================================
-   数字孪生融合分析 — 占位框架
+   数字孪生融合分析 — V1.7 左侧 2D 画布（P0 + P2）
    ============================================================ */
-function renderDigitalTwin(patient) {
-  const gd = getGlucoseData(patient);
-  const hasBad = gd && gd.aiCards.some((c,i)=>i<2);
 
-  const riskTags = patient.diseases.includes("糖尿病") ? [
-    { cls:"red",    text:"血糖控制不佳" },
-    { cls:"red",    text:"并发症风险升高" },
-    { cls:"orange", text:"血糖波动偏大" },
-    ...(patient.diseases.includes("睡眠呼吸暂停") ? [{ cls:"orange", text:"睡眠缺氧联动损伤" }] : [])
-  ] : [{ cls:"green", text:"代谢状态良好" }];
+const TWIN_VIEWBOX = { w: 1024, h: 1536 };
+const TWIN_BASE_IMAGE = "/apps/doctor-pc/assets/models/digital-twin-base.png";
 
-  const modules = [
-    { icon:"🫀", title:"全景孪生器官可视化", state:"red",
-      desc:"以人体简化孪生模型为核心，聚焦胰腺、血管、眼底、肾脏、末梢神经等糖尿病关联靶器官，根据患者血糖及慢病数据自动对异常器官进行彩色高亮与风险可视化展示。" },
-    { icon:"⚠️", title:"患者核心风险总览",   state:"red",
-      desc:"自动提炼当前患者最高优先级风险标签，覆盖血糖控制不佳、餐后高糖损伤、血糖波动偏大、黎明现象、低血糖风险等核心异常风险。" },
-    { icon:"🧬", title:"胰腺糖代谢深度溯源", state:"red",
-      desc:"精准拆解胰腺分泌、代谢、应答异常的底层机制，覆盖基础分泌功能、餐后胰岛素应答、血糖稳态调控、极端血糖耐受能力四大核心维度深度溯源分析。" },
-    { icon:"🫁", title:"全身靶器官并发症风险", state:"orange",
-      desc:"基于血糖长期管控状态，拆解血管内皮、肾脏、眼底视网膜、末梢神经、心脑血管等靶器官的累积损伤风险，实现血糖数据到器官损伤的具象化转化。" },
-    { icon:"🔗", title:"多慢病联动损伤分析",  state: patient.diseases.includes("睡眠呼吸暂停") ? "orange" : "green",
-      desc:"承接血糖+睡眠等跨病种联动分析，拆解共病叠加导致的代谢紊乱与器官损伤，解决单一数据无法解释的顽固血糖问题及胰岛素抵抗加重机制。" },
-    { icon:"📋", title:"溯源事件明细日志",    state:"orange",
-      desc:"记录患者周期内所有血糖异常、慢病异常事件，支撑医生精准复盘问题诱因，包含异常类型、关联行为时段、对应器官损伤提示、溯源来源等完整信息。" }
-  ];
-  const stateLabel = { green:"状态良好", orange:"存在风险", red:"风险较高" };
-  const stateCls   = { green:"g-tag-green", orange:"g-tag-orange", red:"g-tag-red" };
+function twinPoint(x, y) {
+  return { x: Math.round(x * TWIN_VIEWBOX.w), y: Math.round(y * TWIN_VIEWBOX.h) };
+}
+
+function twinPolygon(points) {
+  return points.map(([x, y]) => {
+    const p = twinPoint(x, y);
+    return `${p.x},${p.y}`;
+  }).join(" ");
+}
+
+function twinBox([x1, y1, x2, y2]) {
+  return {
+    x: Math.round(x1 * TWIN_VIEWBOX.w),
+    y: Math.round(y1 * TWIN_VIEWBOX.h),
+    w: Math.round((x2 - x1) * TWIN_VIEWBOX.w),
+    h: Math.round((y2 - y1) * TWIN_VIEWBOX.h)
+  };
+}
+
+// 器官定义：坐标基于 1024×1536 高清 2D 底图，polygon 来自 organ-hotspots.json 首轮校准。
+const TWIN_ORGANS = {
+  airway:   { label:"气道", image:"/apps/doctor-pc/assets/models/digital-twin-airway.png",
+              shape:{ type:"rect", bbox:[0.482, 0.135, 0.528, 0.292], rx:18 },
+              linkedMetrics:["AHI","呼吸事件","平均血氧"], anatomic:false },
+  lung:     { label:"肺部", image:"/apps/doctor-pc/assets/models/digital-twin-lung.png",
+              shape:{ type:"polygon", points:[[0.397,0.188],[0.475,0.181],[0.501,0.254],[0.527,0.181],[0.605,0.188],[0.638,0.355],[0.552,0.375],[0.5,0.325],[0.448,0.375],[0.362,0.355]] },
+              linkedMetrics:["最低血氧","平均血氧","ODI","CAT","Ts90"], anatomic:false },
+  heart:    { label:"心脏", image:"/apps/doctor-pc/assets/models/digital-twin-heart.png",
+              shape:{ type:"polygon", points:[[0.486,0.237],[0.56,0.248],[0.603,0.306],[0.573,0.366],[0.508,0.378],[0.451,0.346],[0.431,0.291]] },
+              linkedMetrics:["低氧负担","心血管风险"], anatomic:false },
+  liver:    { label:"肝脏", image:"/apps/doctor-pc/assets/models/digital-twin-liver.png",
+              shape:{ type:"polygon", points:[[0.334,0.341],[0.506,0.323],[0.611,0.352],[0.592,0.399],[0.505,0.442],[0.373,0.458],[0.325,0.421]] },
+              linkedMetrics:["平均血糖","脂肪肝风险"], anatomic:false },
+  stomach:  { label:"胃", image:"/apps/doctor-pc/assets/models/digital-twin-stomach.png",
+              shape:{ type:"polygon", points:[[0.513,0.303],[0.601,0.322],[0.643,0.374],[0.61,0.438],[0.526,0.456],[0.481,0.415],[0.489,0.35]] },
+              linkedMetrics:["餐后2h血糖","胃排空","饮食结构"], anatomic:false },
+  intestine:{ label:"肠道", image:"/apps/doctor-pc/assets/models/digital-twin-intestine.png",
+              shape:{ type:"polygon", points:[[0.414,0.303],[0.578,0.306],[0.607,0.37],[0.596,0.465],[0.523,0.514],[0.431,0.492],[0.397,0.407]] },
+              linkedMetrics:["餐后血糖","药物吸收","代谢负担"], anatomic:false },
+  pancreas: { label:"胰腺",  shape:{ type:"polygon", points:[[0.475,0.353],[0.56,0.356],[0.598,0.375],[0.56,0.395],[0.482,0.389],[0.447,0.371]] },
+              linkedMetrics:["TIR","平均血糖","eA1c"], anatomic:true },
+  kidney:   { label:"肾脏", image:"/apps/doctor-pc/assets/models/digital-twin-kidney.png",
+              shape:{ type:"multi", parts:[
+                { type:"ellipse", cx:0.405, cy:0.445, rx:0.035, ry:0.048 },
+                { type:"ellipse", cx:0.595, cy:0.445, rx:0.035, ry:0.048 } ]},
+              linkedMetrics:["TIR","并发症风险"], anatomic:true },
+  vessel:   { label:"血管",  shape:{ type:"rect", bbox:[0.492, 0.295, 0.51, 0.58], rx:10 },
+              linkedMetrics:["CV","TAR/TBR","低血糖次数","平均血糖"], anatomic:false }
+};
+
+// 病种组合 → 场景（PRD §6）
+function detectTwinScenario(patient) {
+  const osa = hasSleepBreathingDisorder(patient);
+  const copd = hasCOPD(patient);
+  const dm = hasDiabetes(patient);
+  if (osa && copd && dm) return { id:"triple", label:"三重共病（OSA + COPD + 糖尿病）",
+    organs:["lung","airway","heart","pancreas","vessel","kidney"], default:"lung" };
+  if (osa && dm)   return { id:"osa-dm",  label:"缺氧代谢共病（OSA + 糖尿病）",
+    organs:["airway","lung","pancreas","vessel","heart"], default:"lung" };
+  if (osa && copd) return { id:"osa-copd",label:"重叠综合征（OSA + COPD）",
+    organs:["airway","lung","heart"], default:"lung" };
+  if (copd && dm)  return { id:"copd-dm",label:"炎症代谢共病（COPD + 糖尿病）",
+    organs:["lung","pancreas","vessel","heart"], default:"lung" };
+  if (osa)  return { id:"osa", label:"睡眠呼吸暂停（OSA）",
+    organs:["airway","lung","heart"], default:"airway" };
+  if (copd) return { id:"copd", label:"慢阻肺（COPD）",
+    organs:["airway","lung","heart"], default:"lung" };
+  if (dm)   return { id:"dm", label:"2 型糖尿病",
+    organs:["pancreas","liver","kidney","vessel"], default:"pancreas" };
+  return { id:"none", label:"无支持病种", organs:[], default:null };
+}
+
+// 病种 → 默认共病链路（PRD §9.4 + §13）
+const TWIN_CHAINS = {
+  osa:      [{ id:"osa-main",  label:"夜间低氧 → 心肺负荷",
+                path:["airway","lung","heart"], severity:"medium" }],
+  copd:     [{ id:"copd-main", label:"气流受限 → 低氧 → 心脏",
+                path:["airway","lung","heart"], severity:"medium" }],
+  dm:       [{ id:"dm-main",   label:"胰腺功能下降 → 血管损伤",
+                path:["pancreas","vessel","kidney"], severity:"medium" }],
+  "osa-dm": [{ id:"hypoxia-metab", label:"夜间低氧 → 胰岛素抵抗 → 血糖波动",
+                path:["lung","pancreas","vessel"], severity:"severe" },
+              { id:"metab-vessel", label:"高血糖 → 血管内皮损伤",
+                path:["pancreas","vessel"], severity:"medium" }],
+  "osa-copd":[{ id:"overlap",  label:"上气道阻塞 + 气流受限 → 双重低氧 → 心肺负荷",
+                path:["airway","lung","heart"], severity:"severe" }],
+  "copd-dm":[{ id:"inflam-metab", label:"慢性炎症 → 胰岛素抵抗 → 血糖波动",
+                path:["lung","pancreas","vessel"], severity:"severe" }],
+  triple:   [{ id:"hypoxia",   label:"双重低氧 → 心肺负荷",
+                path:["airway","lung","heart"], severity:"severe" },
+              { id:"hypoxia-metab", label:"低氧 → 胰岛素抵抗 → 血糖波动",
+                path:["lung","pancreas","vessel"], severity:"severe" },
+              { id:"complications", label:"高血糖 → 血管 → 肾脏并发",
+                path:["pancreas","vessel","kidney"], severity:"medium" }]
+};
+
+// 演示模板（PRD §14.1）
+const TWIN_DEMO_TEMPLATES = {
+  normal:    { label:"正常",       scenarioId:"dm",    organs:{} },
+  "osa-light":{ label:"轻度 OSA",  scenarioId:"osa",   organs:{ airway:"light", lung:"light" } },
+  "copd-mid":{ label:"中度 COPD",  scenarioId:"copd",  organs:{ airway:"medium", lung:"medium", heart:"light" } },
+  "dm-mid":  { label:"中度糖尿病", scenarioId:"dm",    organs:{ pancreas:"medium", vessel:"medium", liver:"light" } },
+  "osa-dm":  { label:"OSA+糖尿病", scenarioId:"osa-dm",organs:{ airway:"medium", lung:"medium", pancreas:"medium", vessel:"medium" } },
+  "osa-copd":{ label:"OSA+COPD",  scenarioId:"osa-copd",organs:{ airway:"severe", lung:"severe", heart:"medium" } },
+  "copd-dm": { label:"COPD+糖尿病",scenarioId:"copd-dm",organs:{ lung:"medium", pancreas:"medium", vessel:"medium" } },
+  triple:    { label:"三重共病",   scenarioId:"triple",organs:{ airway:"severe", lung:"severe", heart:"medium",
+                                                                pancreas:"severe", vessel:"medium", kidney:"medium" } }
+};
+
+// 计算每个器官的状态（normal/light/medium/severe）
+// 一期：基于患者疾病等级和指标 mock 数据做粗判断；后续可接 PRD §8 分级算法
+function computeTwinOrganStatuses(patient, scenario) {
+  if (twinDemoMode) {
+    const tpl = TWIN_DEMO_TEMPLATES[twinDemoTemplate];
+    const out = {};
+    Object.keys(TWIN_ORGANS).forEach(k => { out[k] = tpl?.organs?.[k] || "normal"; });
+    return out;
+  }
+  const out = {};
+  Object.keys(TWIN_ORGANS).forEach(k => { out[k] = "normal"; });
+  const score = patient.riskScore ?? patient.screening?.score ?? 100;
+  const severityFromScore = score < 50 ? "severe" : score < 70 ? "medium" : score < 85 ? "light" : "normal";
+  // 简单映射：场景默认高亮的器官按健康分严重度着色
+  scenario.organs.forEach(k => { out[k] = severityFromScore === "normal" ? "light" : severityFromScore; });
+  // 三重共病的主链路器官提升一级
+  if (scenario.id === "triple") {
+    ["lung","airway"].forEach(k => { if (out[k] !== "severe") out[k] = "severe"; });
+  }
+  return out;
+}
+
+// 器官热区 SVG 生成
+function renderOrganShape(organId, status, selected) {
+  const o = TWIN_ORGANS[organId];
+  const cls = `dt-organ dt-organ-${status}${selected ? " is-selected" : ""}${o.anatomic ? " is-anatomic" : ""}${o.image ? " is-image-backed" : ""}`;
+  const attrs = `class="${cls}" data-action="dt-organ-click" data-organ="${organId}" role="button" tabindex="0" aria-label="${o.label}"`;
+  const renderOne = (s) => {
+    if (s.type === "ellipse") {
+      const p = twinPoint(s.cx, s.cy);
+      return `<ellipse cx="${p.x}" cy="${p.y}" rx="${Math.round(s.rx * TWIN_VIEWBOX.w)}" ry="${Math.round(s.ry * TWIN_VIEWBOX.h)}" ${attrs}/>`;
+    }
+    if (s.type === "rect") {
+      const b = twinBox(s.bbox);
+      return `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${s.rx||0}" ry="${s.rx||0}" ${attrs}/>`;
+    }
+    if (s.type === "polygon") return `<polygon points="${twinPolygon(s.points)}" ${attrs}/>`;
+    return "";
+  };
+  if (o.shape.type === "multi") {
+    return `<g class="dt-organ-group" data-organ-group="${organId}">${o.shape.parts.map(renderOne).join("")}</g>`;
+  }
+  return renderOne(o.shape);
+}
+
+// 器官中心点（用于链路起止）
+function organCenter(organId) {
+  const o = TWIN_ORGANS[organId];
+  if (o.shape.type === "multi") {
+    const ps = o.shape.parts;
+    const cx = ps.reduce((s,p)=>s+p.cx,0)/ps.length;
+    const cy = ps.reduce((s,p)=>s+p.cy,0)/ps.length;
+    return twinPoint(cx, cy);
+  }
+  if (o.shape.type === "rect") {
+    const [x1, y1, x2, y2] = o.shape.bbox;
+    return twinPoint((x1 + x2) / 2, (y1 + y2) / 2);
+  }
+  if (o.shape.type === "polygon") {
+    const xs = o.shape.points.map(p => p[0]);
+    const ys = o.shape.points.map(p => p[1]);
+    return twinPoint((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+  }
+  return twinPoint(o.shape.cx, o.shape.cy);
+}
+
+// 链路 SVG 路径（二次贝塞尔曲线）
+function renderChainPath(chain, isPlaying) {
+  const availablePath = chain.path.filter((organId) => TWIN_ORGANS[organId]);
+  if (availablePath.length < 2) return "";
+  const pts = availablePath.map(organCenter);
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i-1], cur = pts[i];
+    const mx = (prev.x + cur.x) / 2;
+    const my = (prev.y + cur.y) / 2;
+    const offset = (cur.x - prev.x) * 0.15;
+    d += ` Q ${mx + offset} ${my - 40} ${cur.x} ${cur.y}`;
+  }
+  const sevCls = `dt-chain dt-chain-${chain.severity}${isPlaying ? " is-playing" : ""}`;
+  const pathId = `dt-chain-${chain.id}`;
+  return `
+    <g class="${sevCls}" data-action="dt-chain-click" data-chain="${chain.id}">
+      <path id="${pathId}" d="${d}" class="dt-chain-line"/>
+      ${isPlaying ? `<circle r="6" class="dt-chain-dot">
+        <animateMotion dur="${1.6 + chain.path.length * 0.3}s" repeatCount="indefinite">
+          <mpath href="#${pathId}"/>
+        </animateMotion>
+      </circle>` : ""}
+    </g>`;
+}
+
+function renderTwinCanvas(patient, scenario, statuses, chains) {
+  if (scenario.id === "none") {
+    return `<div class="dt-canvas-wrap dt-canvas-empty">
+      <div class="dt-empty-inner">
+        <div class="dt-empty-icon">🧬</div>
+        <div class="dt-empty-title">暂无可用于数字孪生融合分析的支持病种</div>
+        <div class="dt-empty-desc">该患者当前未确认 OSA、慢阻肺或 2 型糖尿病任一支持病种，<br>请在健康筛查 Tab 完成疾病确认后再回到本页查看孪生分析。</div>
+      </div>
+    </div>`;
+  }
+
+  const focusedOrgan = twinSelectedOrgan || scenario.default;
+  // 排序：anatomic 器官（胰腺、肾脏）放最上层，其他按 z-index 默认；selected 单独放最后
+  const organOrder = Object.keys(TWIN_ORGANS).sort((a, b) => {
+    if (a === focusedOrgan) return 1;
+    if (b === focusedOrgan) return -1;
+    return (TWIN_ORGANS[a].anatomic ? 1 : 0) - (TWIN_ORGANS[b].anatomic ? 1 : 0);
+  });
+  const playingChainId = twinPlayingChain || chains[0]?.id;
+  const twinScore = computeTwinHealthScore(patient, statuses);
+  const credibility = computeTwinCredibility(patient);
+  const focusedImage = focusedOrgan && TWIN_ORGANS[focusedOrgan]?.image
+    ? TWIN_ORGANS[focusedOrgan].image
+    : TWIN_BASE_IMAGE;
+  const hasFocusedImage = focusedImage !== TWIN_BASE_IMAGE;
 
   return `
-    <div class="g-page" style="padding:20px 0;">
-      <div class="g-dt-hero">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
-          <div class="g-dt-avatar">🧑‍⚕️</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.5px;">数字孪生体</div>
-        </div>
-        <div class="g-dt-hero-info">
-          <h3>${patient.name} 的数字孪生融合分析</h3>
-          <div class="g-dt-tags">
-            ${riskTags.map(t=>`<span class="g-dt-tag ${t.cls}">${t.text}</span>`).join("")}
-          </div>
-          <div class="g-dt-note">本页面基于患者血糖及慢病数据通过数字孪生技术还原器官损伤机制，为医生提供可视化病因溯源依据。</div>
+    <div class="dt-canvas-wrap" data-focus="${focusedOrgan || ""}" data-image-mode="${hasFocusedImage ? "organ" : "base"}">
+      <div class="dt-canvas-toolbar">
+        <span class="dt-scenario-pill">${scenario.label}</span>
+        <div class="dt-canvas-toolbar-right">
+          <button class="dt-mini-btn ${twinDemoMode ? "is-on" : ""}" data-action="dt-toggle-demo">
+            ${twinDemoMode ? "演示中" : "演示模式"}
+          </button>
         </div>
       </div>
-      <div style="padding:20px 0;display:flex;flex-direction:column;gap:16px;">
-        <div class="g-dt-module-grid">
-          ${modules.map(m=>`
-            <div class="g-card g-dt-module-card" style="padding:18px 20px;">
-              <h4>${m.icon} ${m.title}</h4>
-              <p>${m.desc}</p>
-              <span class="g-tag ${stateCls[m.state]}">${stateLabel[m.state]}</span>
+      ${twinDemoMode ? renderTwinDemoSwitcher() : ""}
+      <div class="dt-canvas-stage">
+        <div class="dt-stage-grid"></div>
+        <div class="dt-stage-scan"></div>
+        <svg class="dt-svg" viewBox="0 0 ${TWIN_VIEWBOX.w} ${TWIN_VIEWBOX.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="数字孪生人体画布">
+          <defs>
+            <radialGradient id="dt-glow-light" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#FADB14" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="#FADB14" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="dt-glow-medium" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#FA8C16" stop-opacity="0.65"/>
+              <stop offset="100%" stop-color="#FA8C16" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="dt-glow-severe" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#FF4D4F" stop-opacity="0.75"/>
+              <stop offset="100%" stop-color="#FF4D4F" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="dt-blur-soft" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6"/>
+            </filter>
+          </defs>
+          <image href="${focusedImage}"
+                 x="0" y="0" width="${TWIN_VIEWBOX.w}" height="${TWIN_VIEWBOX.h}"
+                 preserveAspectRatio="xMidYMid meet" class="dt-bodyimg ${hasFocusedImage ? "is-organ-image" : ""}"/>
+          <g class="dt-chains-layer">
+            ${chains.map(c => renderChainPath(c, c.id === playingChainId)).join("")}
+          </g>
+          <g class="dt-organs-layer">
+            ${organOrder.map(k => renderOrganShape(k, statuses[k], k === focusedOrgan)).join("")}
+          </g>
+        </svg>
+        <div class="dt-canvas-legend">
+          <span><i class="dt-dot dt-dot-normal"></i>正常</span>
+          <span><i class="dt-dot dt-dot-light"></i>轻度</span>
+          <span><i class="dt-dot dt-dot-medium"></i>中度</span>
+          <span><i class="dt-dot dt-dot-severe"></i>重度</span>
+        </div>
+        <div class="dt-vitals-ribbon">
+          <div><span>孪生分</span><strong>${twinScore.score}</strong></div>
+          <div><span>可信度</span><strong>${credibility.level}</strong></div>
+          <div><span>主链路</span><strong>${chains.length || 0}</strong></div>
+        </div>
+      </div>
+      <div class="dt-canvas-tip">
+        <span>当前聚焦：<strong>${focusedOrgan ? TWIN_ORGANS[focusedOrgan].label : "未选中"}</strong></span>
+        <span class="dt-canvas-hint">点击器官查看详情 · 再次点击复位</span>
+      </div>
+    </div>`;
+}
+
+function renderTwinDemoSwitcher() {
+  return `<div class="dt-demo-switcher">
+    ${Object.entries(TWIN_DEMO_TEMPLATES).map(([k, v]) =>
+      `<button class="dt-demo-pill ${twinDemoTemplate === k ? "is-active" : ""}"
+        data-action="dt-demo-template" data-template="${k}">${v.label}</button>`
+    ).join("")}
+  </div>`;
+}
+
+function computeTwinHealthScore(patient, statuses) {
+  const baseScore = patient.riskScore ?? patient.screening?.score ?? 100;
+  const burdenMap = { normal: 0, light: 2, medium: 5, severe: 8 };
+  const burden = Object.values(statuses).reduce((sum, status) => sum + (burdenMap[status] || 0), 0);
+  const score = Math.max(0, Math.min(100, baseScore - burden));
+  const tone = score < 55 ? "severe" : score < 72 ? "medium" : score < 86 ? "light" : "normal";
+  const label = score < 55 ? "高危" : score < 72 ? "需干预" : score < 86 ? "需关注" : "稳定";
+  return { score, baseScore, burden, tone, label };
+}
+
+function computeTwinCredibility(patient) {
+  const completeness = completionValue(patient);
+  const sourceCount = [
+    sleepReportsOf(patient.id).length,
+    oxygenReportsOf(patient.id).length,
+    getGlucoseData(patient)?.hasCGM ? 1 : 0,
+    getGlucoseData(patient)?.hasFingertip ? 1 : 0,
+    scaleRecordsOf(patient.id, "cat").length
+  ].filter(Boolean).length;
+  const level = completeness >= 90 && sourceCount >= 3 ? "高" : completeness >= 75 && sourceCount >= 2 ? "中" : "低";
+  return { completeness, sourceCount, level };
+}
+
+function twinMetricTone(value, target, highBad = true) {
+  if (value === null || value === undefined || value === "--") return "missing";
+  const n = Number(String(value).replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(n)) return "missing";
+  const offTarget = highBad ? n > target : n < target;
+  if (!offTarget) return "normal";
+  const severe = highBad ? n >= target * 1.35 : n <= target * .94;
+  return severe ? "severe" : "medium";
+}
+
+function twinCoreMetricPool(patient) {
+  const sleep = sleepReportsOf(patient.id)[0] || {};
+  const oxygen = oxygenReportsOf(patient.id)[0] || {};
+  const cat = scaleRecordsOf(patient.id, "cat")[0];
+  const gd = getGlucoseData(patient);
+  const cgm = gd?.cgm;
+  const fp = gd?.fingertip;
+  const metric = (key, label, value, unit, target, tone, source) => {
+    const raw = value ?? "--";
+    const text = String(raw);
+    const displayValue = unit && text.includes(unit) ? text.replace(unit, "").trim() : raw;
+    return { key, label, value: displayValue || "--", unit, target, tone, source };
+  };
+  return {
+    ahi: metric("ahi", "AHI", sleep.ahi, "次/小时", "< 15", twinMetricTone(sleep.ahi, 15, true), "睡眠报告"),
+    minSpo2: metric("minSpo2", "最低血氧", sleep.minSpo2 || oxygen.minSpo2, "%", "≥ 90", twinMetricTone(sleep.minSpo2 || oxygen.minSpo2, 90, false), "睡眠/血氧"),
+    odi: metric("odi", "ODI", sleep.odi || oxygen.odi, "次/小时", "< 10", twinMetricTone(sleep.odi || oxygen.odi, 10, true), "睡眠/血氧"),
+    cpap: metric("cpap", "CPAP 使用", sleep.cpapUsage || sleep.cpapHours, "小时", "≥ 4h", twinMetricTone(sleep.cpapUsage || sleep.cpapHours, 4, false), "设备同步"),
+    cat: metric("cat", "CAT", cat?.totalScore, "分", "< 10", twinMetricTone(cat?.totalScore, 10, true), "CAT 量表"),
+    avgSpo2: metric("avgSpo2", "平均血氧", oxygen.avgSpo2 || sleep.avgSpo2, "%", "≥ 92", twinMetricTone(oxygen.avgSpo2 || sleep.avgSpo2, 92, false), "血氧监测"),
+    ts90: metric("ts90", "Ts90", oxygen.ts90, "%", "< 10", twinMetricTone(oxygen.ts90, 10, true), "血氧监测"),
+    hypox: metric("hypox", "低氧时长", oxygen.hypoxDuration, "min", "< 30", twinMetricTone(oxygen.hypoxDuration, 30, true), "血氧监测"),
+    avgGlucose: metric("avgGlucose", "平均血糖", cgm?.avgGlucose?.value || fp?.fasting?.value, "mmol/L", "< 7.8", twinMetricTone(cgm?.avgGlucose?.value || fp?.fasting?.value, 7.8, true), gd?.hasCGM ? "CGM" : "指尖血糖"),
+    tir: metric("tir", "TIR", cgm?.tir?.value || fp?.reach?.value, "%", "≥ 70", twinMetricTone(cgm?.tir?.value || fp?.reach?.value, 70, false), gd?.hasCGM ? "CGM" : "指尖血糖"),
+    ea1c: metric("ea1c", "糖化估算", cgm?.eA1c?.value, "%", "< 7.0", twinMetricTone(cgm?.eA1c?.value, 7.0, true), "CGM 估算"),
+    reach: metric("reach", "血糖达标率", fp?.reach?.value || cgm?.tir?.value, "%", "≥ 70", twinMetricTone(fp?.reach?.value || cgm?.tir?.value, 70, false), "血糖记录")
+  };
+}
+
+function twinCoreMetricKeys(scenarioId) {
+  const map = {
+    osa: ["ahi", "minSpo2", "odi", "cpap"],
+    copd: ["cat", "avgSpo2", "minSpo2", "ts90"],
+    dm: ["avgGlucose", "tir", "ea1c", "reach"],
+    "osa-dm": ["ahi", "minSpo2", "tir", "avgGlucose"],
+    "osa-copd": ["ahi", "minSpo2", "cat", "ts90"],
+    "copd-dm": ["cat", "avgSpo2", "tir", "avgGlucose"],
+    triple: ["minSpo2", "ahi", "cat", "tir"]
+  };
+  return map[scenarioId] || ["avgGlucose", "tir", "minSpo2", "ahi"];
+}
+
+function renderTwinMetricCard(metric) {
+  return `<article class="dt-core-card dt-core-${metric.tone}">
+    <div class="dt-core-top"><span>${metric.label}</span><i>${metric.source}</i></div>
+    <div class="dt-core-value"><strong>${metric.value}</strong><em>${metric.unit || ""}</em></div>
+    <div class="dt-core-target">目标 ${metric.target}</div>
+  </article>`;
+}
+
+function renderTwinCredibility(credibility, patient) {
+  return `<div class="dt-cred-grid">
+    <div class="dt-cred-main"><strong>${credibility.level}</strong><span>数据可信度</span></div>
+    <div class="dt-cred-bars">
+      <div><span>完整率</span><b>${credibility.completeness}%</b></div>
+      <div class="dt-bar"><i style="width:${Math.min(100, credibility.completeness)}%"></i></div>
+      <div><span>来源数</span><b>${credibility.sourceCount} 类</b></div>
+      <div><span>数据状态</span><b>${patient.dataStatus || "正常"}</b></div>
+    </div>
+  </div>`;
+}
+
+function renderTwinInterventions(patient, scenario, statuses) {
+  const priority = scenario.organs
+    .map((organId) => ({ organId, status: statuses[organId], organ: TWIN_ORGANS[organId] }))
+    .filter((item) => item.organ && item.status !== "normal")
+    .slice(0, 3);
+  const fallback = [{ organId: scenario.default, status: "light", organ: TWIN_ORGANS[scenario.default] }].filter((item) => item.organ);
+  return (priority.length ? priority : fallback).map((item, index) => {
+    const copy = index === 0
+      ? `优先复核 ${item.organ.linkedMetrics.slice(0, 2).join("、")}，确认是否需要调整当前管理方案。`
+      : `持续观察 ${item.organ.linkedMetrics.slice(0, 2).join("、")}，纳入下次随访解释。`;
+    return `<div class="dt-action-row dt-action-${item.status}">
+      <span>${index + 1}</span>
+      <div><strong>${item.organ.label}</strong><p>${copy}</p></div>
+    </div>`;
+  }).join("");
+}
+
+function renderTwinRightPanelPlaceholder(patient, scenario, statuses, chains) {
+  const focusedOrgan = twinSelectedOrgan || scenario.default;
+  const focusedLabel = focusedOrgan ? TWIN_ORGANS[focusedOrgan].label : "—";
+  const score = computeTwinHealthScore(patient, statuses);
+  const credibility = computeTwinCredibility(patient);
+  const metricPool = twinCoreMetricPool(patient);
+  const coreMetrics = twinCoreMetricKeys(twinDemoMode ? (TWIN_DEMO_TEMPLATES[twinDemoTemplate]?.scenarioId || scenario.id) : scenario.id)
+    .map((key) => metricPool[key])
+    .filter(Boolean);
+  return `
+    <aside class="dt-panel">
+      <div class="dt-panel-section">
+        <div class="dt-panel-sec-title">数字孪生健康分</div>
+        <div class="dt-score-hero dt-score-${score.tone}">
+          <div class="dt-score-ring"><span>${score.score}</span></div>
+          <div class="dt-score-meta">
+            <div class="dt-score-label">${score.label}</div>
+            <div>基础分 ${score.baseScore} · 器官负荷扣 ${score.burden}</div>
+            <div class="dt-score-sub">基于健康筛查基础分叠加器官状态、共病链路和数据可信度生成</div>
+          </div>
+        </div>
+      </div>
+      <div class="dt-panel-section">
+        <div class="dt-panel-sec-title">数据可信度</div>
+        ${renderTwinCredibility(credibility, patient)}
+      </div>
+      <div class="dt-panel-section">
+        <div class="dt-panel-sec-title">核心指标 4 项</div>
+        <div class="dt-core-grid">
+          ${coreMetrics.map(renderTwinMetricCard).join("")}
+        </div>
+      </div>
+      <div class="dt-panel-section">
+        <div class="dt-panel-sec-title">器官影响 / 共病链路</div>
+        <div class="dt-focus-card">
+          <div class="dt-focus-label">当前聚焦器官</div>
+          <div class="dt-focus-name">${focusedLabel}</div>
+          <div class="dt-focus-metrics">
+            ${focusedOrgan ? TWIN_ORGANS[focusedOrgan].linkedMetrics
+              .map(m => `<span class="dt-metric-chip">${m}</span>`).join("") : ""}
+          </div>
+        </div>
+        <div class="dt-chains-list">
+          ${chains.map(c => `
+            <div class="dt-chain-card dt-chain-card-${c.severity} ${c.id === twinPlayingChain ? "is-playing" : ""}"
+                 data-action="dt-chain-click" data-chain="${c.id}">
+              <div class="dt-chain-card-label">${c.label}</div>
+              <div class="dt-chain-card-path">
+                ${c.path.map(o => TWIN_ORGANS[o].label).join(" → ")}
+              </div>
             </div>`).join("")}
         </div>
-        <div style="text-align:center;padding:20px 24px;color:#86909C;font-size:13px;background:#fff;border-radius:12px;border:1px dashed #E5E6EB;">
-          🚧 数字孪生三维器官可视化模型开发中，当前展示框架结构 · V1.0 占位。<br>
-          从血糖/睡眠深度分析页点击「进入孪生分析」可自动定位对应模块。
+      </div>
+      <div class="dt-panel-section">
+        <div class="dt-panel-sec-title">干预优先级建议</div>
+        <div class="dt-action-list">
+          ${renderTwinInterventions(patient, scenario, statuses)}
         </div>
+      </div>
+    </aside>`;
+}
+
+function renderDigitalTwin(patient) {
+  const scenario = detectTwinScenario(patient);
+  const statuses = computeTwinOrganStatuses(patient, scenario);
+  // 演示模式下用模板对应场景的链路
+  const chainScenarioId = twinDemoMode ? (TWIN_DEMO_TEMPLATES[twinDemoTemplate]?.scenarioId || scenario.id) : scenario.id;
+  const chains = TWIN_CHAINS[chainScenarioId] || [];
+
+  return `
+    <div class="dt-page">
+      <div class="dt-layout">
+        ${renderTwinCanvas(patient, scenario, statuses, chains)}
+        ${renderTwinRightPanelPlaceholder(patient, scenario, statuses, chains)}
+      </div>
+      <div class="dt-footer-note">
+        数字孪生分析基于患者授权数据生成，仅用于慢病管理辅助解释和风险提示，
+        不作为诊断、处方或治疗设备参数调整依据。具体诊疗决策需由医生结合线下检查和临床判断完成。
       </div>
     </div>`;
 }
@@ -2165,7 +2728,7 @@ function renderScreening(patient) {
   const screening = patient.screening;
   return `<section class="panel">
     <div class="panel-hd"><strong>健康筛查</strong><span>${screening.completedAt} | ${screening.source}</span></div>
-    <div class="screening-head"><div><strong>${screening.score}</strong><span>综合健康风险分</span></div><p>确认疾病：${screening.confirmed.join("、") || "暂无"}；待确认：${screening.pending.join("、") || "无"}</p></div>
+    <div class="screening-head"><div><strong>${screening.score}</strong><span>孪生健康分</span></div><p>确认疾病：${screening.confirmed.join("、") || "暂无"}；待确认：${screening.pending.join("、") || "无"}</p></div>
     <div class="disease-grid">${screening.risks.map((risk) => `
       <article class="disease-card">
         <div><h3>${risk.disease}</h3>${tag(risk.level, risk.level === "高风险" ? "red" : "orange")}</div>
@@ -2520,6 +3083,303 @@ function setSleepTrend(metric) {
   render();
 }
 
+/* ============================================================
+   慢阻肺深度分析 Tab
+   ============================================================ */
+
+const COPD_THRESHOLD = {
+  avgSpo2: { green: 95, orange: 93, unit: "%" },
+  minSpo2: { green: 90, orange: 85, unit: "%" },
+  odi: { green: 5, orange: 10, unit: "次/小时" },
+  hypoxEventCount: { green: 0, orange: 10, unit: "次" },
+  hypoxDuration: { green: 0, orange: 30, unit: "分钟" },
+  ts90: { green: 5, orange: 10, unit: "%" }
+};
+
+function copdRiskLevel(key, value) {
+  const t = COPD_THRESHOLD[key];
+  if (!t) return "green";
+  if (key === "avgSpo2" || key === "minSpo2") {
+    if (value >= t.green) return "green";
+    if (value >= t.orange) return "orange";
+    return "red";
+  }
+  if (value <= t.green) return "green";
+  if (value <= t.orange) return "orange";
+  return "red";
+}
+
+function copdRiskColor(level) {
+  return { green: "#10B981", orange: "#F59E0B", red: "#EF4444" }[level] || "#10B981";
+}
+
+function copdRiskLabel(level) {
+  return { green: "正常", orange: "轻度异常", red: "重度异常" }[level] || "正常";
+}
+
+const CAT_LEVEL_MAP = { mild: "轻微影响", moderate: "中度影响", severe: "重度影响", verySevere: "极重度影响" };
+const MMRC_DESC_MAP = { none: "无呼吸困难", mild: "轻度气短", moderate: "中度呼吸困难", severe: "重度呼吸困难", verySevere: "极重度呼吸困难" };
+const MMRC_GOLD_MAP = { 0: "低症状组(A/C)", 1: "低症状组(A/C)", 2: "高症状组(B/E)", 3: "高症状组(B/E)", 4: "高症状组(B/E)" };
+const CAT_LEVEL_COLOR = { mild: "#10B981", moderate: "#F59E0B", severe: "#EF4444", verySevere: "#7C3AED" };
+
+function copdMetricCard(title, value, target, unit, key) {
+  const level = copdRiskLevel(key, value);
+  const color = copdRiskColor(level);
+  const label = copdRiskLabel(level);
+  const isUpper = key === "avgSpo2" || key === "minSpo2";
+  const targetDisplay = isUpper ? `≥${target}` : `<${target}`;
+  const valueDisplay = typeof value === "number" ? `${value}${unit}` : "-";
+  const sourceTag = key === "avgSpo2" || key === "minSpo2" ? "采集" : "衍生";
+  return `<div class="copd-m-card" style="border-color:${color}">
+    <span class="copd-m-tag ${sourceTag === "衍生" ? "d" : ""}">${sourceTag}</span>
+    <span class="copd-m-val" style="color:${color}">${valueDisplay}</span>
+    <span class="copd-m-lbl" style="background:${color}">${label}</span>
+    <span class="copd-m-tt">${title} · 目标${targetDisplay}</span>
+  </div>`;
+}
+
+function copdAISection(patient, latestReport) {
+  if (!latestReport) {
+    const catLatest = scaleRecordsOf(patient.id, "cat")[0];
+    if (catLatest) {
+      return `<div class="copd-ai">
+        <div class="copd-ai-hd">AI 智能分析</div>
+        <div class="copd-ai-blk">当前血氧有效监测数据不足，暂不输出缺氧风险和氧减负担结论。CAT评分${catLatest.totalScore}分（${CAT_LEVEL_MAP[catLatest.levelName]}），建议确保血氧设备正常同步并补齐监测记录。</div>
+      </div>`;
+    }
+    return `<div class="copd-ai"><div class="copd-ai-hd">AI 智能分析</div><div class="copd-ai-blk">当前血氧有效监测数据不足，暂无呼吸测评问卷数据，建议提醒患者完成CAT评估并确保血氧设备正常同步。</div></div>`;
+  }
+
+  const avgSpo2 = latestReport.avgSpo2;
+  const minSpo2 = latestReport.minSpo2;
+  const ts90 = latestReport.ts90;
+  const odi = latestReport.odi;
+  const hypoxCount = latestReport.hypoxEventCount;
+  const hypoxDur = latestReport.hypoxDuration;
+  const catLatest = scaleRecordsOf(patient.id, "cat")[0];
+  const mmrcLatest = scaleRecordsOf(patient.id, "mmrc")[0];
+
+  // 6.4.1 整体缺氧风险评估
+  let hypoxRisk;
+  if (avgSpo2 >= 95 && minSpo2 >= 90 && ts90 < 5) hypoxRisk = "正常";
+  else if (avgSpo2 < 93 || minSpo2 < 85 || ts90 >= 10) hypoxRisk = "重度";
+  else hypoxRisk = "轻度";
+
+  // 6.4.2 氧减负担评估
+  let burdenLevel;
+  if (odi < 5 && hypoxDur === 0) burdenLevel = "轻微";
+  else if (odi >= 10 || hypoxDur >= 30) burdenLevel = "重度";
+  else burdenLevel = "中度";
+
+  // 6.4.3 急性加重风险预警
+  let exacerbationRisk;
+  const catPrev = scaleRecordsOf(patient.id, "cat")[1];
+  const mmrcPrev = scaleRecordsOf(patient.id, "mmrc")[1];
+  const catMcid = catLatest && catPrev ? catLatest.totalScore - catPrev.totalScore : 0;
+  const mmrcChange = mmrcLatest && mmrcPrev ? mmrcLatest.grade - mmrcPrev.grade : 0;
+
+  if ((ts90 < 5 && hypoxDur < 10) && catMcid < 2 && mmrcChange <= 0) exacerbationRisk = "低";
+  else if (ts90 >= 10 || minSpo2 < 85 || mmrcChange >= 1) exacerbationRisk = "高";
+  else exacerbationRisk = "中";
+
+  // 6.4.4 主观症状+干预建议
+  const catScore = catLatest ? catLatest.totalScore : null;
+  const catImpact = catLatest ? CAT_LEVEL_MAP[catLatest.levelName] : "无数据";
+  const mmrcGrade = mmrcLatest ? mmrcLatest.grade : null;
+  const mmrcDesc = mmrcLatest ? MMRC_DESC_MAP[mmrcLatest.levelName] : "无数据";
+
+  let interventionAdvice;
+  if (exacerbationRisk === "高") interventionAdvice = "建议低流量吸氧干预，每日完成血氧监测与CAT问卷，严格遵医嘱用药，出现胸闷气促立即就医";
+  else if (exacerbationRisk === "中") interventionAdvice = "建议关注低氧趋势，必要时增加低流量吸氧时长，每日完成血氧监测与CAT问卷，出现气促加重及时复测";
+  else interventionAdvice = "建议维持当前氧疗方案，每日完成血氧监测与CAT问卷，遵医嘱用药";
+
+  const catMcidDisplay = catMcid >= 2 ? `+${catMcid}↑` : catMcid <= -2 ? `${catMcid}↓` : catMcid !== 0 ? `${catMcid > 0 ? "+" : ""}${catMcid}` : "不变";
+  const mmrcChangeDisplay = mmrcChange >= 1 ? `+${mmrcChange}↑` : mmrcChange <= -1 ? `${mmrcChange}↓` : "不变";
+
+  return `<div class="copd-ai">
+    <div class="copd-ai-hd">慢阻肺AI智能分析</div>
+    <div class="copd-ai-blk">
+      <div class="copd-ai-st">① 缺氧风险</div>
+      <p>均值${avgSpo2}%、最低${minSpo2}%、Ts90%=${ts90}%、ODI=${odi} → <strong style="color:${copdRiskColor(hypoxRisk === "正常" ? "green" : hypoxRisk === "重度" ? "red" : "orange")}">${hypoxRisk}</strong></p>
+    </div>
+    <div class="copd-ai-blk">
+      <div class="copd-ai-st">② 氧减负担</div>
+      <p>ODI=${odi}/h，低氧${hypoxCount}次/${hypoxDur}min → <strong style="color:${copdRiskColor(burdenLevel === "轻微" ? "green" : burdenLevel === "重度" ? "red" : "orange")}">${burdenLevel}</strong></p>
+    </div>
+    <div class="copd-ai-blk">
+      <div class="copd-ai-st">③ 急性加重预警</div>
+      <p>低氧${hypoxDur}min，Ts90%=${ts90}%，CAT${catMcidDisplay}，mMRC${mmrcChangeDisplay} → <strong style="color:${copdRiskColor(exacerbationRisk === "低" ? "green" : exacerbationRisk === "高" ? "red" : "orange")}">${exacerbationRisk}</strong></p>
+    </div>
+    <div class="copd-ai-blk">
+      <div class="copd-ai-st">④ 干预建议</div>
+      <p>CAT ${catScore ?? "无"}分(${catImpact})，mMRC ${mmrcGrade ?? "无"}级(${mmrcDesc}); ${interventionAdvice}</p>
+    </div>
+  </div>`;
+}
+
+function copdScaleCard(type, record, prevRecord) {
+  if (!record) return `<div class="copd-scl-empty">暂无${type === "cat" ? "CAT" : "mMRC"}评估数据</div>`;
+  if (type === "cat") {
+    const mcid = prevRecord ? record.totalScore - prevRecord.totalScore : null;
+    const mcidDisplay = mcid !== null ? (mcid >= 2 ? `+${mcid}分（有临床意义变化↑）` : mcid <= -2 ? `${mcid}分（有改善↓）` : `${mcid > 0 ? "+" : ""}${mcid}分`) : "-";
+    const goldGroup = record.totalScore >= 10 ? "更多症状组(GOLD B/E)" : "较少症状组(GOLD A/C)";
+    const color = CAT_LEVEL_COLOR[record.levelName] || "#10B981";
+    return `<div class="copd-scl-card" style="border-top:3px solid ${color}">
+      <div class="copd-scl-hd"><span>CAT慢阻肺评估测试</span><span class="copd-scl-badge" style="background:${color};color:#fff">${CAT_LEVEL_MAP[record.levelName]}</span></div>
+      <div class="copd-scl-score" style="color:${color}">${record.totalScore}分</div>
+      <div class="copd-scl-meta">GOLD分组：${goldGroup} | MCID变化：${mcidDisplay}</div>
+      <div class="copd-scl-time">填报时间：${record.completedAt.replace("T", " ").slice(0, 16)}</div>
+    </div>`;
+  }
+  // mMRC
+  const goldGroup = record.grade >= 2 ? "高症状组(GOLD B/E)" : "低症状组(GOLD A/C)";
+  const color = record.levelColor || "#EF4444";
+  const mmrcChange = prevRecord ? record.grade - prevRecord.grade : null;
+  const changeDisplay = mmrcChange !== null ? (mmrcChange >= 1 ? `+${mmrcChange}级（加重↑）` : mmrcChange <= -1 ? `${mmrcChange}级（改善↓）` : "无变化") : "-";
+  return `<div class="copd-scl-card" style="border-top:3px solid ${color}">
+    <div class="copd-scl-hd"><span>mMRC呼吸困难指数</span><span class="copd-scl-badge" style="background:${color};color:#fff">${MMRC_DESC_MAP[record.levelName]}</span></div>
+    <div class="copd-scl-score" style="color:${color}">${record.grade}级</div>
+    <div class="copd-scl-meta">GOLD分组：${goldGroup} | 近期变化：${changeDisplay}</div>
+    <div class="copd-scl-time">填报时间：${record.completedAt.replace("T", " ").slice(0, 16)}</div>
+  </div>`;
+}
+
+function renderCOPDAnalysis(patient) {
+  if (!hasCOPD(patient)) return renderOverview(patient);
+
+  const reports = oxygenReportsOf(patient.id);
+  const latestReport = reports[0];
+  const trend = oxygenTrendOf(patient.id);
+  const symptoms = copdSymptomsOf(patient.id);
+  const catRecords = scaleRecordsOf(patient.id, "cat");
+  const mmrcRecords = scaleRecordsOf(patient.id, "mmrc");
+  const catLatest = catRecords[0];
+  const mmrcLatest = mmrcRecords[0];
+  const catPrev = catRecords[1];
+
+  const aiSummary = latestReport
+    ? `均值${latestReport.avgSpo2}%，低氧${latestReport.hypoxDuration}min，ODI=${latestReport.odi}，Ts90%=${latestReport.ts90}%；${catLatest ? `CAT${catLatest.totalScore}分` : "无CAT"}${mmrcLatest ? `、mMRC${mmrcLatest.grade}级` : ""}，急性加重风险${latestReport.ts90 >= 10 || latestReport.minSpo2 < 85 ? "偏高" : "需关注"}。`
+    : "血氧有效监测数据不足，建议确保设备正常同步。";
+
+  const metricCards = latestReport ? [
+    copdMetricCard("平均血氧", latestReport.avgSpo2, 95, "%", "avgSpo2"),
+    copdMetricCard("最低血氧", latestReport.minSpo2, 90, "%", "minSpo2"),
+    copdMetricCard("ODI", latestReport.odi, 5, "次/h", "odi"),
+    copdMetricCard("低氧次数", latestReport.hypoxEventCount, 0, "次", "hypoxEventCount"),
+    copdMetricCard("低氧时长", latestReport.hypoxDuration, 0, "min", "hypoxDuration"),
+    copdMetricCard("Ts90%", latestReport.ts90, 5, "%", "ts90")
+  ] : [`<div class="copd-empty">暂无血氧监测数据</div>`];
+
+  let overallRisk = "green";
+  if (latestReport) {
+    for (const [key, t] of Object.entries(COPD_THRESHOLD)) {
+      const val = latestReport[key];
+      const level = copdRiskLevel(key, val);
+      if (level === "red") { overallRisk = "red"; break; }
+      if (level === "orange") overallRisk = "orange";
+    }
+  }
+
+  const detailRows = reports.slice(0, 5).map((r) => `<tr>
+    <td>${r.monitorDate}</td>
+    <td>${r.monitorPeriod || "-"}</td>
+    <td style="color:${copdRiskColor(copdRiskLevel("avgSpo2", r.avgSpo2))}">${r.avgSpo2}%</td>
+    <td style="color:${copdRiskColor(copdRiskLevel("minSpo2", r.minSpo2))}">${r.minSpo2}%</td>
+    <td style="color:${copdRiskColor(copdRiskLevel("odi", r.odi))}">${r.odi}</td>
+    <td style="color:${copdRiskColor(copdRiskLevel("ts90", r.ts90))}">${r.ts90}%</td>
+    <td>${r.hypoxEventCount}/${r.hypoxDuration}min</td>
+  </tr>`);
+
+  const symptomTags = symptoms.length ? symptoms.map((s) => `<span class="copd-sym-tag">${s.name}<span class="copd-sym-freq">${s.frequency}</span></span>`).join("") : `<div class="copd-empty">暂无症状记录</div>`;
+
+  const activePlan = state.plans.find((p) => p.patientId === patient.id && p.statusCode === "active");
+  const treatmentSection = activePlan ? (() => {
+    const meds = activePlan.modules.find((m) => m.key === "medication")?.fields?.medicationItems || [];
+    const lifestyleItems = activePlan.modules.find((m) => m.key === "lifestyle")?.fields?.guidanceItems || [];
+    const abnormalHandling = activePlan.modules.find((m) => m.key === "guidance")?.fields?.abnormalHandling || activePlan.modules.find((m) => m.key === "alerts")?.fields?.alertRules?.map((r) => `${r.metricName}${r.operator}${r.threshold}`).join("、") || "-";
+    return `<div class="copd-treat-row">
+      <div><span class="copd-treat-lbl">用药+氧疗</span>${meds.length ? meds.map((m) => `${m.drugName}${m.dose}${m.frequency}`).join("、") : "暂无"}</div>
+      <div><span class="copd-treat-lbl">生活指导</span>${lifestyleItems.length ? lifestyleItems.map((l) => `${l.type}:${l.instruction}`).join("；") : "避免受凉，坚持肺康复训练"}</div>
+      <div><span class="copd-treat-lbl">异常处理</span>${abnormalHandling}</div>
+    </div>`;
+  })() : `<div class="copd-empty">暂无慢阻肺管理方案</div>`;
+
+  const hasOSA = hasSleepBreathingDisorder(patient);
+  const overlapCard = hasOSA && latestReport ? `<div class="copd-overlap">
+    <div class="copd-overlap-hd">重叠综合征(COPD+OSA)提示</div>
+    <div class="copd-overlap-sm">ODI=${latestReport.odi}/h，最低血氧=${latestReport.minSpo2}%，睡眠呼吸事件叠加低氧负担</div>
+    <div class="copd-overlap-desc">建议在睡眠深度分析查看完整AHI详情，综合评估氧疗方案</div>
+    <button class="btn-sm" data-action="enter-sleep-tab" data-patient="${patient.id}">进入睡眠分析 ›</button>
+  </div>` : "";
+
+  return `<section class="copd-page">
+    <div class="copd-banner" style="background:${copdRiskColor(overallRisk)}12;border-left:3px solid ${copdRiskColor(overallRisk)}">
+      <div class="copd-banner-text">${aiSummary}</div>
+      <button class="btn primary" data-action="enter-twin" data-patient="${patient.id}" style="font-size:13px;padding:6px 14px">进入孪生分析</button>
+    </div>
+
+    <div class="copd-m-strip">${metricCards.join("")}</div>
+
+    <div class="copd-charts-2col">
+      ${latestReport ? `<div class="copd-chart-box">
+        <div class="copd-chart-hd">血氧时序（${latestReport.monitorDate} ${latestReport.monitorPeriod || ""}）</div>
+        <div class="copd-chart-canvas"><canvas id="copdSpo2Chart"></canvas></div>
+      </div>` : `<div class="copd-empty">暂无血氧监测数据</div>`}
+      ${trend.length ? `<div class="copd-chart-box">
+        <div class="copd-chart-hd">低氧趋势 + Ts90%</div>
+        <div class="copd-chart-canvas"><canvas id="copdTrendChart"></canvas></div>
+      </div>` : ""}
+    </div>
+
+    ${copdAISection(patient, latestReport)}
+
+    <div class="copd-panel">
+      <div class="copd-panel-hd">监测明细</div>
+      ${reports.length ? `<table class="copd-tbl">
+        <thead><tr><th>日期</th><th>时段</th><th>平均SpO2</th><th>最低SpO2</th><th>ODI</th><th>Ts90%</th><th>低氧次数/时长</th></tr></thead>
+        <tbody>${detailRows.join("")}</tbody>
+      </table>` : `<div class="copd-empty">暂无监测明细</div>`}
+    </div>
+
+    <div class="copd-panel">
+      <div class="copd-panel-hd">呼吸测评问卷</div>
+      <div class="copd-scl-grid">
+        ${copdScaleCard("cat", catLatest, catPrev)}
+        ${copdScaleCard("mmrc", mmrcLatest, mmrcLatest ? mmrcRecords[1] : null)}
+      </div>
+      ${catRecords.length >= 2 ? `<div class="copd-chart-box compact"><div class="copd-chart-hd">CAT趋势</div><div class="copd-chart-canvas small"><canvas id="copdCatTrend"></canvas></div></div>` : ""}
+      ${(catRecords.length + mmrcRecords.length) > 0 ? `<table class="copd-tbl">
+        <thead><tr><th>时间</th><th>类型</th><th>得分</th><th>MCID变化</th><th>操作</th></tr></thead>
+        <tbody>${[...catRecords.slice(0, 5), ...mmrcRecords.slice(0, 5)].sort((a, b) => b.completedAt.localeCompare(a.completedAt)).map((r) => {
+          const isCat = r.scaleCode === "cat";
+          const prev = isCat ? catRecords[catRecords.indexOf(r) + 1] : mmrcRecords[mmrcRecords.indexOf(r) + 1];
+          const mcid = prev ? (isCat ? r.totalScore - prev.totalScore : r.grade - prev.grade) : null;
+          const mcidLabel = mcid !== null ? (isCat ? (mcid >= 2 ? `+${mcid}↑` : mcid <= -2 ? `${mcid}↓` : `${mcid > 0 ? "+" : ""}${mcid}`) : (mcid >= 1 ? `+${mcid}↑` : mcid <= -1 ? `${mcid}↓` : "无变化")) : "-";
+          return `<tr>
+            <td>${r.completedAt.replace("T"," ").slice(0,16)}</td>
+            <td>${isCat ? "CAT" : "mMRC"}</td>
+            <td>${isCat ? r.totalScore + "分" : r.grade + "级"}</td>
+            <td>${mcidLabel}</td>
+            <td><button class="btn-sm" data-action="copd-scale-detail" data-scale-id="${r.id}" data-scale-code="${r.scaleCode}">详情</button></td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>` : `<div class="copd-empty">暂无问卷数据</div>`}
+    </div>
+
+    <div class="copd-panel">
+      <div class="copd-panel-hd">症状</div>
+      <div class="copd-sym-row">${symptomTags}</div>
+    </div>
+
+    <div class="copd-panel">
+      <div class="copd-panel-hd">治疗管理</div>
+      ${treatmentSection}
+    </div>
+
+    ${overlapCard}
+  </section>`;
+}
+
 function renderPatientAlerts(patient) {
   return `<section class="panel"><div class="panel-hd"><strong>预警记录</strong></div><div class="card-list">${alertsOf(patient.id).map(alertCard).join("") || empty("暂无预警")}</div></section>`;
 }
@@ -2682,7 +3542,7 @@ function planRow(plan) {
   const extraBtns = `<button class="btn" data-action="preview-plan" data-id="${plan.id}">预览</button><button class="btn" data-action="view-patient" data-patient="${plan.patientId}">患者</button>`;
   const burdenBadge = plan.workload?.burdenLevel ? `<span class="burden-badge burden-${plan.workload.burdenLevel}">${plan.workload.burdenLevel}</span>` : "";
   const reminderTags = planReminderTags(plan).map((item) => tag(item, toneOf(item))).join("");
-  const diseases = (plan.diseases || [plan.disease]).map((d) => tag(d, "blue")).join("");
+  const diseases = (plan.diseases || [plan.disease]).map((d) => tag(d, "muted")).join("");
   return `<tr>
     <td><strong>${plan.title}</strong><small>${plan.objective}</small></td>
     <td><strong>${patient?.name || "-"}</strong><small>${patient?.sex || ""} ${patient?.age || ""}岁 | ${patient?.phone || ""}<br>${patient?.relation || ""} | ${plan.patientId}</small></td>
@@ -2757,7 +3617,7 @@ function showQuickReview(plan) {
   const html = `<div class="quick-review">
     <div class="review-section">
       <h4>方案总览</h4>
-      <p><strong>${escapeHtml(plan.title)}</strong> · ${tag(plan.diseases?.[0] || plan.disease || "", "blue")} · ${plan.period?.days || 14}天周期</p>
+      <p><strong>${escapeHtml(plan.title)}</strong> · ${tag(plan.diseases?.[0] || plan.disease || "", "muted")} · ${plan.period?.days || 14}天周期</p>
       <p class="muted">${escapeHtml(plan.modules.find((m) => m.key === "basic")?.fields?.stageGoal || "")}</p>
     </div>
     <div class="review-section">
@@ -2793,7 +3653,7 @@ function renderPlanDetail() {
   const patient = patientById(plan.patientId);
   const statusCode = PLAN_STATUS_CODE[plan.status] || "draft";
   const rules = PLAN_ACTION_RULES[statusCode];
-  const diseases = (plan.diseases || [plan.disease]).map((d) => tag(d, "blue")).join("");
+  const diseases = (plan.diseases || [plan.disease]).map((d) => tag(d, "muted")).join("");
   const latestAlert = state.alerts.filter((a) => a.patientId === plan.patientId && a.status === "待处理")[0];
   const latestFollowup = state.followups.filter((f) => f.patientId === plan.patientId && f.id === patient?.nextFollowupId)[0];
   const alertText = latestAlert ? [latestAlert.metricName, latestAlert.value].filter(Boolean).join(" ") || latestAlert.title || "待处理预警" : "";
@@ -3359,6 +4219,211 @@ function empty(text) {
   return `<div class="empty">${text}</div>`;
 }
 
+/* ── System Configuration: Metric Dictionary & Goal Management ── */
+
+const METRIC_CATEGORIES = ["全部", "血糖类", "血压类", "呼吸血氧类", "睡眠类", "代谢体重类", "心率类"];
+const GOAL_STATUS_OPTIONS = ["全部", "启用", "禁用"];
+
+function renderMetricDictionary() {
+  const query = metricDictSearchQuery.trim().toLowerCase();
+  const filtered = (state.metricDictionary || []).filter((item) => {
+    if (metricDictCategoryFilter !== "全部" && item.category !== metricDictCategoryFilter) return false;
+    if (query && !item.name.toLowerCase().includes(query) && !item.englishAbbr.toLowerCase().includes(query)) return false;
+    return true;
+  });
+  const { pager, pageItems } = paginateItems("metricDictionary", filtered);
+  const content = !filtered.length ? empty("暂无指标数据") : `<div class="toolbar compact-toolbar">
+    <div class="global-search">
+      <span>⌕</span>
+      <input value="${escapeAttr(metricDictSearchQuery)}" data-action="metric-dict-search" placeholder="搜索指标名称 / 英文简称">
+      ${metricDictSearchQuery ? `<button data-action="clear-metric-dict-search">清空</button>` : ""}
+    </div>
+  </div>
+  <div class="config-filter-group">
+    ${METRIC_CATEGORIES.map((cat) => `<button class="chip sm ${metricDictCategoryFilter === cat ? "active" : ""}" data-action="set-metric-dict-category" data-category="${cat}">${cat}</button>`).join("")}
+  </div>
+  <div class="filter-summary"><strong>当前结果：${filtered.length} 条指标</strong></div>
+  <section class="panel table-panel">
+    <table class="table config-table">
+      <thead><tr><th>序号</th><th>指标分类</th><th>指标名称</th><th>指标英文简称</th><th>指标单位</th><th>指标释义</th><th>创建时间</th></tr></thead>
+      <tbody>${pageItems.map((item, i) => `<tr>
+        <td>${(pager.page - 1) * pager.pageSize + i + 1}</td>
+        <td><span class="ant-tag ant-tag-blue">${item.category}</span></td>
+        <td><strong>${item.name}</strong></td>
+        <td>${item.englishAbbr}</td>
+        <td>${item.unit}</td>
+        <td class="metric-definition" title="${item.definition}">${item.definition}</td>
+        <td>${item.createdAt}</td>
+      </tr>`).join("")}</tbody>
+    </table>
+    ${renderPagination("metricDictionary", filtered.length)}
+  </section>`;
+  app.innerHTML = `<section class="page-stack config-page">${content}</section>`;
+}
+
+function renderGoalManagement() {
+  const query = goalSearchQuery.trim().toLowerCase();
+  const filtered = (state.goalManagement || []).filter((item) => {
+    if (goalCategoryFilter !== "全部" && item.category !== goalCategoryFilter) return false;
+    if (goalStatusFilter !== "全部" && item.status !== goalStatusFilter) return false;
+    if (query && !item.name.toLowerCase().includes(query)) return false;
+    return true;
+  });
+  const { pager, pageItems } = paginateItems("goalManagement", filtered);
+  const content = !filtered.length ? empty("暂无目标数据") : `<div class="toolbar compact-toolbar">
+    <div class="global-search">
+      <span>⌕</span>
+      <input value="${escapeAttr(goalSearchQuery)}" data-action="goal-search" placeholder="搜索指标名称">
+      ${goalSearchQuery ? `<button data-action="clear-goal-search">清空</button>` : ""}
+    </div>
+  </div>
+  <div class="config-filter-group">
+    <span class="filter-label">分类</span>
+    ${METRIC_CATEGORIES.map((cat) => `<button class="chip sm ${goalCategoryFilter === cat ? "active" : ""}" data-action="set-goal-category" data-category="${cat}">${cat}</button>`).join("")}
+    <span class="filter-label">状态</span>
+    ${GOAL_STATUS_OPTIONS.map((s) => `<button class="chip sm ${goalStatusFilter === s ? "active" : ""}" data-action="set-goal-status" data-status="${s}">${s}</button>`).join("")}
+  </div>
+  <div class="filter-summary"><strong>当前结果：${filtered.length} 条指标</strong></div>
+  <section class="panel table-panel">
+    <table class="table config-table">
+      <thead><tr><th>序号</th><th>指标分类</th><th>指标名称</th><th>指标英文简称</th><th>指标单位</th><th>全局目标阈值</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
+      <tbody>${pageItems.map((item, i) => goalRow(item, (pager.page - 1) * pager.pageSize + i + 1)).join("")}</tbody>
+    </table>
+    ${renderPagination("goalManagement", filtered.length)}
+  </section>`;
+  app.innerHTML = `<section class="page-stack config-page">${content}</section>`;
+}
+
+function goalRow(item, index) {
+  const statusTag = item.status === "启用"
+    ? `<span class="ant-tag ant-tag-green">${item.status}</span>`
+    : `<span class="ant-tag ant-tag-red">${item.status}</span>`;
+  return `<tr>
+    <td>${index}</td>
+    <td><span class="ant-tag ant-tag-blue">${item.category}</span></td>
+    <td><strong>${item.name}</strong></td>
+    <td>${item.englishAbbr}</td>
+    <td>${item.unit}</td>
+    <td><strong class="threshold-value">${item.thresholdDisplay} ${item.unit}</strong></td>
+    <td>${statusTag}</td>
+    <td>${item.updatedAt}</td>
+    <td><div class="row-actions">
+      <button class="btn primary" data-action="edit-goal-threshold" data-id="${item.id}">编辑</button>
+      <button class="btn" data-action="toggle-goal-status" data-id="${item.id}">${item.status === "启用" ? "禁用" : "启用"}</button>
+    </div></td>
+  </tr>`;
+}
+
+function openGoalThresholdEditor(goalId) {
+  const goal = (state.goalManagement || []).find((item) => item.id === goalId);
+  if (!goal) return;
+  const isRange = goal.thresholdType === "range";
+  const isUpper = goal.thresholdType === "upper";
+  const isLower = goal.thresholdType === "lower";
+  let thresholdFieldsHTML = "";
+  if (isRange) {
+    thresholdFieldsHTML = `<div class="drawer-form"><label>下限<input id="goalThresholdMin" type="number" step="0.1" value="${goal.thresholdMin}" placeholder="请输入下限值"></label><label>上限<input id="goalThresholdMax" type="number" step="0.1" value="${goal.thresholdMax}" placeholder="请输入上限值"></label></div>`;
+  } else if (isUpper) {
+    thresholdFieldsHTML = `<div class="drawer-form"><label>上限值<input id="goalThresholdMax" type="number" step="0.1" value="${goal.thresholdMax}" placeholder="请输入上限值"></label></div>`;
+  } else {
+    thresholdFieldsHTML = `<div class="drawer-form"><label>下限值<input id="goalThresholdMin" type="number" step="0.1" value="${goal.thresholdMin}" placeholder="请输入下限值"></label></div>`;
+  }
+  const bodyHTML = `<div class="goal-threshold-form">
+    <div class="goal-edit-header">
+      <p><strong>${goal.name}</strong>（${goal.englishAbbr}）</p>
+      <p>分类：${goal.category} | 单位：${goal.unit}</p>
+      <p class="hint">阈值类型：${isRange ? "区间（X~Y）" : isUpper ? "上限（≤X）" : "下限（≥X）"}</p>
+    </div>
+    ${thresholdFieldsHTML}
+    <div class="goal-edit-warning"><p>修改后仅对新初始化患者生效，存量患者目标不受影响。</p></div>
+  </div>`;
+  openDrawer(`编辑全局目标阈值 - ${goal.name}`, bodyHTML, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="save-goal-threshold" data-id="${goalId}">保存</button>`);
+}
+
+function saveGoalThreshold() {
+  const goalId = document.querySelector('[data-action="save-goal-threshold"]')?.dataset.id;
+  const goal = (state.goalManagement || []).find((item) => item.id === goalId);
+  if (!goal) return;
+  const minInput = document.getElementById("goalThresholdMin");
+  const maxInput = document.getElementById("goalThresholdMax");
+  let errors = [];
+  let thresholdMin = goal.thresholdMin;
+  let thresholdMax = goal.thresholdMax;
+  if (goal.thresholdType === "range") {
+    thresholdMin = parseFloat(minInput.value);
+    thresholdMax = parseFloat(maxInput.value);
+    if (isNaN(thresholdMin) || isNaN(thresholdMax)) errors.push("请输入有效的数值");
+    if (!errors.length && thresholdMin >= thresholdMax) errors.push("下限必须小于上限");
+    if (!errors.length && thresholdMin < 0) errors.push("下限值不能为负数");
+  } else if (goal.thresholdType === "upper") {
+    thresholdMax = parseFloat(maxInput.value);
+    if (isNaN(thresholdMax)) errors.push("请输入有效的上限值");
+    if (!errors.length && thresholdMax <= 0) errors.push("上限值必须大于0");
+  } else {
+    thresholdMin = parseFloat(minInput.value);
+    if (isNaN(thresholdMin)) errors.push("请输入有效的下限值");
+    if (!errors.length && thresholdMin <= 0) errors.push("下限值必须大于0");
+  }
+  if (errors.length) {
+    openModal("阈值校验失败", `<div class="warning-list">${errors.map((e) => `<p>${tag("错误", "red")} ${e}</p>`).join("")}</div><p>请输入合规的目标阈值。</p>`, `<button class="btn primary" data-action="close-modal">知道了</button>`);
+    return;
+  }
+  goal.thresholdMin = thresholdMin;
+  goal.thresholdMax = thresholdMax;
+  if (goal.thresholdType === "range") goal.thresholdDisplay = `${thresholdMin}~${thresholdMax}`;
+  else if (goal.thresholdType === "upper") goal.thresholdDisplay = `≤${thresholdMax}`;
+  else goal.thresholdDisplay = `≥${thresholdMin}`;
+  goal.updatedAt = nowText();
+  closeDrawer();
+  persist("全局目标阈值已更新（仅对新患者生效）");
+}
+
+function confirmToggleGoalStatus(goalId) {
+  const goal = (state.goalManagement || []).find((item) => item.id === goalId);
+  if (!goal) return;
+  const newStatus = goal.status === "启用" ? "禁用" : "启用";
+  openModal(`确认${newStatus}指标`, `<p>确认将「${goal.name}」的状态从「${goal.status}」变更为「${newStatus}」？</p><div class="goal-edit-warning"><p>${newStatus === "禁用" ? "禁用后新患者初始化将不再带出该指标目标，存量患者不受影响。" : "启用后新患者初始化将正常带出该指标目标。"}</p></div>`, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="confirm-toggle-goal-status" data-id="${goalId}">确认${newStatus}</button>`);
+}
+
+function doToggleGoalStatus(goalId) {
+  const goal = (state.goalManagement || []).find((item) => item.id === goalId);
+  if (!goal) return;
+  goal.status = goal.status === "启用" ? "禁用" : "启用";
+  goal.updatedAt = nowText();
+  closeModal();
+  persist(`指标「${goal.name}」已${goal.status}`);
+}
+
+function openGoalDetailDrawer(goalId) {
+  const goal = (state.goalManagement || []).find((item) => item.id === goalId);
+  const metric = (state.metricDictionary || []).find((item) => item.id === goal?.metricId);
+  if (!goal) return;
+  const thresholdLabel = goal.thresholdType === "range" ? "区间（X~Y）" : goal.thresholdType === "upper" ? "上限（≤X）" : "下限（≥X）";
+  const bodyHTML = `<div class="goal-detail-form">
+    <div class="detail-section">
+      <h4>指标信息</h4>
+      <div class="detail-grid">
+        <div class="detail-item"><label>指标分类</label><span>${goal.category}</span></div>
+        <div class="detail-item"><label>指标名称</label><span><strong>${goal.name}</strong></span></div>
+        <div class="detail-item"><label>指标英文简称</label><span>${goal.englishAbbr}</span></div>
+        <div class="detail-item"><label>指标单位</label><span>${goal.unit}</span></div>
+      </div>
+    </div>
+    ${metric ? `<div class="detail-section"><h4>指标释义</h4><p class="metric-definition-full">${metric.definition}</p></div>` : ""}
+    <div class="detail-section">
+      <h4>全局目标配置</h4>
+      <div class="detail-grid">
+        <div class="detail-item"><label>阈值类型</label><span>${thresholdLabel}</span></div>
+        <div class="detail-item"><label>全局目标阈值</label><span><strong class="threshold-value">${goal.thresholdDisplay} ${goal.unit}</strong></span></div>
+        <div class="detail-item"><label>状态</label><span>${goal.status === "启用" ? '<span class="ant-tag ant-tag-green">启用</span>' : '<span class="ant-tag ant-tag-red">禁用</span>'}</span></div>
+        <div class="detail-item"><label>更新时间</label><span>${goal.updatedAt}</span></div>
+      </div>
+    </div>
+    <div class="goal-edit-warning"><p>全局目标仅对新初始化患者生效，已完成初始化的存量患者数据不受影响。</p></div>
+  </div>`;
+  openDrawer(`指标详情 - ${goal.name}`, bodyHTML, `<button class="btn primary" data-action="close-modal">关闭</button>`);
+}
+
 function openModal(title, body, footer = `<button class="btn primary" data-action="close-modal">关闭</button>`) {
   modalRoot.innerHTML = `<div class="modal-mask show"><div class="modal"><header><strong>${title}</strong><button class="icon-btn" data-action="close-modal">×</button></header><div class="modal-body">${body}</div><footer>${footer}</footer></div></div>`;
 }
@@ -3552,7 +4617,7 @@ function approvePlan(id) {
   const conflictHTML = conflictPlans.length ? `<div class="conflict-section">
     <strong>冲突检测</strong>
     <p>该患者同疾病域下有 ${conflictPlans.length} 个执行中方案：</p>
-    ${conflictPlans.map((p) => `<div class="conflict-item">${tag(p.disease, "blue")} ${p.title} ${tag(p.status, toneOf(p.status))}</div>`).join("")}
+    ${conflictPlans.map((p) => `<div class="conflict-item">${tag(p.disease, "muted")} ${p.title} ${tag(p.status, toneOf(p.status))}</div>`).join("")}
     <label>旧方案处理<select id="conflictAction"><option value="replace">替换旧方案（停用旧方案并下发新方案）</option><option value="cancel">取消下发</option></select></label>
   </div>` : "";
   openModal("确认下发方案", `<div class="confirm-release-modal">
@@ -4623,6 +5688,22 @@ document.body.addEventListener("click", (event) => {
 
   const action = target.dataset.action;
   if (action === "close-modal") closeModal();
+  if (action === "toggle-nav-group") {
+    const group = target.closest(".nav-group");
+    if (group) group.classList.toggle("open");
+    return;
+  }
+  // ── Config module actions ──
+  if (action === "set-metric-dict-category") { metricDictCategoryFilter = target.dataset.category; resetPage("metricDictionary"); render(); }
+  if (action === "clear-metric-dict-search") { metricDictSearchQuery = ""; resetPage("metricDictionary"); render(); }
+  if (action === "set-goal-category") { goalCategoryFilter = target.dataset.category; resetPage("goalManagement"); render(); }
+  if (action === "set-goal-status") { goalStatusFilter = target.dataset.status; resetPage("goalManagement"); render(); }
+  if (action === "clear-goal-search") { goalSearchQuery = ""; resetPage("goalManagement"); render(); }
+  if (action === "edit-goal-threshold") { openGoalThresholdEditor(target.dataset.id); }
+  if (action === "save-goal-threshold") { saveGoalThreshold(); }
+  if (action === "toggle-goal-status") { confirmToggleGoalStatus(target.dataset.id); }
+  if (action === "confirm-toggle-goal-status") { doToggleGoalStatus(target.dataset.id); }
+  if (action === "view-goal-detail") { openGoalDetailDrawer(target.dataset.id); }
   if (action === "reset") {
     state = resetState();
     selectedPatientId = state.patients[0].id;
@@ -4718,6 +5799,38 @@ document.body.addEventListener("click", (event) => {
   }
   if (action === "enter-twin") {
     detailTab = "digital-twin";
+    render();
+  }
+  if (action === "dt-organ-click") {
+    const organ = target.dataset.organ;
+    if (twinSelectedOrgan === organ) {
+      twinSelectedOrgan = null;
+      twinSelectedSource = null;
+    } else {
+      twinSelectedOrgan = organ;
+      twinSelectedSource = "organ";
+    }
+    render();
+  }
+  if (action === "dt-chain-click") {
+    const chainId = target.dataset.chain;
+    twinPlayingChain = twinPlayingChain === chainId ? null : chainId;
+    render();
+  }
+  if (action === "dt-toggle-demo") {
+    twinDemoMode = !twinDemoMode;
+    twinSelectedOrgan = null;
+    twinPlayingChain = null;
+    render();
+  }
+  if (action === "dt-demo-template") {
+    twinDemoTemplate = target.dataset.template;
+    twinSelectedOrgan = null;
+    twinPlayingChain = null;
+    render();
+  }
+  if (action === "enter-sleep-tab") {
+    detailTab = "analysis";
     render();
   }
   if (action === "agp-period") {
@@ -4843,6 +5956,59 @@ document.body.addEventListener("click", (event) => {
   }
   if (action === "send-advice") sendAdvice(target.dataset.patient, target.dataset.alert, target.dataset.followup);
   if (action === "save-advice") saveAdvice();
+  if (action === "copd-scale-detail") {
+    const scaleId = target.dataset.scaleId;
+    const scaleCode = target.dataset.scaleCode;
+    const record = (state.scaleRecords || []).find(r => r.id === scaleId);
+    if (!record) return;
+    let modalContent = "";
+    if (scaleCode === "cat") {
+      const CAT_QUESTIONS = [
+        { id: "q1", title: "咳嗽", text: "最近您咳嗽的情况如何？" },
+        { id: "q2", title: "痰", text: "最近您咳痰的情况如何？" },
+        { id: "q3", title: "胸闷", text: "最近您感觉胸闷的情况如何？" },
+        { id: "q4", title: "爬坡/楼梯", text: "爬坡或上一层楼梯时气喘？" },
+        { id: "q5", title: "家务劳动", text: "在家做家务时气喘情况？" },
+        { id: "q6", title: "外出", text: "外出时因气喘信心不足？" },
+        { id: "q7", title: "睡眠", text: "因呼吸问题睡眠不佳？" },
+        { id: "q8", title: "精力", text: "最近精力状况如何？" }
+      ];
+      const goldGroup = record.totalScore >= 10 ? "更多症状组(GOLD B/E)" : "较少症状组(GOLD A/C)";
+      const rows = CAT_QUESTIONS.map(q => {
+        const score = record.answers?.[q.id] || 0;
+        return `<tr><td>${q.title}</td><td>${q.text}</td><td>${score}分</td></tr>`;
+      }).join("");
+      modalContent = `<h3>CAT慢阻肺评估测试详情</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead><tr><th>题目</th><th>提问</th><th>得分</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:12px;font-weight:700">总分：${record.totalScore}分 | ${CAT_LEVEL_MAP[record.levelName]} | ${goldGroup}</div>
+        <div style="font-size:12px;color:#86909C;margin-top:4px">MCID最小临床重要差异为2分，趋势变化≥2分视为有临床意义</div>`;
+    } else {
+      const MMRC_OPTIONS = [
+        { grade: 0, text: "仅在剧烈运动时才感到呼吸困难" },
+        { grade: 1, text: "平地快走或上小坡时感到气短" },
+        { grade: 2, text: "因气短，平地行走比同龄人慢，或需要停下休息" },
+        { grade: 3, text: "平地行走数分钟或约100米后需停下喘气" },
+        { grade: 4, text: "严重呼吸困难，无法外出，或穿衣时也感到气短" }
+      ];
+      const goldGroup = record.grade >= 2 ? "高症状组(GOLD B/E)" : "低症状组(GOLD A/C)";
+      const selectedOption = MMRC_OPTIONS[record.grade] || {};
+      modalContent = `<h3>mMRC呼吸困难指数详情</h3>
+        <div style="margin:12px 0;font-size:14px">
+          <div>选择等级：${record.grade}级</div>
+          <div>等级描述：${selectedOption.text || "-"}</div>
+          <div>GOLD分组：${goldGroup}</div>
+          <div>填报时间：${record.completedAt.replace("T"," ").slice(0,16)}</div>
+        </div>`;
+    }
+    modalRoot.innerHTML = `<div class="modal-backdrop" data-action="close-modal"></div>
+      <div class="modal-panel" style="max-width:600px">
+        <div class="modal-header"><h2>问卷详情</h2><button data-action="close-modal" class="modal-close">&times;</button></div>
+        <div class="modal-body">${modalContent}</div>
+      </div>`;
+  }
   if (action === "confirm-disease") {
     const patient = patientById(target.dataset.patient);
     patient.screening.pending = patient.screening.pending.filter((item) => item !== target.dataset.disease);
@@ -4883,6 +6049,25 @@ document.body.addEventListener("input", (event) => {
   if (jumpTarget) {
     const scope = jumpTarget.dataset.pageScope;
     paginationState[scope].jump = jumpTarget.value.replace(/\D/g, "");
+  }
+  // ── Config module search ──
+  const metricDictSearchTarget = event.target.closest('[data-action="metric-dict-search"]');
+  if (metricDictSearchTarget) {
+    metricDictSearchQuery = metricDictSearchTarget.value;
+    resetPage("metricDictionary");
+    render();
+    const input = document.querySelector('[data-action="metric-dict-search"]');
+    if (input) { input.focus(); input.setSelectionRange(metricDictSearchQuery.length, metricDictSearchQuery.length); }
+    return;
+  }
+  const goalSearchTarget = event.target.closest('[data-action="goal-search"]');
+  if (goalSearchTarget) {
+    goalSearchQuery = goalSearchTarget.value;
+    resetPage("goalManagement");
+    render();
+    const input = document.querySelector('[data-action="goal-search"]');
+    if (input) { input.focus(); input.setSelectionRange(goalSearchQuery.length, goalSearchQuery.length); }
+    return;
   }
 });
 
@@ -4930,8 +6115,14 @@ document.body.addEventListener("keydown", (event) => {
 });
 
 $$(".nav-item").forEach((item) => item.addEventListener("click", () => {
-  currentView = item.dataset.view;
+  if (item.classList.contains("nav-parent")) return; // parent only toggles group
+  const view = item.dataset.view;
+  if (!view) return;
+  currentView = view;
   if (currentView === "plans") planMode = "list";
+  // Ensure parent group is open when clicking a sub-item
+  const group = item.closest(".nav-group");
+  if (group) group.classList.add("open");
   render();
 }));
 

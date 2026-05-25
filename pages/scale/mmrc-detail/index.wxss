@@ -1,0 +1,188 @@
+/* ─── 页面基础 ─── */
+page { background: #EEF2F6; }
+
+.page {
+  min-height: 100vh;
+  background: #EEF2F6;
+  padding: 24rpx 32rpx 120rpx;
+  color: #16202D;
+}
+
+/* ─── 分级摘要 ─── */
+.summary-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 28rpx 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.summary-left {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.summary-grade {
+  font-size: 56rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.summary-right {
+  flex-shrink: 0;
+}
+
+.level-badge {
+  display: inline-flex;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+/* ─── 明细卡片 ─── */
+.detail-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 24rpx 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.detail-num {
+  width: 40rpx;
+  height: 40rpx;
+  flex: 0 0 40rpx;
+  border-radius: 12rpx;
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 20rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-title {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #16202D;
+}
+
+.detail-score {
+  font-size: 26rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.detail-question {
+  display: block;
+  font-size: 26rpx;
+  color: #5D6A7A;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.detail-answer {
+  margin-bottom: 16rpx;
+}
+
+.detail-answer-label {
+  display: inline-flex;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: #FDE8E8;
+  color: #EF4444;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+/* ─── 分级条 ─── */
+.score-bar-wrap {
+  margin-top: 4rpx;
+}
+
+.score-bar {
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: #E7ECF2;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+
+.score-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4rpx;
+}
+
+.score-bar-min, .score-bar-max {
+  font-size: 20rpx;
+  color: #8D99A8;
+  font-weight: 700;
+}
+
+/* ─── 信息卡片 ─── */
+.info-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  border: 2rpx solid #E7ECF2;
+  padding: 24rpx 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.info-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #16202D;
+  margin-bottom: 12rpx;
+}
+
+.info-text {
+  display: block;
+  font-size: 26rpx;
+  color: #5D6A7A;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+/* ─── 操作按钮 ─── */
+.actions {
+  display: flex;
+  margin-top: 32rpx;
+}
+
+.btn-back {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #E7ECF2;
+  color: #425063;
+  font-size: 28rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.btn-back::after { border: 0; }

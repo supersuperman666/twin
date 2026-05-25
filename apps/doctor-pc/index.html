@@ -4,37 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>数字孪生医生端</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@4.24.15/dist/antd.min.css">
   <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">DT</span>
+        <span class="brand-mark">慢</span>
         <div>
           <strong>数字孪生</strong>
           <small>医生端</small>
         </div>
       </div>
       <nav class="nav">
-        <button class="nav-item active" data-view="patients">患者管理</button>
-        <button class="nav-item" data-view="alerts">预警中心</button>
-        <button class="nav-item" data-view="plans">方案管理</button>
-        <button class="nav-item" data-view="followups">随访计划</button>
-      </nav>
-    </aside>
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <h1 id="pageTitle">患者管理</h1>
-          <p id="pageSubTitle">通过患者视角进入深度分析、预警、方案和随访闭环</p>
+        <button class="nav-item active" data-view="patients"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M17 16h4"/></svg></span>患者管理</button>
+        <button class="nav-item" data-view="alerts"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.6 18a2 2 0 0 0 1.8 3h15.2a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></span>预警中心</button>
+        <button class="nav-item" data-view="plans"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="m3 6 .8.8L5.5 5"/><path d="m3 12 .8.8 1.7-1.8"/><path d="m3 18 .8.8 1.7-1.8"/></svg></span>方案管理</button>
+        <button class="nav-item" data-view="followups"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span>随访计划</button>
+        <div class="nav-group">
+          <button class="nav-item nav-parent" data-action="toggle-nav-group"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>系统配置</button>
+          <div class="nav-sub">
+            <button class="nav-item sub-item" data-view="metricDictionary">指标字典</button>
+            <button class="nav-item sub-item" data-view="goalManagement">目标管理</button>
+          </div>
         </div>
+      </nav>
+      <div class="sidebar-footer">
         <div class="doctor">
           <span class="doctor-avatar">林</span>
           <div>
             <strong>林医生</strong>
             <small>慢病管理中心</small>
           </div>
+        </div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">患者管理</h1>
+          <p id="pageSubTitle">通过患者视角进入深度分析、预警、方案和随访闭环</p>
         </div>
       </header>
       <section id="app" class="content"></section>

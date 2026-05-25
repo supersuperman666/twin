@@ -127,6 +127,32 @@ const CAT_SCALE = {
   ],
 };
 
+// ─── mMRC 量表定义 ───
+
+const MMRC_SCALE = {
+  code: 'mmrc',
+  name: 'mMRC 评估',
+  fullName: 'Modified Medical Research Council Dyspnea Scale',
+  shortName: 'mMRC',
+  desc: '呼吸困难分级评估，判断您的气短程度对日常活动的影响',
+  icon: 'mMRC',
+  color: '#EF4444',
+  questions: [
+    {
+      id: 'q1',
+      title: '呼吸困难分级',
+      text: '您感到呼吸困难的情况如何？',
+      options: [
+        { label: '仅在剧烈运动时才感到呼吸困难', grade: 0 },
+        { label: '平地快走或上小坡时感到气短', grade: 1 },
+        { label: '因气短，平地行走比同龄人慢，或需要停下休息', grade: 2 },
+        { label: '平地行走数分钟或约100米后需停下喘气', grade: 3 },
+        { label: '严重呼吸困难，无法外出，或穿衣时也感到气短', grade: 4 },
+      ],
+    },
+  ],
+};
+
 // ─── 量表目录 ───
 
 const SCALE_CATALOG = [
@@ -141,6 +167,18 @@ const SCALE_CATALOG = [
     questionsCount: 8,
     timeEstimate: '约 3 分钟',
     route: '/pages/scale/cat/index',
+  },
+  {
+    code: 'mmrc',
+    name: 'mMRC 评估',
+    fullName: 'Modified Medical Research Council Dyspnea Scale',
+    desc: '呼吸困难分级评估，判断您的气短程度对日常活动的影响',
+    icon: 'mMRC',
+    color: '#EF4444',
+    tag: '呼吸',
+    questionsCount: 1,
+    timeEstimate: '约 1 分钟',
+    route: '/pages/scale/mmrc/index',
   },
   {
     code: 'screening',
@@ -233,6 +271,37 @@ function computeCatResult(answers) {
   };
 }
 
+// ─── mMRC 评分规则 ───
+
+function computeMmrcResult(answers) {
+  const q = MMRC_SCALE.questions[0];
+  const answerIdx = answers[q.id];
+  const grade = answerIdx !== undefined && answerIdx !== null ? q.options[answerIdx].grade : null;
+
+  const GRADE_MAP = {
+    0: { levelName: 'none', levelColor: '#10B981', desc: '无呼吸困难', goldGroup: '低症状组 (GOLD A/C)' },
+    1: { levelName: 'mild', levelColor: '#10B981', desc: '轻度气短', goldGroup: '低症状组 (GOLD A/C)' },
+    2: { levelName: 'moderate', levelColor: '#F59E0B', desc: '中度呼吸困难', goldGroup: '高症状组 (GOLD B/E)' },
+    3: { levelName: 'severe', levelColor: '#EF4444', desc: '重度呼吸困难', goldGroup: '高症状组 (GOLD B/E)' },
+    4: { levelName: 'verySevere', levelColor: '#EF4444', desc: '极重度呼吸困难', goldGroup: '高症状组 (GOLD B/E)' },
+  };
+
+  const mapping = grade !== null ? GRADE_MAP[grade] : { levelName: '', levelColor: '#8D99A8', desc: '未作答', goldGroup: '' };
+  const selectedLabel = grade !== null ? q.options[answerIdx].label : '未作答';
+
+  return {
+    scaleCode: 'mmrc',
+    grade,
+    levelName: mapping.levelName,
+    levelColor: mapping.levelColor,
+    levelDesc: mapping.desc,
+    goldGroup: mapping.goldGroup,
+    selectedLabel,
+    answers,
+    completedAt: nowISO(),
+  };
+}
+
 // ─── 评估记录管理 ───
 
 function loadRecords() {
@@ -288,8 +357,10 @@ function clearDraft(scaleCode) {
 
 module.exports = {
   CAT_SCALE,
+  MMRC_SCALE,
   SCALE_CATALOG,
   computeCatResult,
+  computeMmrcResult,
   loadRecords,
   addRecord,
   getRecords,

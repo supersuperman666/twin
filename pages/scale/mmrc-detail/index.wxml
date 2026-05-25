@@ -1,0 +1,47 @@
+<view class="page">
+
+  <!-- 分级摘要 -->
+  <view class="summary-card">
+    <view class="summary-left">
+      <text class="summary-grade" style="color: {{levelColor}};">{{grade}}级</text>
+    </view>
+    <view class="summary-right">
+      <view class="level-badge" style="background: {{levelColor}}; color: #FFFFFF;">{{levelDesc}}</view>
+    </view>
+  </view>
+
+  <!-- 题目明细 -->
+  <view class="detail-card">
+    <view class="detail-header">
+      <view class="detail-num">Q1</view>
+      <text class="detail-title">{{questionTitle}}</text>
+      <text class="detail-score" style="color: {{levelColor}};">{{grade}}级</text>
+    </view>
+    <text class="detail-question">{{questionText}}</text>
+    <view class="detail-answer">
+      <text class="detail-answer-label">{{selectedLabel}}</text>
+    </view>
+    <!-- 分级条 -->
+    <view class="score-bar-wrap">
+      <view class="score-bar">
+        <view class="score-bar-fill" style="width: {{grade / 4 * 100}}%; background: {{levelColor}};"></view>
+      </view>
+      <view class="score-bar-labels">
+        <text class="score-bar-min">0级</text>
+        <text class="score-bar-max">4级</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- GOLD分组 -->
+  <view class="info-card">
+    <text class="info-title">GOLD 分组</text>
+    <text class="info-text">{{goldGroup}}</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button class="btn-back" bindtap="goBack">返回结果页</button>
+  </view>
+
+</view>

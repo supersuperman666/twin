@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数字孪生器官映射预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101418;
+      --panel: #171d24;
+      --line: #2a3340;
+      --text: #eef4ff;
+      --muted: #8fa0b7;
+      --blue: #3b82f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      height: 100vh;
+    }
+    #viewport {
+      position: relative;
+      min-width: 0;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(68, 126, 255, .16), transparent 42%),
+        linear-gradient(180deg, #161b22, #0d1117);
+    }
+    .hud {
+      position: absolute;
+      left: 20px;
+      top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      text-shadow: 0 1px 6px rgba(0,0,0,.45);
+    }
+    .hud strong { font-size: 16px; }
+    .hud span { font-size: 12px; color: var(--muted); }
+    .side {
+      border-left: 1px solid var(--line);
+      background: rgba(23, 29, 36, .96);
+      padding: 18px;
+      overflow: auto;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 4px;
+    }
+    .desc {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 0 0 16px;
+    }
+    .organ-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #111827;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { border-color: #4b6078; }
+    button.active {
+      border-color: var(--blue);
+      background: rgba(59, 130, 246, .18);
+      box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .25);
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .toolbar button { background: #1f2937; }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, .65);
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .row:last-child { border-bottom: 0; }
+    .label { color: var(--muted); }
+    .value {
+      text-align: right;
+      word-break: break-all;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 190px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b1020;
+      color: #dbeafe;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, .94);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main id="viewport">
+      <div class="hud">
+        <strong>器官映射预览</strong>
+        <span>拖拽旋转，滚轮缩放；选中右侧器官后，点击模型部件可加入/移出该器官分组。</span>
+      </div>
+    </main>
+    <aside class="side">
+      <h1>器官分组</h1>
+      <p class="desc">这是根据你圈图生成的初版映射。先点器官按钮看高亮范围，觉得不准时可以直接点模型部件微调。</p>
+      <div id="organList" class="organ-list"></div>
+      <div class="toolbar">
+        <button id="showOnlyBtn">仅看当前</button>
+        <button id="resetBtn">恢复初版</button>
+        <button id="copyBtn">复制 JSON</button>
+        <button id="clearBtn">清空当前</button>
+      </div>
+      <div class="card">
+        <div class="row"><span class="label">当前器官</span><span id="activeOrgan" class="value">-</span></div>
+        <div class="row"><span class="label">组件数量</span><span id="componentCount" class="value">0</span></div>
+        <div class="row"><span class="label">最近点击</span><span id="pickedName" class="value">-</span></div>
+      </div>
+      <div class="card">
+        <p class="small">调整结果会暂存在浏览器 localStorage。确认满意后复制 JSON，我可以把它固化成正式 `organ-map.json`。</p>
+        <textarea id="jsonOutput" spellcheck="false"></textarea>
+      </div>
+    </aside>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import * as THREE from "./vendor/three/three.module.js";
+    import { GLTFLoader } from "./vendor/three/GLTFLoader.js";
+    import { OrbitControls } from "./vendor/three/OrbitControls.js";
+
+    const MODEL_URL = "./assets/models/human_model_components.glb";
+    const MAP_URL = "./assets/models/organ-map.initial.json";
+    const STORAGE_KEY = "digital-twin-organ-map-draft-v1";
+    const LOCAL_URL = "http://127.0.0.1:8877/apps/doctor-pc/organ-annotator.html";
+
+    const viewport = document.getElementById("viewport");
+    const organList = document.getElementById("organList");
+    const activeOrganEl = document.getElementById("activeOrgan");
+    const componentCountEl = document.getElementById("componentCount");
+    const pickedNameEl = document.getElementById("pickedName");
+    const jsonOutput = document.getElementById("jsonOutput");
+    const showOnlyBtn = document.getElementById("showOnlyBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const toast = document.getElementById("toast");
+
+    const scene = new THREE.Scene();
+    scene.background = null;
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+    camera.position.set(0, 0.35, 2.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    viewport.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, -0.45, 0);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.4));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+    keyLight.position.set(1.8, 2.2, 2.4);
+    scene.add(keyLight);
+    const rimLight = new THREE.DirectionalLight(0x7dd3fc, 1.8);
+    rimLight.position.set(-2, .8, -1.6);
+    scene.add(rimLight);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const meshByName = new Map();
+    const originalMaterials = new Map();
+    let initialMap = null;
+    let organMap = null;
+    let activeOrgan = "lung_right";
+    let showOnly = false;
+    let root = null;
+
+    const baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8c4cf,
+      roughness: 0.58,
+      metalness: 0.05,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false
+    });
+
+    function flash(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(flash.timer);
+      flash.timer = setTimeout(() => toast.classList.remove("show"), 1400);
+    }
+
+    function showFatal(message) {
+      const panel = document.createElement("div");
+      panel.style.position = "absolute";
+      panel.style.left = "50%";
+      panel.style.top = "50%";
+      panel.style.transform = "translate(-50%, -50%)";
+      panel.style.maxWidth = "520px";
+      panel.style.padding = "22px 24px";
+      panel.style.border = "1px solid rgba(96,165,250,.45)";
+      panel.style.borderRadius = "14px";
+      panel.style.background = "rgba(15,23,42,.92)";
+      panel.style.boxShadow = "0 24px 80px rgba(0,0,0,.35)";
+      panel.style.lineHeight = "1.7";
+      panel.innerHTML = message;
+      viewport.appendChild(panel);
+    }
+
+    function cloneMap(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function componentSetFor(organKey) {
+      return new Set(organMap.organs[organKey]?.components || []);
+    }
+
+    function colorFor(organKey) {
+      return organMap.organs[organKey]?.color || "#3b82f6";
+    }
+
+    function makeHighlightMaterial(color, selected = false) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: selected ? 0.72 : 0.42,
+        roughness: 0.36,
+        metalness: 0.08,
+        transparent: true,
+        opacity: selected ? 0.94 : 0.78,
+        depthWrite: false
+      });
+    }
+
+    function updateMaterials() {
+      if (!organMap) return;
+      const selectedSet = componentSetFor(activeOrgan);
+      const allMapped = new Map();
+      Object.entries(organMap.organs).forEach(([organKey, organ]) => {
+        (organ.components || []).forEach((name) => allMapped.set(name, organKey));
+      });
+
+      meshByName.forEach((mesh, name) => {
+        const belongsToActive = selectedSet.has(name);
+        const mappedOrgan = allMapped.get(name);
+        if (belongsToActive) {
+          mesh.visible = true;
+          mesh.material = makeHighlightMaterial(colorFor(activeOrgan), true);
+        } else if (!showOnly && mappedOrgan) {
+          mesh.visible = true;
+          mesh.material = makeHighlightMaterial(colorFor(mappedOrgan), false);
+        } else {
+          mesh.visible = !showOnly;
+          mesh.material = originalMaterials.get(name);
+        }
+      });
+      updatePanel();
+    }
+
+    function updatePanel() {
+      const organ = organMap.organs[activeOrgan];
+      activeOrganEl.textContent = `${organ.label} / ${activeOrgan}`;
+      componentCountEl.textContent = String(organ.components.length);
+      jsonOutput.value = JSON.stringify(organMap, null, 2);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(organMap));
+      [...organList.children].forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.organ === activeOrgan);
+        const item = organMap.organs[btn.dataset.organ];
+        btn.textContent = `${item.label} (${item.components.length})`;
+      });
+      showOnlyBtn.textContent = showOnly ? "显示全部" : "仅看当前";
+    }
+
+    function buildOrganButtons() {
+      organList.innerHTML = "";
+      Object.entries(organMap.organs).forEach(([key, organ]) => {
+        const btn = document.createElement("button");
+        btn.dataset.organ = key;
+        btn.textContent = `${organ.label} (${organ.components.length})`;
+        btn.addEventListener("click", () => {
+          activeOrgan = key;
+          updateMaterials();
+        });
+        organList.appendChild(btn);
+      });
+    }
+
+    function toggleComponent(name) {
+      const components = organMap.organs[activeOrgan].components;
+      const index = components.indexOf(name);
+      if (index >= 0) {
+        components.splice(index, 1);
+        flash(`已从 ${organMap.organs[activeOrgan].label} 移出 ${name}`);
+      } else {
+        components.push(name);
+        flash(`已加入 ${organMap.organs[activeOrgan].label}: ${name}`);
+      }
+      pickedNameEl.textContent = name;
+      updateMaterials();
+    }
+
+    renderer.domElement.addEventListener("pointerdown", (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects([...meshByName.values()], false);
+      if (!hits.length) return;
+      toggleComponent(hits[0].object.name);
+    });
+
+    showOnlyBtn.addEventListener("click", () => {
+      showOnly = !showOnly;
+      updateMaterials();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      organMap = cloneMap(initialMap);
+      localStorage.removeItem(STORAGE_KEY);
+      buildOrganButtons();
+      updateMaterials();
+      flash("已恢复初版映射");
+    });
+
+    clearBtn.addEventListener("click", () => {
+      organMap.organs[activeOrgan].components = [];
+      updateMaterials();
+      flash(`已清空 ${organMap.organs[activeOrgan].label}`);
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(JSON.stringify(organMap, null, 2));
+      flash("已复制当前映射 JSON");
+    });
+
+    function resize() {
+      const rect = viewport.getBoundingClientRect();
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rect.width, rect.height, false);
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    async function boot() {
+      if (location.protocol === "file:") {
+        showFatal(`
+          <strong style="font-size:18px;">需要通过本地 HTTP 服务打开</strong>
+          <div style="margin-top:10px;color:#9fb0c7;font-size:14px;">
+            当前是 <code>file://</code> 地址，浏览器会拦截模型和 JSON 加载，所以看不到 3D 模型。
+          </div>
+          <div style="margin-top:14px;">
+            请打开：<br>
+            <a href="${LOCAL_URL}" style="color:#93c5fd;word-break:break-all;">${LOCAL_URL}</a>
+          </div>
+        `);
+        throw new Error("Use http://127.0.0.1 instead of file://");
+      }
+      const [mapResponse, gltf] = await Promise.all([
+        fetch(MAP_URL).then((res) => res.json()),
+        new GLTFLoader().loadAsync(MODEL_URL)
+      ]);
+      initialMap = mapResponse;
+      organMap = localStorage.getItem(STORAGE_KEY)
+        ? JSON.parse(localStorage.getItem(STORAGE_KEY))
+        : cloneMap(initialMap);
+
+      root = gltf.scene;
+      const box = new THREE.Box3().setFromObject(root);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      root.position.sub(center);
+      const scale = 1.6 / Math.max(size.x, size.y, size.z);
+      root.scale.setScalar(scale);
+      root.rotation.x = -Math.PI / 2;
+
+      root.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.material = baseMaterial.clone();
+        obj.renderOrder = 1;
+        meshByName.set(obj.name, obj);
+        originalMaterials.set(obj.name, obj.material);
+      });
+      scene.add(root);
+      buildOrganButtons();
+      updateMaterials();
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    boot().catch((error) => {
+      console.error(error);
+      if (location.protocol !== "file:") {
+        showFatal(`
+          <strong style="font-size:18px;">模型加载失败</strong>
+          <div style="margin-top:10px;color:#9fb0c7;font-size:14px;">
+            请确认本地服务仍在运行，并查看控制台错误。
+          </div>
+        `);
+      }
+    });
+  </script>
+</body>
+</html>

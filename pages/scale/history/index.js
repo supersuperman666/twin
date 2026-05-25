@@ -3,6 +3,12 @@ const scaleStore = require('../../../utils/scale-store');
 Page({
   data: {
     records: [],
+    filterTabs: [
+      { key: 'all', label: '全部' },
+      { key: 'cat', label: 'CAT' },
+      { key: 'mmrc', label: 'mMRC' },
+    ],
+    activeFilter: 'all',
   },
 
   onLoad() {
@@ -32,6 +38,13 @@ Page({
           levelColor = result.levelColor;
           scaleName = 'CAT 评估';
           route = `/pages/scale/cat-result/index?id=${r.id}`;
+        } else if (r.scaleCode === 'mmrc') {
+          const result = scaleStore.computeMmrcResult(r.answers || {});
+          scoreDisplay = String(result.grade) + '级';
+          levelName = result.levelName;
+          levelColor = result.levelColor;
+          scaleName = 'mMRC 评估';
+          route = `/pages/scale/mmrc-result/index?id=${r.id}`;
         } else if (r.scaleCode === 'screening') {
           scoreDisplay = String(r.totalScore || 0);
           levelName = r.totalScore >= 85 ? '低风险' : r.totalScore >= 70 ? '中风险' : '高风险';
@@ -51,14 +64,25 @@ Page({
         };
       });
 
-    this.setData({ records });
+    this.setData({ records }, () => this.applyFilter());
+  },
+
+  applyFilter() {
+    const { activeFilter, records } = this.data;
+    const filtered = activeFilter === 'all'
+      ? records
+      : records.filter(r => r.scaleCode === activeFilter);
+    this.setData({ filteredRecords: filtered });
+  },
+
+  onFilterTap(e) {
+    const { key } = e.currentTarget.dataset;
+    this.setData({ activeFilter: key }, () => this.applyFilter());
   },
 
   onRecordTap(e) {
     const { route } = e.currentTarget.dataset;
-    if (route && route.includes('cat-result')) {
-      wx.navigateTo({ url: route });
-    } else if (route) {
+    if (route) {
       wx.navigateTo({ url: route });
     }
   },

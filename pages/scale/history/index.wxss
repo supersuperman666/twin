@@ -8,6 +8,29 @@ page { background: #EEF2F6; }
   color: #16202D;
 }
 
+/* ─── 筛选标签 ─── */
+.filter-tabs {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.filter-tab {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #E7ECF2;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #5D6A7A;
+}
+
+.filter-active {
+  background: #1F82FF;
+  border-color: #1F82FF;
+  color: #FFFFFF;
+}
+
 /* ─── 记录列表 ─── */
 .record-list {
   display: flex;

@@ -28,6 +28,12 @@ Page({
           statusColor = result.levelColor;
           lastScoreText = '得分 ' + result.total;
           lastDate = (lastResult.completedAt || '').slice(0, 10);
+        } else if (s.code === 'mmrc') {
+          const result = scaleStore.computeMmrcResult(lastResult.answers || {});
+          statusLabel = result.levelName;
+          statusColor = result.levelColor;
+          lastScoreText = '分级 ' + result.grade;
+          lastDate = (lastResult.completedAt || '').slice(0, 10);
         } else {
           statusLabel = '已完成';
           statusColor = '#10B981';
@@ -51,6 +57,10 @@ Page({
     const { code, route } = e.currentTarget.dataset;
     if (code === 'screening') {
       wx.navigateTo({ url: '/pages/screening/index' });
+      return;
+    }
+    if (code === 'mmrc') {
+      wx.navigateTo({ url: '/pages/scale/mmrc/index' });
       return;
     }
     if (route) {

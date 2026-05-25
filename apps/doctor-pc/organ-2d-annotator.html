@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数字孪生 2D 器官标注</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #131a26;
+      --line: #243042;
+      --text: #eef4ff;
+      --muted: #8fa0b7;
+      --blue: #3b82f6;
+      --accent: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100vh; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      overflow: hidden;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 280px minmax(420px, 1fr) 380px;
+      height: 100vh;
+      min-width: 1080px;
+    }
+    .side {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 16px;
+      overflow: auto;
+    }
+    .side.right {
+      border-right: none;
+      border-left: 1px solid var(--line);
+    }
+    h1 { font-size: 16px; margin: 0 0 4px; }
+    h2 { font-size: 13px; margin: 18px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    p.desc { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 0 0 12px; }
+    .organ-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      background: #0f172a;
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 6px;
+      font-size: 13px;
+      text-align: left;
+    }
+    .organ-btn:hover { border-color: #4b6078; }
+    .organ-btn.active {
+      border-color: var(--accent);
+      background: rgba(96, 165, 250, .15);
+      box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .35);
+    }
+    .organ-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .organ-meta { margin-left: auto; color: var(--muted); font-size: 11px; }
+    .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    button.tb {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #1f2937;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button.tb:hover { border-color: #4b6078; }
+    button.tb.primary { background: var(--blue); border-color: var(--blue); }
+    button.tb.danger { background: #7f1d1d; border-color: #7f1d1d; }
+    main {
+      position: relative;
+      overflow: hidden;
+      background: #050a14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    svg.canvas {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      cursor: crosshair;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    image.body { opacity: .96; }
+    .shape {
+      fill: var(--shape-color, #60a5fa);
+      fill-opacity: .25;
+      stroke: var(--shape-color, #60a5fa);
+      stroke-width: 2;
+      pointer-events: all;
+    }
+    .shape.is-active {
+      fill-opacity: .42;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 8px var(--shape-color, #60a5fa));
+    }
+    .shape.is-dim { fill-opacity: .12; stroke-opacity: .55; }
+    .ghost {
+      fill: rgba(96, 165, 250, .25);
+      stroke: #60a5fa;
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      pointer-events: none;
+    }
+    .handle {
+      fill: #fff;
+      stroke: #1e3a8a;
+      stroke-width: 1.5;
+      cursor: grab;
+    }
+    .handle.center { fill: #fde68a; stroke: #92400e; }
+    .handle:active { cursor: grabbing; }
+    .poly-draft {
+      fill: rgba(96, 165, 250, .12);
+      stroke: #93c5fd;
+      stroke-width: 2;
+      stroke-dasharray: 6 5;
+      pointer-events: none;
+    }
+    .poly-draft-point {
+      fill: #fef3c7;
+      stroke: #f59e0b;
+      stroke-width: 1.5;
+      pointer-events: none;
+    }
+    .poly-draft-start {
+      fill: #34d399;
+      stroke: #ecfdf5;
+    }
+    .hud {
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      background: rgba(10, 18, 32, .8);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text);
+      pointer-events: none;
+      max-width: 320px;
+    }
+    .hud strong { color: var(--accent); }
+    .hud code { color: #fcd34d; }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .row:last-child { border-bottom: 0; }
+    .row .label { color: var(--muted); }
+    .row .value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+    .seg-list {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-top: 8px;
+    }
+    .seg {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      background: #0f172a;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .seg.is-active { border-color: var(--accent); background: rgba(96,165,250,.12); }
+    .seg .seg-label { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .seg .seg-meta { margin-left: auto; color: var(--muted); font-size: 11px; }
+    .seg button {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: #fca5a5;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #06101f;
+      color: #dbeafe;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, .95);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 9px 16px;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    .toast.show { opacity: 1; }
+    .shape-type {
+      display: flex; gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 6px 0 4px;
+    }
+    .shape-type button {
+      flex: 1;
+      appearance: none;
+      background: #0f172a;
+      color: var(--muted);
+      border: none;
+      padding: 6px 0;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .shape-type button.on { background: var(--blue); color: #fff; }
+    .help {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.7;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+    }
+    .help kbd {
+      background: #1f2937;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      padding: 0 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side left">
+      <h1>器官标注</h1>
+      <p class="desc">先在右侧选器官，再在底图上拖出一个矩形来生成形状。已有形状可拖动中心或边缘控制点微调。</p>
+      <h2>器官列表</h2>
+      <div id="organList"></div>
+      <div class="toolbar">
+        <button class="tb" id="addSegBtn">+ 新增片段</button>
+        <button class="tb danger" id="clearOrganBtn">清空当前</button>
+        <button class="tb" id="resetAllBtn">重置全部</button>
+        <button class="tb primary" id="copyBtn">复制 JSON</button>
+      </div>
+      <div class="help">
+        <strong>使用说明</strong><br>
+        1. 点左侧器官按钮选中目标器官<br>
+        2. 在底图上 <kbd>按住拖拽</kbd> 出一个矩形，会自动生成椭圆/矩形<br>
+        3. 选中片段后，拖中心圆点 = 移动；拖边缘黄方块 = 缩放<br>
+        4. 多片段器官（肺/肾）点 <kbd>+ 新增片段</kbd> 再画第二个<br>
+        5. 完成后点 <kbd>复制 JSON</kbd> 发给我
+      </div>
+    </aside>
+    <main id="viewport">
+      <div class="hud">
+        当前器官：<strong id="hudOrgan">-</strong><br>
+        形状：<code id="hudShape">-</code><br>
+        坐标：<code id="hudCoord">-</code>
+      </div>
+      <svg class="canvas" id="canvas" viewBox="0 0 1024 1536" preserveAspectRatio="xMidYMid meet">
+        <image class="body" href="./assets/digital-twin/body-v2.png" x="0" y="0" width="1024" height="1536"/>
+        <g id="shapesLayer"></g>
+        <g id="handlesLayer"></g>
+        <g id="ghostLayer"></g>
+      </svg>
+    </main>
+    <aside class="side right">
+      <h2>当前器官详情</h2>
+      <div class="row"><span class="label">器官</span><span class="value" id="curOrganKey">-</span></div>
+      <div class="row"><span class="label">类型</span><span class="value" id="curOrganType">-</span></div>
+      <div class="row"><span class="label">片段数</span><span class="value" id="curSegCount">0</span></div>
+      <h2>片段</h2>
+      <div class="shape-type">
+        <button id="typeEllipseBtn">椭圆</button>
+        <button id="typeRectBtn">矩形</button>
+        <button id="typePolyBtn">多边形</button>
+      </div>
+      <div id="polyHint" class="help" style="display:none;margin-top:6px">
+        <strong>多边形模式</strong><br>
+        · 单击底图 = 添加顶点<br>
+        · 双击 / 回车 / 点击起点附近 = 闭合<br>
+        · <kbd>Esc</kbd> = 取消当前绘制<br>
+        · 闭合后顶点可拖拽；右键顶点 = 删除
+      </div>
+      <div id="segList" class="seg-list"></div>
+      <h2>导出 JSON</h2>
+      <textarea id="jsonOutput" spellcheck="false"></textarea>
+    </aside>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+  // 器官清单 — 与 main.js TWIN_ORGANS 对齐，并补充新增器官
+  const ORGAN_DEFS = [
+    { key: "airway",    label: "气道",  color: "#FADB14", multi: false, defaultType: "ellipse" },
+    { key: "lung",      label: "肺部",  color: "#7DD3FC", multi: true,  defaultType: "ellipse" },
+    { key: "heart",     label: "心脏",  color: "#FF7875", multi: false, defaultType: "ellipse" },
+    { key: "liver",     label: "肝脏",  color: "#B45309", multi: false, defaultType: "ellipse" },
+    { key: "stomach",   label: "胃",    color: "#F59E0B", multi: false, defaultType: "ellipse" },
+    { key: "pancreas",  label: "胰腺",  color: "#A78BFA", multi: false, defaultType: "ellipse" },
+    { key: "kidney",    label: "肾脏",  color: "#34D399", multi: true,  defaultType: "ellipse" },
+    { key: "intestine", label: "肠",    color: "#FB923C", multi: false, defaultType: "ellipse" },
+    { key: "vessel",    label: "血管",  color: "#F472B6", multi: false, defaultType: "rect" },
+    { key: "brain",     label: "大脑",  color: "#C084FC", multi: false, defaultType: "ellipse" },
+  ];
+
+  const STORAGE_KEY = "digital-twin-2d-organ-map-v1";
+
+  // 数据结构：
+  // { [organKey]: { type: 'ellipse'|'rect'|'multi', parts: [{type:'ellipse'|'rect'|'polygon', ...coords}] } }
+  let state = loadState();
+
+  let activeOrgan = ORGAN_DEFS[0].key;
+  let activeSegIdx = 0;
+  let polyDraft = null;
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("canvas");
+  const shapesLayer = $("shapesLayer");
+  const handlesLayer = $("handlesLayer");
+  const ghostLayer = $("ghostLayer");
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return normalizeState(JSON.parse(raw));
+    } catch (_) {}
+    const init = {};
+    ORGAN_DEFS.forEach((o) => {
+      init[o.key] = { type: o.multi ? "multi" : o.defaultType, parts: [] };
+    });
+    return init;
+  }
+  function normalizeState(raw) {
+    const normalized = {};
+    ORGAN_DEFS.forEach((o) => {
+      const current = raw?.[o.key] || {};
+      normalized[o.key] = {
+        type: current.type || (o.multi ? "multi" : o.defaultType),
+        parts: Array.isArray(current.parts) ? current.parts.filter(Boolean) : [],
+      };
+    });
+    return normalized;
+  }
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    refreshJSON();
+  }
+
+  function flash(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(() => t.classList.remove("show"), 1400);
+  }
+
+  function curOrganDef() { return ORGAN_DEFS.find((o) => o.key === activeOrgan); }
+  function curOrganState() { return state[activeOrgan]; }
+  function curSeg() { return curOrganState().parts[activeSegIdx] || null; }
+  function currentDrawType() { return curSeg()?.type || curOrganDef().defaultType; }
+  function roundPoint(pt) { return [Math.round(pt.x), Math.round(pt.y)]; }
+  function pointDistance(a, b) {
+    const ax = Array.isArray(a) ? a[0] : a.x;
+    const ay = Array.isArray(a) ? a[1] : a.y;
+    const bx = Array.isArray(b) ? b[0] : b.x;
+    const by = Array.isArray(b) ? b[1] : b.y;
+    return Math.hypot(ax - bx, ay - by);
+  }
+  function polygonBounds(points) {
+    const xs = points.map((p) => p[0]);
+    const ys = points.map((p) => p[1]);
+    const x = Math.min(...xs), y = Math.min(...ys);
+    const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+  }
+  function shapeToBounds(seg) {
+    if (seg.type === "ellipse") {
+      return { x: seg.cx - seg.rx, y: seg.cy - seg.ry, w: seg.rx * 2, h: seg.ry * 2, cx: seg.cx, cy: seg.cy };
+    }
+    if (seg.type === "polygon") return polygonBounds(seg.points || []);
+    return { x: seg.x, y: seg.y, w: seg.w, h: seg.h, cx: seg.x + seg.w / 2, cy: seg.y + seg.h / 2 };
+  }
+  function boundsToPolygon(bounds) {
+    const x = Math.round(bounds.x), y = Math.round(bounds.y);
+    const w = Math.round(bounds.w), h = Math.round(bounds.h);
+    return {
+      type: "polygon",
+      points: [
+        [x, y],
+        [x + w, y],
+        [x + w, y + h],
+        [x, y + h],
+      ],
+    };
+  }
+
+  // ============= 左侧器官列表 =============
+  function buildOrganList() {
+    const list = $("organList");
+    list.innerHTML = "";
+    ORGAN_DEFS.forEach((o) => {
+      const btn = document.createElement("button");
+      btn.className = "organ-btn" + (o.key === activeOrgan ? " active" : "");
+      btn.style.setProperty("--shape-color", o.color);
+      btn.innerHTML = `
+        <span class="organ-dot" style="background:${o.color};color:${o.color}"></span>
+        <span>${o.label}</span>
+        <span class="organ-meta">${state[o.key].parts.length} 段</span>
+      `;
+      btn.addEventListener("click", () => {
+        activeOrgan = o.key;
+        activeSegIdx = 0;
+        cancelPolyDraft(false);
+        rebuildAll();
+      });
+      list.appendChild(btn);
+    });
+  }
+
+  // ============= 画布渲染 =============
+  function rebuildAll() {
+    buildOrganList();
+    renderShapes();
+    renderHandles();
+    refreshSidebar();
+    refreshHUD();
+    refreshJSON();
+  }
+
+  function renderShapes() {
+    shapesLayer.innerHTML = "";
+    ORGAN_DEFS.forEach((o) => {
+      const st = state[o.key];
+      st.parts.forEach((p, i) => {
+        const el = createShapeEl(p);
+        el.setAttribute("style", `--shape-color:${o.color}`);
+        const isActive = o.key === activeOrgan && i === activeSegIdx;
+        const isCurrentOrgan = o.key === activeOrgan;
+        el.setAttribute("class", "shape" + (isActive ? " is-active" : "") + (!isCurrentOrgan ? " is-dim" : ""));
+        el.dataset.organ = o.key;
+        el.dataset.seg = i;
+        el.addEventListener("pointerdown", (e) => {
+          e.stopPropagation();
+          activeOrgan = o.key;
+          activeSegIdx = i;
+          cancelPolyDraft(false);
+          rebuildAll();
+        });
+        shapesLayer.appendChild(el);
+      });
+    });
+  }
+
+  function createShapeEl(part) {
+    let el;
+    if (part.type === "ellipse") {
+      el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      el.setAttribute("cx", part.cx); el.setAttribute("cy", part.cy);
+      el.setAttribute("rx", part.rx); el.setAttribute("ry", part.ry);
+    } else if (part.type === "polygon") {
+      el = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      el.setAttribute("points", (part.points || []).map((p) => p.join(",")).join(" "));
+    } else {
+      el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      el.setAttribute("x", part.x); el.setAttribute("y", part.y);
+      el.setAttribute("width", part.w); el.setAttribute("height", part.h);
+      el.setAttribute("rx", part.rx || 0); el.setAttribute("ry", part.rx || 0);
+    }
+    return el;
+  }
+
+  // ============= 控制点（拖拽中心 / 拖拽边缘）=============
+  function renderHandles() {
+    handlesLayer.innerHTML = "";
+    const seg = curSeg();
+    if (!seg) return;
+    if (seg.type === "polygon") {
+      // 每个顶点一个 handle
+      (seg.points || []).forEach((pt, idx) => {
+        addPolyVertex(pt[0], pt[1], idx);
+      });
+      // 多边形整体中心点（用于整体平移）
+      if (seg.points && seg.points.length) {
+        const cx = seg.points.reduce((s, p) => s + p[0], 0) / seg.points.length;
+        const cy = seg.points.reduce((s, p) => s + p[1], 0) / seg.points.length;
+        addHandle(cx, cy, "center", "poly-move");
+      }
+      return;
+    }
+    let cx, cy, w, h;
+    if (seg.type === "ellipse") {
+      cx = seg.cx; cy = seg.cy; w = seg.rx * 2; h = seg.ry * 2;
+    } else {
+      cx = seg.x + seg.w / 2; cy = seg.y + seg.h / 2; w = seg.w; h = seg.h;
+    }
+    // 中心点
+    addHandle(cx, cy, "center", "move");
+    // 4 个边缘控制点
+    addHandle(cx + w / 2, cy, "edge", "e");
+    addHandle(cx - w / 2, cy, "edge", "w");
+    addHandle(cx, cy + h / 2, "edge", "s");
+    addHandle(cx, cy - h / 2, "edge", "n");
+  }
+
+  function addPolyVertex(x, y, idx) {
+    const h = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    h.setAttribute("class", "handle");
+    h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", 6);
+    h.dataset.idx = idx;
+    h.addEventListener("pointerdown", (e) => beginVertexDrag(e, idx));
+    h.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      const seg = curSeg();
+      if (!seg || !seg.points || seg.points.length <= 3) {
+        flash("多边形至少需要 3 个顶点");
+        return;
+      }
+      seg.points.splice(idx, 1);
+      saveState(); rebuildAll();
+    });
+    handlesLayer.appendChild(h);
+  }
+
+  function beginVertexDrag(evt, idx) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    const seg = curSeg();
+    const startPt = clientToSvg(evt);
+    const origin = [seg.points[idx][0], seg.points[idx][1]];
+    function move(e) {
+      const p = clientToSvg(e);
+      seg.points[idx] = [Math.round(origin[0] + p.x - startPt.x), Math.round(origin[1] + p.y - startPt.y)];
+      renderShapes(); renderHandles(); refreshHUD();
+    }
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      saveState(); rebuildAll();
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function addHandle(cx, cy, type, dir) {
+    const h = document.createElementNS("http://www.w3.org/2000/svg", type === "center" ? "circle" : "rect");
+    h.setAttribute("class", "handle " + type);
+    if (type === "center") {
+      h.setAttribute("cx", cx); h.setAttribute("cy", cy); h.setAttribute("r", 8);
+    } else {
+      h.setAttribute("x", cx - 6); h.setAttribute("y", cy - 6);
+      h.setAttribute("width", 12); h.setAttribute("height", 12);
+    }
+    h.dataset.dir = dir;
+    h.addEventListener("pointerdown", (e) => beginHandleDrag(e, dir));
+    handlesLayer.appendChild(h);
+  }
+
+  // ============= 拖拽逻辑 =============
+  function clientToSvg(evt) {
+    const pt = canvas.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    return pt.matrixTransform(canvas.getScreenCTM().inverse());
+  }
+
+  // 在空白处拖拽 -> 创建新片段或替换当前空片段
+  let drawDrag = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".shape") || e.target.closest(".handle")) return;
+    const pt = clientToSvg(e);
+    if (currentDrawType() === "polygon") {
+      e.preventDefault();
+      addPolyDraftPoint(pt);
+      return;
+    }
+    drawDrag = { start: pt, end: pt };
+    canvas.setPointerCapture(e.pointerId);
+    updateGhost();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drawDrag) return;
+    drawDrag.end = clientToSvg(e);
+    updateGhost();
+  });
+  canvas.addEventListener("pointerup", (e) => {
+    if (!drawDrag) return;
+    const { start, end } = drawDrag;
+    drawDrag = null;
+    ghostLayer.innerHTML = "";
+    const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
+    if (dx < 8 || dy < 8) return; // 太小当点击忽略
+    commitDrawn(start, end);
+  });
+  canvas.addEventListener("dblclick", (e) => {
+    if (currentDrawType() !== "polygon") return;
+    e.preventDefault();
+    closePolyDraft();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (currentDrawType() !== "polygon" && !polyDraft) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancelPolyDraft(true);
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      closePolyDraft();
+    }
+  });
+
+  function updateGhost() {
+    if (!drawDrag) { ghostLayer.innerHTML = ""; return; }
+    const def = curOrganDef();
+    const orgState = curOrganState();
+    const type = (orgState.parts[activeSegIdx]?.type) || def.defaultType;
+    const x = Math.min(drawDrag.start.x, drawDrag.end.x);
+    const y = Math.min(drawDrag.start.y, drawDrag.end.y);
+    const w = Math.abs(drawDrag.end.x - drawDrag.start.x);
+    const h = Math.abs(drawDrag.end.y - drawDrag.start.y);
+    let el;
+    if (type === "ellipse") {
+      el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      el.setAttribute("cx", x + w / 2); el.setAttribute("cy", y + h / 2);
+      el.setAttribute("rx", w / 2); el.setAttribute("ry", h / 2);
+    } else {
+      el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      el.setAttribute("x", x); el.setAttribute("y", y);
+      el.setAttribute("width", w); el.setAttribute("height", h);
+      el.setAttribute("rx", 8); el.setAttribute("ry", 8);
+    }
+    el.setAttribute("class", "ghost");
+    ghostLayer.innerHTML = "";
+    ghostLayer.appendChild(el);
+  }
+
+  function commitDrawn(start, end) {
+    const def = curOrganDef();
+    const orgState = curOrganState();
+    const type = (orgState.parts[activeSegIdx]?.type) || def.defaultType;
+    const x = Math.min(start.x, end.x), y = Math.min(start.y, end.y);
+    const w = Math.abs(end.x - start.x), h = Math.abs(end.y - start.y);
+    const round = (v) => Math.round(v);
+    let part;
+    if (type === "ellipse") {
+      part = { type: "ellipse", cx: round(x + w / 2), cy: round(y + h / 2), rx: round(w / 2), ry: round(h / 2) };
+    } else {
+      part = { type: "rect", x: round(x), y: round(y), w: round(w), h: round(h), rx: 12 };
+    }
+    // 覆盖当前片段（如果存在），否则新增
+    if (orgState.parts[activeSegIdx]) {
+      orgState.parts[activeSegIdx] = part;
+    } else {
+      orgState.parts.push(part);
+      activeSegIdx = orgState.parts.length - 1;
+    }
+    saveState();
+    rebuildAll();
+  }
+
+  function addPolyDraftPoint(pt) {
+    if (!polyDraft || polyDraft.organ !== activeOrgan || polyDraft.segIdx !== activeSegIdx) {
+      polyDraft = { organ: activeOrgan, segIdx: activeSegIdx, points: [] };
+    }
+    const nextPoint = roundPoint(pt);
+    const first = polyDraft.points[0];
+    if (first && polyDraft.points.length >= 3 && pointDistance(first, nextPoint) <= 18) {
+      closePolyDraft();
+      return;
+    }
+    polyDraft.points.push(nextPoint);
+    renderPolyDraft();
+    refreshHUD();
+  }
+
+  function renderPolyDraft() {
+    ghostLayer.innerHTML = "";
+    if (!polyDraft || !polyDraft.points.length) return;
+    const points = polyDraft.points.map((p) => p.join(",")).join(" ");
+    const line = document.createElementNS("http://www.w3.org/2000/svg", polyDraft.points.length >= 3 ? "polygon" : "polyline");
+    line.setAttribute("class", "poly-draft");
+    line.setAttribute("points", points);
+    ghostLayer.appendChild(line);
+    polyDraft.points.forEach((p, idx) => {
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("class", "poly-draft-point" + (idx === 0 ? " poly-draft-start" : ""));
+      dot.setAttribute("cx", p[0]);
+      dot.setAttribute("cy", p[1]);
+      dot.setAttribute("r", idx === 0 ? 7 : 5);
+      ghostLayer.appendChild(dot);
+    });
+  }
+
+  function closePolyDraft() {
+    if (!polyDraft || polyDraft.points.length < 3) {
+      flash("多边形至少需要 3 个点");
+      return;
+    }
+    const orgState = curOrganState();
+    const part = { type: "polygon", points: polyDraft.points.map((p) => [Math.round(p[0]), Math.round(p[1])]) };
+    if (orgState.parts[activeSegIdx]) {
+      orgState.parts[activeSegIdx] = part;
+    } else {
+      orgState.parts.push(part);
+      activeSegIdx = orgState.parts.length - 1;
+    }
+    polyDraft = null;
+    ghostLayer.innerHTML = "";
+    saveState();
+    rebuildAll();
+    flash("多边形已闭合");
+  }
+
+  function cancelPolyDraft(showTip = true) {
+    if (!polyDraft) return;
+    polyDraft = null;
+    ghostLayer.innerHTML = "";
+    refreshHUD();
+    if (showTip) flash("已取消当前多边形绘制");
+  }
+
+  // 控制点拖拽 (移动 / 缩放)
+  function beginHandleDrag(evt, dir) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    const seg = curSeg();
+    if (!seg) return;
+    const startPt = clientToSvg(evt);
+    const origin = JSON.parse(JSON.stringify(seg));
+    function move(e) {
+      const p = clientToSvg(e);
+      const dx = p.x - startPt.x, dy = p.y - startPt.y;
+      applyHandleDelta(seg, origin, dir, dx, dy);
+      renderShapes();
+      renderHandles();
+      refreshHUD();
+    }
+    function up(e) {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      saveState();
+      rebuildAll();
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function applyHandleDelta(seg, origin, dir, dx, dy) {
+    if (seg.type === "polygon") {
+      if (dir === "poly-move") {
+        seg.points = origin.points.map((p) => [Math.round(p[0] + dx), Math.round(p[1] + dy)]);
+      }
+      return;
+    }
+    if (seg.type === "ellipse") {
+      if (dir === "move") { seg.cx = Math.round(origin.cx + dx); seg.cy = Math.round(origin.cy + dy); }
+      if (dir === "e") seg.rx = Math.max(4, Math.round(origin.rx + dx));
+      if (dir === "w") seg.rx = Math.max(4, Math.round(origin.rx - dx));
+      if (dir === "s") seg.ry = Math.max(4, Math.round(origin.ry + dy));
+      if (dir === "n") seg.ry = Math.max(4, Math.round(origin.ry - dy));
+    } else {
+      if (dir === "move") {
+        seg.x = Math.round(origin.x + dx);
+        seg.y = Math.round(origin.y + dy);
+      }
+      if (dir === "e") seg.w = Math.max(4, Math.round(origin.w + dx));
+      if (dir === "w") { seg.x = Math.round(origin.x + dx); seg.w = Math.max(4, Math.round(origin.w - dx)); }
+      if (dir === "s") seg.h = Math.max(4, Math.round(origin.h + dy));
+      if (dir === "n") { seg.y = Math.round(origin.y + dy); seg.h = Math.max(4, Math.round(origin.h - dy)); }
+    }
+  }
+
+  // ============= 右侧侧栏 =============
+  function refreshSidebar() {
+    const def = curOrganDef();
+    const st = curOrganState();
+    $("curOrganKey").textContent = def.key + " · " + def.label;
+    $("curOrganType").textContent = st.parts.length > 1 ? "multi (" + st.parts.length + ")" : (st.parts[0]?.type || "—");
+    $("curSegCount").textContent = st.parts.length;
+    // 类型按钮
+    const curType = polyDraft ? "polygon" : currentDrawType();
+    $("typeEllipseBtn").classList.toggle("on", curType === "ellipse");
+    $("typeRectBtn").classList.toggle("on", curType === "rect");
+    $("typePolyBtn").classList.toggle("on", curType === "polygon");
+    $("polyHint").style.display = curType === "polygon" ? "block" : "none";
+    // 片段列表
+    const listEl = $("segList");
+    listEl.innerHTML = "";
+    st.parts.forEach((p, i) => {
+      const item = document.createElement("div");
+      item.className = "seg" + (i === activeSegIdx ? " is-active" : "");
+      const coord = p.type === "polygon"
+        ? `points=${(p.points || []).length}`
+        : p.type === "ellipse"
+          ? `cx=${p.cx} cy=${p.cy} rx=${p.rx} ry=${p.ry}`
+          : `x=${p.x} y=${p.y} w=${p.w} h=${p.h}`;
+      item.innerHTML = `
+        <span class="seg-label">#${i + 1} ${p.type}</span>
+        <span class="seg-meta">${coord}</span>
+        <button data-idx="${i}" title="删除">✕</button>
+      `;
+      item.addEventListener("click", (e) => {
+        if (e.target.tagName === "BUTTON") return;
+        activeSegIdx = i;
+        cancelPolyDraft(false);
+        rebuildAll();
+      });
+      item.querySelector("button").addEventListener("click", () => {
+        st.parts.splice(i, 1);
+        if (activeSegIdx >= st.parts.length) activeSegIdx = Math.max(0, st.parts.length - 1);
+        cancelPolyDraft(false);
+        saveState();
+        rebuildAll();
+      });
+      listEl.appendChild(item);
+    });
+  }
+
+  function refreshHUD() {
+    $("hudOrgan").textContent = curOrganDef().label + " (" + activeOrgan + ")";
+    if (polyDraft) {
+      $("hudShape").textContent = `polygon draft · ${polyDraft.points.length}点`;
+      $("hudCoord").textContent = polyDraft.points.length >= 3
+        ? "点击起点附近 / 双击 / 回车闭合"
+        : "继续单击底图添加顶点";
+      return;
+    }
+    const seg = curSeg();
+    if (seg) {
+      $("hudShape").textContent = seg.type + (curOrganState().parts.length > 1 ? ` #${activeSegIdx + 1}` : "");
+      $("hudCoord").textContent = seg.type === "polygon"
+        ? `points=${(seg.points || []).length}`
+        : seg.type === "ellipse"
+          ? `cx=${seg.cx} cy=${seg.cy} rx=${seg.rx} ry=${seg.ry}`
+          : `x=${seg.x} y=${seg.y} w=${seg.w} h=${seg.h}`;
+    } else {
+      $("hudShape").textContent = "未绘制";
+      $("hudCoord").textContent = currentDrawType() === "polygon"
+        ? "单击底图添加多边形顶点"
+        : "在底图上拖拽矩形开始绘制";
+    }
+  }
+
+  function refreshJSON() {
+    $("jsonOutput").value = JSON.stringify(toExport(), null, 2);
+  }
+
+  // 导出为 TWIN_ORGANS 兼容格式
+  function toExport() {
+    const out = {};
+    ORGAN_DEFS.forEach((o) => {
+      const st = state[o.key];
+      if (!st.parts.length) return;
+      if (st.parts.length === 1) {
+        out[o.key] = { label: o.label, shape: st.parts[0] };
+      } else {
+        out[o.key] = { label: o.label, shape: { type: "multi", parts: st.parts } };
+      }
+    });
+    return out;
+  }
+
+  // ============= 工具栏按钮 =============
+  $("addSegBtn").addEventListener("click", () => {
+    const st = curOrganState();
+    const def = curOrganDef();
+    cancelPolyDraft(false);
+    activeSegIdx = st.parts.length;
+    flash(`新增 ${def.label} 第 ${activeSegIdx + 1} 段：在底图上拖拽创建`);
+    rebuildAll();
+  });
+  $("clearOrganBtn").addEventListener("click", () => {
+    cancelPolyDraft(false);
+    curOrganState().parts = [];
+    activeSegIdx = 0;
+    saveState(); rebuildAll();
+    flash(`已清空 ${curOrganDef().label}`);
+  });
+  $("resetAllBtn").addEventListener("click", () => {
+    if (!confirm("确定重置全部器官标注？")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = loadState();
+    activeOrgan = ORGAN_DEFS[0].key;
+    activeSegIdx = 0;
+    cancelPolyDraft(false);
+    rebuildAll();
+    flash("已重置全部");
+  });
+  $("copyBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("jsonOutput").value);
+      flash("已复制 JSON 到剪贴板");
+    } catch (_) {
+      flash("剪贴板失败，请手动复制右侧文本框");
+    }
+  });
+  $("typeEllipseBtn").addEventListener("click", () => switchType("ellipse"));
+  $("typeRectBtn").addEventListener("click", () => switchType("rect"));
+  $("typePolyBtn").addEventListener("click", () => switchType("polygon"));
+
+  function switchType(newType) {
+    const seg = curSeg();
+    cancelPolyDraft(false);
+    if (!seg) {
+      // 没片段，下次绘制使用 newType
+      curOrganDef().defaultType = newType;
+      refreshSidebar();
+      refreshHUD();
+      flash(`下次绘制将使用 ${newType === "ellipse" ? "椭圆" : newType === "rect" ? "矩形" : "多边形"}`);
+      return;
+    }
+    // 把当前片段转换类型
+    if (seg.type === newType) return;
+    const bounds = shapeToBounds(seg);
+    if (newType === "polygon") {
+      curOrganState().parts[activeSegIdx] = boundsToPolygon(bounds);
+    } else if (newType === "ellipse") {
+      curOrganState().parts[activeSegIdx] = {
+        type: "ellipse",
+        cx: Math.round(bounds.cx),
+        cy: Math.round(bounds.cy),
+        rx: Math.max(4, Math.round(bounds.w / 2)),
+        ry: Math.max(4, Math.round(bounds.h / 2)),
+      };
+    } else if (newType === "rect") {
+      curOrganState().parts[activeSegIdx] = {
+        type: "rect",
+        x: Math.round(bounds.x),
+        y: Math.round(bounds.y),
+        w: Math.max(4, Math.round(bounds.w)),
+        h: Math.max(4, Math.round(bounds.h)),
+        rx: 12,
+      };
+    }
+    saveState();
+    rebuildAll();
+  }
+
+  rebuildAll();
+  </script>
+</body>
+</html>

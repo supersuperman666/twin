@@ -1,0 +1,30 @@
+<view class="page">
+
+  <!-- 标题区 -->
+  <view class="header">
+    <view class="header-badge">mMRC</view>
+    <text class="header-title">{{question.title}}</text>
+    <text class="header-text">{{question.text}}</text>
+  </view>
+
+  <!-- 选项列表 -->
+  <view class="option-list">
+    <view
+      wx:for="{{question.options}}"
+      wx:key="grade"
+      class="option-item {{selectedIndex === index ? 'option-selected' : ''}}"
+      bindtap="onOptionTap"
+      data-index="{{index}}"
+    >
+      <view class="option-grade-badge">{{item.grade}}级</view>
+      <text class="option-text">{{item.label}}</text>
+      <view wx:if="{{selectedIndex === index}}" class="option-check"></view>
+    </view>
+  </view>
+
+  <!-- 底部 -->
+  <view class="bottom-nav">
+    <view class="nav-btn nav-back" bindtap="goBack">返回</view>
+  </view>
+
+</view>

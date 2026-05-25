@@ -1,0 +1,53 @@
+<view class="page">
+
+  <!-- 分级展示 -->
+  <view class="grade-card">
+    <text class="grade-label">mMRC 分级</text>
+    <view class="grade-display">
+      <text class="grade-number" style="color: {{levelColor}};">{{grade}}级</text>
+    </view>
+  </view>
+
+  <!-- 分级色带 -->
+  <view class="bar-card">
+    <view class="bar-container">
+      <view wx:for="{{barSegments}}" wx:key="label"
+        class="bar-segment {{activeBarIndex === index ? 'bar-active' : ''}}"
+        style="background: {{item.color}}; width: {{item.width}};">
+        <text class="bar-label">{{item.label}}</text>
+      </view>
+    </view>
+    <view class="bar-indicator-row">
+      <text class="bar-min">0级</text>
+      <text class="bar-max">4级</text>
+    </view>
+  </view>
+
+  <!-- 等级说明 -->
+  <view class="level-content">
+    <view class="level-badge-row">
+      <view class="level-badge" style="background: {{levelColor}}; color: #FFFFFF;">{{levelDesc}}</view>
+    </view>
+    <text class="level-desc-text">{{selectedLabel}}</text>
+  </view>
+
+  <!-- GOLD 分组 -->
+  <view class="info-card">
+    <text class="info-title">GOLD 分组</text>
+    <text class="info-text">{{goldGroup}}</text>
+    <text class="info-text">{{goldAdvice}}</text>
+  </view>
+
+  <!-- 评估说明 -->
+  <view class="info-card">
+    <text class="info-title">评估说明</text>
+    <text class="info-text">mMRC 呼吸困难分级是 GOLD 慢阻肺管理的重要评估工具，用于判断症状严重程度和分组。建议定期评估，关注分级变化。</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button class="btn-detail" bindtap="goDetail">查看详情</button>
+    <button class="btn-home" bindtap="goHome">返回首页</button>
+  </view>
+
+</view>

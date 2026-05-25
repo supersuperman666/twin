@@ -1,0 +1,79 @@
+{
+  "version": "organ-hotspots-v1",
+  "baseImage": "apps/doctor-pc/assets/models/digital-twin-base.png",
+  "coordinate": "normalized, origin top-left, based on 1024x1536 source images",
+  "notes": "文件名对应高亮器官。坐标为首轮人工校准热区，可直接用于 hover/click；正式开发前建议在页面里叠加预览微调。",
+  "organs": [
+    {
+      "organ": "airway",
+      "label": "气道",
+      "source": "apps/doctor-pc/assets/models/digital-twin-airway.png",
+      "center": { "x": 0.505, "y": 0.214 },
+      "radius": { "x": 0.023, "y": 0.079 },
+      "bbox": [0.482, 0.135, 0.528, 0.292],
+      "polygon": [[0.492, 0.137], [0.52, 0.137], [0.527, 0.247], [0.548, 0.291], [0.506, 0.276], [0.465, 0.291], [0.483, 0.247]],
+      "confidence": "ai-generated-review"
+    },
+    {
+      "organ": "heart",
+      "label": "心脏",
+      "source": "apps/doctor-pc/assets/models/digital-twin-heart.png",
+      "center": { "x": 0.517, "y": 0.305 },
+      "radius": { "x": 0.085, "y": 0.07 },
+      "bbox": [0.432, 0.235, 0.602, 0.375],
+      "polygon": [[0.486, 0.237], [0.56, 0.248], [0.603, 0.306], [0.573, 0.366], [0.508, 0.378], [0.451, 0.346], [0.431, 0.291]],
+      "confidence": "manual-review-high"
+    },
+    {
+      "organ": "liver",
+      "label": "肝脏",
+      "source": "apps/doctor-pc/assets/models/digital-twin-liver.png",
+      "center": { "x": 0.467, "y": 0.394 },
+      "radius": { "x": 0.142, "y": 0.064 },
+      "bbox": [0.325, 0.33, 0.609, 0.458],
+      "polygon": [[0.334, 0.341], [0.506, 0.323], [0.611, 0.352], [0.592, 0.399], [0.505, 0.442], [0.373, 0.458], [0.325, 0.421]],
+      "confidence": "manual-review-high"
+    },
+    {
+      "organ": "intestine",
+      "label": "肠道",
+      "source": "apps/doctor-pc/assets/models/digital-twin-intestine.png",
+      "center": { "x": 0.502, "y": 0.404 },
+      "radius": { "x": 0.105, "y": 0.108 },
+      "bbox": [0.397, 0.296, 0.607, 0.512],
+      "polygon": [[0.414, 0.303], [0.578, 0.306], [0.607, 0.37], [0.596, 0.465], [0.523, 0.514], [0.431, 0.492], [0.397, 0.407]],
+      "confidence": "manual-review-high"
+    },
+    {
+      "organ": "stomach",
+      "label": "胃",
+      "source": "apps/doctor-pc/assets/models/digital-twin-stomach.png",
+      "center": { "x": 0.56, "y": 0.378 },
+      "radius": { "x": 0.08, "y": 0.075 },
+      "bbox": [0.48, 0.303, 0.64, 0.453],
+      "polygon": [[0.513, 0.303], [0.601, 0.322], [0.643, 0.374], [0.61, 0.438], [0.526, 0.456], [0.481, 0.415], [0.489, 0.35]],
+      "confidence": "manual-review-high"
+    },
+    {
+      "organ": "kidney",
+      "label": "双肾",
+      "source": "apps/doctor-pc/assets/models/digital-twin-kidney.png",
+      "center": { "x": 0.5, "y": 0.445 },
+      "radius": { "x": 0.13, "y": 0.055 },
+      "bbox": [0.37, 0.39, 0.63, 0.5],
+      "polygon": [[0.383, 0.423], [0.421, 0.396], [0.453, 0.443], [0.421, 0.493], [0.383, 0.465], [0.547, 0.443], [0.579, 0.396], [0.617, 0.423], [0.617, 0.465], [0.579, 0.493]],
+      "confidence": "ai-generated-review"
+    },
+    {
+      "organ": "lung",
+      "label": "肺部",
+      "source": "apps/doctor-pc/assets/models/digital-twin-lung.png",
+      "center": { "x": 0.5, "y": 0.275 },
+      "radius": { "x": 0.135, "y": 0.1 },
+      "bbox": [0.365, 0.175, 0.635, 0.375],
+      "polygon": [[0.397, 0.188], [0.475, 0.181], [0.501, 0.254], [0.527, 0.181], [0.605, 0.188], [0.638, 0.355], [0.552, 0.375], [0.5, 0.325], [0.448, 0.375], [0.362, 0.355]],
+      "confidence": "manual-review-high",
+      "reviewNote": "用户确认原“肾.png”为肺部高亮图。"
+    }
+  ]
+}

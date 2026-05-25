@@ -28,6 +28,9 @@
     "pages/scale/cat/index",
     "pages/scale/cat-result/index",
     "pages/scale/cat-detail/index",
+    "pages/scale/mmrc/index",
+    "pages/scale/mmrc-result/index",
+    "pages/scale/mmrc-detail/index",
     "pages/scale/history/index"
   ],
   "window": {
