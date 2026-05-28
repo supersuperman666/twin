@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/screening/index",
+    "pages/alerts/index",
     "pages/record/index",
     "pages/record/form/index",
     "pages/record/glucose-detail/index",
@@ -11,6 +12,7 @@
     "pages/sleep/report/index",
     "pages/sleep/history/index",
     "pages/symptom/detail/index",
+    "pages/symptom/form/index",
     "pages/medication/detail/index",
     "pages/device/index/index",
     "pages/device/huawei-auth/index",
@@ -22,6 +24,7 @@
     "pages/profile/index",
     "pages/me/advice/index",
     "pages/me/tasks/index",
+    "pages/me/mock-config/index",
     "pages/followup/detail/index",
     "pages/followup/records/index",
     "pages/scale/index/index",

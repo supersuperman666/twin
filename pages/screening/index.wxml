@@ -1,14 +1,17 @@
 <view class="assessment-page">
   <view wx:if="{{!showResult}}" class="assessment-shell">
     <view class="assessment-nav" style="padding-top: {{statusBarHeight}}px;">
-      <button class="nav-icon" bindtap="handleBack">←</button>
-      <text class="nav-title">健康状况评估</text>
+      <button class="nav-icon" bindtap="handleBack">‹</button>
+      <view class="nav-copy">
+        <text class="nav-title">健康状况评估</text>
+        <text class="nav-subtitle">用于生成健康风险提示</text>
+      </view>
       <button class="nav-icon close" bindtap="goHome">×</button>
     </view>
 
     <view class="step-header">
       <view class="step-meta">
-        <text>步骤 {{currentIndex + 1}}/4</text>
+        <text>步骤 {{currentIndex + 1}}/{{steps.length}}</text>
         <text>{{currentStep.name}}</text>
       </view>
       <view class="progress-track">
@@ -18,8 +21,13 @@
 
     <scroll-view class="content-scroll" scroll-y="true">
       <view class="intro">
+        <text class="intro-kicker">{{currentStep.name}}</text>
         <text class="intro-title">{{currentStep.title}}</text>
         <text class="intro-desc">{{currentStep.desc}}</text>
+        <view class="intro-foot">
+          <text>{{visibleFields.length}} 项内容</text>
+          <text>带 * 为必填</text>
+        </view>
       </view>
 
       <block wx:for="{{visibleFields}}" wx:key="code">
@@ -138,20 +146,24 @@
     </scroll-view>
 
     <view class="bottom-actions">
-      <button wx:if="{{currentIndex > 0}}" class="ghost-btn" bindtap="handlePrev">← 上一步</button>
+      <button wx:if="{{currentIndex > 0}}" class="ghost-btn" bindtap="handlePrev">上一步</button>
       <button class="primary-btn {{canContinue ? '' : 'disabled'}}" bindtap="handleNext">
-        {{currentIndex === steps.length - 1 ? '提交评估 ✓' : '下一步 →'}}
+        {{currentIndex === steps.length - 1 ? '提交评估' : '下一步'}}
       </button>
     </view>
   </view>
 
   <view wx:else class="result-page">
     <view class="result-hero">
-      <text class="result-kicker">测评完成</text>
-      <text class="result-title">{{result.resultTitle}}</text>
-      <view class="score-ring">
-        <text class="score">{{result.score}}</text>
-        <text class="score-label">健康分</text>
+      <view class="result-hero-top">
+        <view>
+          <text class="result-kicker">测评完成</text>
+          <text class="result-title">{{result.resultTitle}}</text>
+        </view>
+        <view class="score-ring">
+          <text class="score">{{result.score}}</text>
+          <text class="score-label">健康分</text>
+        </view>
       </view>
       <view class="result-risk-pill">{{result.riskName}}</view>
       <text class="result-desc">{{result.primaryAdvice}}</text>

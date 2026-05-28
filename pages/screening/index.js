@@ -400,6 +400,13 @@ Page({
       this.refreshStep()
       return
     }
+    if (options.mode === 'result') {
+      const result = wx.getStorageSync('screeningResult')
+      if (result && result.score) {
+        this.setData({ result, showResult: true })
+        return
+      }
+    }
     const saved = wx.getStorageSync('screeningDraft')
     if (saved && saved.answers) {
       this.setData({ answers: { ...initialAnswers, ...saved.answers }, currentIndex: saved.currentIndex || 0 }, () => {

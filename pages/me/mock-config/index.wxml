@@ -1,0 +1,75 @@
+<view class="page">
+  <view class="hero">
+    <text class="hero-title">Mock 演示配置</text>
+    <text class="hero-desc">用于现场演示快速切换患者端状态，配置仅保存在本机小程序缓存中。</text>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text>用户状态</text>
+    </view>
+    <view class="option-list">
+      <view
+        wx:for="{{userStages}}"
+        wx:key="value"
+        class="option {{config.userStage === item.value ? 'active' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="setUserStage"
+      >
+        <view>
+          <text class="option-title">{{item.label}}</text>
+          <text class="option-desc">{{item.desc}}</text>
+        </view>
+        <text class="option-check">{{config.userStage === item.value ? '✓' : ''}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text>方案状态</text>
+    </view>
+    <view class="option-list">
+      <view
+        wx:for="{{planStatuses}}"
+        wx:key="value"
+        class="option {{config.planStatus === item.value ? 'active' : ''}}"
+        data-value="{{item.value}}"
+        bindtap="setPlanStatus"
+      >
+        <view>
+          <text class="option-title">{{item.label}}</text>
+          <text class="option-desc">{{item.desc}}</text>
+        </view>
+        <text class="option-check">{{config.planStatus === item.value ? '✓' : ''}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text>首页演示项</text>
+    </view>
+    <view class="switch-list">
+      <view class="switch-row">
+        <view>
+          <text class="switch-title">展示风险预警</text>
+          <text class="switch-desc">控制首页风险预警卡是否出现</text>
+        </view>
+        <switch checked="{{config.showRiskAlert}}" bindchange="toggleRiskAlert" color="#237BE8" />
+      </view>
+      <view class="switch-row">
+        <view>
+          <text class="switch-title">设备同步异常</text>
+          <text class="switch-desc">控制首页我的设备是否展示需处理状态</text>
+        </view>
+        <switch checked="{{config.deviceAbnormal}}" bindchange="toggleDeviceAbnormal" color="#237BE8" />
+      </view>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="primary" bindtap="goHome">去首页查看</button>
+    <button class="ghost" bindtap="resetDemo">恢复默认</button>
+  </view>
+</view>

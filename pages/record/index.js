@@ -1,4 +1,5 @@
 const recordStore = require('../../utils/record-store')
+const symptomConfig = require('../../utils/symptom-config')
 
 Page({
   data: {
@@ -187,9 +188,9 @@ Page({
       oxygenMetrics,
       symptomRecords: symptoms.length ? symptoms.map((item) => ({
         time: recordStore.formatShortTime(item),
-        title: item.title || item.metric_name,
-        desc: item.desc || item.remark || '已记录',
-        level: item.level || item.status_text || '已记录'
+        title: item.title || symptomConfig.generateTitle(item.symptom_items || []) || '已记录',
+        desc: item.desc || symptomConfig.generateDesc(item.duration, item.measures_taken) || item.remark || '已记录',
+        level: item.level || item.severity || '已记录'
       })) : this.data.symptomRecords,
       medicineRecords: medications.length ? medications.map((item) => ({
         time: recordStore.formatShortTime(item),
@@ -242,6 +243,10 @@ Page({
 
   goRecordForm(event) {
     const { type = 'glucose', title = '' } = event.currentTarget.dataset
+    if (type === 'symptom') {
+      wx.navigateTo({ url: '/pages/symptom/form/index' })
+      return
+    }
     if (type === 'profile') {
       wx.switchTab({ url: '/pages/me/index' })
       return

@@ -90,11 +90,23 @@ const defaultRecords = [
     id: 'mock_symptom_1',
     metric_code: 'symptom',
     metric_name: '症状',
-    title: '头痛，略有头晕',
-    desc: '持续约2小时，休息后缓解',
+    has_discomfort: true,
+    symptom_items: ['头痛', '头晕'],
+    symptom_domains: ['mixed', 'glucose_like'],
+    severity: '轻度',
+    severity_code: 'mild',
+    occurred_date: '2026-05-17',
+    occurred_time: '19:30',
+    duration: '30分钟-2小时',
+    duration_code: '30min_2h',
+    accompanied_abnormal: ['不清楚'],
+    measures_taken: ['休息'],
+    source: 'manual',
+    source_text: '主动记录',
+    title: '头痛、头晕',
+    desc: '持续30分钟-2小时，已休息',
     level: '轻度',
     recorded_at: '2026-05-17 19:30',
-    source: 'manual',
     remark: ''
   },
   {
@@ -163,12 +175,113 @@ function sourceText(source) {
   return '手动记录'
 }
 
+function listSymptomRecords(options = {}) {
+  const records = listRecords({ metric: 'symptom' })
+  if (!options.domain) return records
+  return records.filter(r => {
+    const domains = r.symptom_domains
+    if (!domains || !domains.length) {
+      return options.domain === 'other' || options.domain === 'mixed' || options.domain === 'general'
+    }
+    return domains.includes(options.domain)
+  })
+}
+
+function getTodaySymptomStatus() {
+  const today = formatDateStr(new Date())
+  const allRecords = listSymptomRecords()
+  const todayRecords = allRecords.filter(r =>
+    (r.recorded_at || '').startsWith(today)
+  )
+  const discomfortRecords = todayRecords.filter(r => r.has_discomfort === true)
+  const noDiscomfortRecords = todayRecords.filter(r => r.has_discomfort === false)
+
+  if (noDiscomfortRecords.length > 0 && discomfortRecords.length === 0) {
+    return { hasDiscomfort: false, maxSeverity: '无症状', summary: '今日无不适' }
+  }
+  if (discomfortRecords.length === 0) {
+    return { hasDiscomfort: null, maxSeverity: '', summary: '暂无记录' }
+  }
+
+  const severityOrder = { mild: 1, moderate: 2, severe: 3 }
+  const maxRecord = discomfortRecords.reduce((max, r) => {
+    const current = severityOrder[r.severity_code] || 0
+    const existing = severityOrder[max.severity_code] || 0
+    return current > existing ? r : max
+  }, discomfortRecords[0])
+
+  const allItems = discomfortRecords.flatMap(r => r.symptom_items || [])
+  const uniqueItems = [...new Set(allItems)]
+
+  return {
+    hasDiscomfort: true,
+    maxSeverity: maxRecord.severity || maxRecord.level || '已记录',
+    severityCode: maxRecord.severity_code || 'mild',
+    summary: uniqueItems.slice(0, 3).join('、') + (uniqueItems.length > 3 ? '等' : ''),
+    recordCount: discomfortRecords.length,
+  }
+}
+
+function getSymptomSummary7Days() {
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const records = listSymptomRecords().filter(r => {
+    const ts = timestamp(r)
+    return ts >= sevenDaysAgo.getTime() && ts <= now.getTime()
+  })
+
+  const discomfortRecords = records.filter(r => r.has_discomfort === true)
+  const uniqueDays = new Set(discomfortRecords.map(r => (r.recorded_at || '').slice(0, 10)))
+
+  const severityOrder = { mild: 1, moderate: 2, severe: 3 }
+  const maxLevel = discomfortRecords.reduce((max, r) => {
+    const level = severityOrder[r.severity_code] || 0
+    return level > max ? level : max
+  }, 0)
+  const maxSeverityText = maxLevel === 3 ? '重度' : maxLevel === 2 ? '中度' : maxLevel === 1 ? '轻度' : '无'
+
+  const domainDays = {}
+  discomfortRecords.forEach(r => {
+    const day = (r.recorded_at || '').slice(0, 10)
+    ;(r.symptom_domains || []).forEach(domain => {
+      if (!domainDays[domain]) domainDays[domain] = new Set()
+      domainDays[domain].add(day)
+    })
+  })
+
+  return {
+    symptomDays: uniqueDays.size,
+    maxSeverity: maxSeverityText,
+    respiratoryDays: (domainDays.respiratory || new Set()).size,
+    sleepDays: (domainDays.sleep || new Set()).size,
+    glucoseDays: (domainDays.glucose_like || new Set()).size,
+  }
+}
+
+function formatDateStr(date) {
+  const y = date.getFullYear()
+  const m = `${date.getMonth() + 1}`.padStart(2, '0')
+  const d = `${date.getDate()}`.padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function formatTimeStr(date) {
+  const h = `${date.getHours()}`.padStart(2, '0')
+  const m = `${date.getMinutes()}`.padStart(2, '0')
+  return `${h}:${m}`
+}
+
 module.exports = {
   addRecord,
   defaultRecords,
+  formatDateStr,
   formatDay,
   formatShortTime,
+  formatTimeStr,
   getLatestRecord,
+  getSymptomSummary7Days,
+  getTodaySymptomStatus,
   listRecords,
+  listSymptomRecords,
   sourceText
 }

@@ -1,81 +1,107 @@
 <view class="page">
   <view class="page-header">
+    <text class="page-kicker">今日任务</text>
     <text class="page-title">我的任务</text>
-    <text class="page-desc">查看仍在进行中的任务，以及已经完成或结束的历史任务。</text>
+    <text class="page-desc">承接首页全部待办，集中查看今日要完成、逾期可补和已完成的任务。</text>
   </view>
 
-  <view class="group-section">
-    <view class="group-title-row">
-      <text class="group-title">进行中</text>
-      <text class="group-count">{{pendingTasks.length}}</text>
+  <view class="summary-grid">
+    <view class="summary-card primary">
+      <text class="summary-value">{{summary.pending}}</text>
+      <text class="summary-label">待完成</text>
     </view>
-
-    <view wx:if="{{!pendingTasks.length}}" class="empty-card">
-      <text class="empty-text">当前没有进行中的任务</text>
+    <view class="summary-card warning">
+      <text class="summary-value">{{summary.overdue}}</text>
+      <text class="summary-label">逾期可补</text>
     </view>
-
-    <view wx:for="{{pendingTasks}}" wx:key="id" wx:for-item="task" class="timeline-item">
-      <view class="timeline-side">
-        <view class="timeline-dot active"></view>
-        <view class="timeline-line"></view>
-      </view>
-      <view class="timeline-main">
-        <view class="task-card active-card" bindtap="toggleCard" data-id="{{task.id}}">
-          <view class="card-top">
-            <view>
-              <text class="time-text">{{task.time}}</text>
-              <text class="title-text">{{task.title}}</text>
-            </view>
-            <view class="badge active">{{task.status}}</view>
-          </view>
-          <text class="source-text">{{task.source}}</text>
-          <text class="summary-text">{{task.summary}}</text>
-
-          <view wx:if="{{expandedId === task.id}}" class="expand-body">
-            <view class="detail-card">
-              <text class="detail-label">任务说明</text>
-              <text class="detail-text">{{task.detail}}</text>
-            </view>
-          </view>
-        </view>
-      </view>
+    <view class="summary-card done">
+      <text class="summary-value">{{summary.completed}}</text>
+      <text class="summary-label">已完成</text>
     </view>
   </view>
 
   <view class="group-section">
     <view class="group-title-row">
-      <text class="group-title">历史任务</text>
-      <text class="group-count">{{historyTasks.length}}</text>
+      <text class="group-title">今日要完成</text>
+      <text class="group-count">{{todayTasks.length}}</text>
     </view>
 
-    <view wx:if="{{!historyTasks.length}}" class="empty-card">
-      <text class="empty-text">当前还没有历史任务</text>
+    <view wx:if="{{!todayTasks.length}}" class="empty-card">
+      <text class="empty-title">今日暂无待办</text>
+      <text class="empty-text">当前没有必须完成的记录、复测或随访准备任务。</text>
     </view>
 
-    <view wx:for="{{historyTasks}}" wx:key="id" wx:for-item="task" class="timeline-item">
-      <view class="timeline-side">
-        <view class="timeline-dot {{task.statusKey === 'done' ? 'done' : 'expired'}}"></view>
-        <view class="timeline-line"></view>
-      </view>
-      <view class="timeline-main">
-        <view class="task-card" bindtap="toggleCard" data-id="{{task.id}}">
-          <view class="card-top">
-            <view>
-              <text class="time-text">{{task.time}}</text>
-              <text class="title-text">{{task.title}}</text>
-            </view>
-            <view class="badge {{task.statusKey === 'done' ? 'done' : 'expired'}}">{{task.status}}</view>
-          </view>
+    <view wx:for="{{todayTasks}}" wx:key="id" wx:for-item="task" class="task-card active-card">
+      <view class="card-top" bindtap="toggleCard" data-id="{{task.id}}">
+        <view class="card-main">
+          <text class="time-text">{{task.time}}</text>
+          <text class="title-text">{{task.title}}</text>
           <text class="source-text">{{task.source}}</text>
-          <text class="summary-text">{{task.summary}}</text>
-
-          <view wx:if="{{expandedId === task.id}}" class="expand-body">
-            <view class="detail-card">
-              <text class="detail-label">任务记录</text>
-              <text class="detail-text">{{task.detail}}</text>
-            </view>
-          </view>
         </view>
+        <view class="badge active">{{task.status}}</view>
+      </view>
+      <text class="summary-text">{{task.summary}}</text>
+      <view wx:if="{{expandedId === task.id}}" class="expand-body">
+        <text class="detail-label">任务说明</text>
+        <text class="detail-text">{{task.detail}}</text>
+      </view>
+      <button wx:if="{{task.canAction}}" class="primary-btn" data-url="{{task.actionUrl}}" bindtap="handleTaskAction">{{task.actionText}}</button>
+    </view>
+  </view>
+
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">逾期可补</text>
+      <text class="group-count">{{overdueTasks.length}}</text>
+    </view>
+
+    <view wx:if="{{!overdueTasks.length}}" class="empty-card">
+      <text class="empty-title">没有逾期任务</text>
+      <text class="empty-text">逾期但仍允许补记的任务会展示在这里。</text>
+    </view>
+
+    <view wx:for="{{overdueTasks}}" wx:key="id" wx:for-item="task" class="task-card overdue-card">
+      <view class="card-top" bindtap="toggleCard" data-id="{{task.id}}">
+        <view class="card-main">
+          <text class="time-text">{{task.time}}</text>
+          <text class="title-text">{{task.title}}</text>
+          <text class="source-text">{{task.source}}</text>
+        </view>
+        <view class="badge expired">{{task.status}}</view>
+      </view>
+      <text class="summary-text">{{task.summary}}</text>
+      <view wx:if="{{expandedId === task.id}}" class="expand-body">
+        <text class="detail-label">任务记录</text>
+        <text class="detail-text">{{task.detail}}</text>
+      </view>
+      <button wx:if="{{task.canAction}}" class="secondary-btn" data-url="{{task.actionUrl}}" bindtap="handleTaskAction">{{task.actionText}}</button>
+    </view>
+  </view>
+
+  <view class="group-section">
+    <view class="group-title-row">
+      <text class="group-title">已完成</text>
+      <text class="group-count">{{completedTasks.length}}</text>
+    </view>
+
+    <view wx:if="{{!completedTasks.length}}" class="empty-card">
+      <text class="empty-title">还没有完成记录</text>
+      <text class="empty-text">完成后的复测、随访准备和确认任务会保留在这里。</text>
+    </view>
+
+    <view wx:for="{{completedTasks}}" wx:key="id" wx:for-item="task" class="task-card">
+      <view class="card-top" bindtap="toggleCard" data-id="{{task.id}}">
+        <view class="card-main">
+          <text class="time-text">{{task.time}}</text>
+          <text class="title-text">{{task.title}}</text>
+          <text class="source-text">{{task.source}}</text>
+        </view>
+        <view class="badge done">{{task.status}}</view>
+      </view>
+      <text class="summary-text">{{task.summary}}</text>
+      <view wx:if="{{expandedId === task.id}}" class="expand-body">
+        <text class="detail-label">完成记录</text>
+        <text class="detail-text">{{task.detail}}</text>
       </view>
     </view>
   </view>

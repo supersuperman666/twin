@@ -1,0 +1,91 @@
+<view class="page">
+  <view class="discomfort-toggle">
+    <view class="toggle-option {{has_discomfort ? 'active' : ''}}" data-value="true" bindtap="toggleDiscomfort">有不适</view>
+    <view class="toggle-option {{!has_discomfort ? 'active' : ''}}" data-value="false" bindtap="toggleDiscomfort">今日无不适</view>
+  </view>
+
+  <block wx:if="{{showDiscomfortFields}}">
+    <view class="card">
+      <text class="field-label">选择症状</text>
+      <view wx:for="{{symptomGroups}}" wx:key="key" class="symptom-group">
+        <text class="group-label">{{item.label}}</text>
+        <view class="tag-wrap">
+          <view wx:for="{{item.items}}" wx:for-item="symptom" wx:key="value"
+            class="tag-option {{symptom.selected ? 'selected' : ''}}"
+            data-value="{{symptom.value}}" bindtap="toggleSymptomItem">
+            {{symptom.label}}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <text class="field-label">严重程度</text>
+      <view class="severity-row">
+        <view wx:for="{{severityOptions}}" wx:key="value"
+          class="severity-option {{severity_code === item.value ? 'active' : ''}}"
+          data-value="{{item.value}}" data-label="{{item.label}}" bindtap="selectSeverity">
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <text class="field-label">持续时长</text>
+      <view class="duration-row">
+        <view wx:for="{{durationOptions}}" wx:key="value"
+          class="duration-option {{duration_code === item.value ? 'active' : ''}}"
+          data-value="{{item.value}}" data-label="{{item.label}}" bindtap="selectDuration">
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <text class="field-label">伴随指标异常</text>
+      <view class="tag-wrap compact">
+        <view wx:for="{{accompaniedAbnormalOptions}}" wx:key="value"
+          class="tag-option {{item.selected ? 'selected' : ''}} {{item.exclusive ? 'exclusive' : ''}}"
+          data-value="{{item.value}}" bindtap="toggleAbnormal">
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <text class="field-label">已采取处理</text>
+      <view class="tag-wrap compact">
+        <view wx:for="{{measuresTakenOptions}}" wx:key="value"
+          class="tag-option {{item.selected ? 'selected' : ''}} {{item.exclusive ? 'exclusive' : ''}}"
+          data-value="{{item.value}}" bindtap="toggleMeasure">
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="card">
+    <picker mode="date" value="{{occurred_date}}" bindchange="onDateChange">
+      <view class="form-row"><text>发生日期</text><view class="row-value"><text>{{occurred_date}}</text><text class="chevron">›</text></view></view>
+    </picker>
+    <picker mode="time" value="{{occurred_time}}" bindchange="onTimeChange">
+      <view class="form-row"><text>发生时间</text><view class="row-value"><text>{{occurred_time}}</text><text class="chevron">›</text></view></view>
+    </picker>
+  </view>
+
+  <view class="card">
+    <view class="remark-head">
+      <text>备注</text>
+      <text class="remark-count">{{remark_length}}/100</text>
+    </view>
+    <textarea class="remark-input" value="{{remark}}" maxlength="100" auto-height placeholder="补充描述症状细节或诱因" placeholder-class="remark-placeholder" bindinput="onRemarkInput"></textarea>
+  </view>
+
+  <view wx:if="{{showRiskWarning}}" class="risk-warning-card">
+    <text class="risk-warning-icon">⚠</text>
+    <text class="risk-warning-text">{{riskWarningText}}</text>
+    <text class="risk-warning-note">此提示不阻止保存，请根据实际情况判断。</text>
+  </view>
+
+  <button class="submit-btn {{canSave ? '' : 'disabled'}}" bindtap="saveRecord">保存</button>
+</view>

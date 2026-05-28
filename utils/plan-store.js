@@ -153,6 +153,18 @@ function confirmPlan() {
   return plan;
 }
 
+function setPlanStatus(status) {
+  const plan = getPlan();
+  plan.patientStatus = status;
+  if (status === 'active') {
+    plan.confirmedAt = plan.confirmedAt || new Date().toISOString();
+  } else {
+    delete plan.confirmedAt;
+  }
+  wx.setStorageSync(PLAN_KEY, plan);
+  return plan;
+}
+
 function reportQuestion(text) {
   const questions = wx.getStorageSync('planQuestions') || [];
   questions.unshift({ planId: getPlan().id, text, createdAt: new Date().toISOString() });
@@ -170,4 +182,4 @@ function completeTask(taskId) {
   return status;
 }
 
-module.exports = { getPlan, getHistoryPlans, confirmPlan, reportQuestion, getTaskStatus, completeTask };
+module.exports = { getPlan, getHistoryPlans, confirmPlan, setPlanStatus, reportQuestion, getTaskStatus, completeTask };

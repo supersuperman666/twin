@@ -1,0 +1,67 @@
+<view class="page">
+  <view class="page-header">
+    <text class="page-kicker">风险提示</text>
+    <text class="page-title">预警记录</text>
+    <text class="page-desc">集中查看待处理、待医生处理和历史风险提示，按建议动作完成复测、查看报告或处理设备。</text>
+  </view>
+
+  <view class="summary-grid">
+    <view class="summary-card pending">
+      <text class="summary-value">{{summary.pending}}</text>
+      <text class="summary-label">待处理</text>
+    </view>
+    <view class="summary-card doctor">
+      <text class="summary-value">{{summary.doctor}}</text>
+      <text class="summary-label">待医生</text>
+    </view>
+    <view class="summary-card done">
+      <text class="summary-value">{{summary.done}}</text>
+      <text class="summary-label">已处理</text>
+    </view>
+    <view class="summary-card ignored">
+      <text class="summary-value">{{summary.ignored}}</text>
+      <text class="summary-label">已忽略</text>
+    </view>
+  </view>
+
+  <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="filter-row">
+      <view
+        wx:for="{{filters}}"
+        wx:key="key"
+        class="filter-chip {{activeFilter === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchFilter"
+      >{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!alerts.length}}" class="empty-card">
+    <text class="empty-title">暂无预警记录</text>
+    <text class="empty-text">当前筛选条件下没有风险提示。</text>
+  </view>
+
+  <view wx:for="{{alerts}}" wx:key="id" wx:for-item="alert" class="alert-card {{alert.levelKey}}">
+    <view class="alert-top">
+      <view class="alert-main">
+        <view class="level-row">
+          <text class="level-badge {{alert.levelKey}}">{{alert.level}}</text>
+          <text class="time-text">{{alert.time}}</text>
+        </view>
+        <text class="alert-title">{{alert.title}}</text>
+      </view>
+      <text class="status-text {{alert.statusKey}}">{{alert.status}}</text>
+    </view>
+
+    <view class="reason-box">
+      <text class="reason-label">原因</text>
+      <text class="reason-text">{{alert.reason}}</text>
+    </view>
+
+    <view class="evidence-row">
+      <text>{{alert.evidence}}</text>
+    </view>
+
+    <button class="action-btn {{alert.statusKey === 'pending' ? 'primary' : 'secondary'}}" data-url="{{alert.actionUrl}}" bindtap="handleAlertAction">{{alert.actionText}}</button>
+  </view>
+</view>

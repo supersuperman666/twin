@@ -1,7 +1,36 @@
 {
   "description": "多病种慢病管理微信小程序首页原型",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "apps"
+      },
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "folder",
+        "value": "cat_design"
+      },
+      {
+        "type": "folder",
+        "value": "tools"
+      },
+      {
+        "type": "file",
+        "value": "homepage-preview.png"
+      },
+      {
+        "type": "file",
+        "value": "index.html"
+      },
+      {
+        "type": "file",
+        "value": "CLAUDE.md"
+      }
+    ],
     "include": []
   },
   "setting": {

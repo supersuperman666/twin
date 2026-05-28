@@ -1,174 +1,285 @@
 <view class="page">
-  <view class="top-area">
-    <view class="stage-switch">
-      <button class="{{userStage === 'new' ? 'active' : ''}}" data-stage="new" bindtap="switchStage">新用户</button>
-      <button class="{{userStage === 'assessed' ? 'active' : ''}}" data-stage="assessed" bindtap="switchStage">已筛查</button>
-      <button class="{{userStage === 'managed' ? 'active' : ''}}" data-stage="managed" bindtap="switchStage">管理中</button>
-    </view>
-
-  <view wx:if="{{userStage === 'new'}}" class="hero hero-new">
-    <view class="hero-top">
-      <view class="greeting">
-        <text class="hero-title">先完成健康筛查</text>
-        <text class="hero-desc">采集病史、症状、用药和生活方式，生成你的慢病风险画像。</text>
+  <view wx:if="{{userStage === 'managed'}}">
+    <view class="status-card">
+      <view class="status-main">
+        <view class="status-copy">
+          <text class="status-kicker">今日状态</text>
+          <text class="status-title">{{currentPatient.name}}，{{todayStatus.label}}</text>
+          <text class="status-desc">{{todayStatus.desc}}</text>
+        </view>
+        <view class="score-ring">
+          <text class="score-value">{{todayStatus.score}}</text>
+          <text class="score-label">健康分</text>
+        </view>
       </view>
-      <view class="risk-badge">
-        <view class="risk-inner">
-          <text class="risk-title">待评估</text>
-          <text class="risk-label">当前状态</text>
+      <view class="status-foot">
+        <text>较昨日 {{todayStatus.change}}</text>
+        <text>{{currentPatient.patientDesc}}</text>
+      </view>
+      <view class="indicator-grid">
+        <view wx:for="{{coreIndicators}}" wx:key="label" class="indicator-card {{item.tone}}" data-path="{{item.path}}" bindtap="goPath">
+          <view class="indicator-top">
+            <text class="indicator-label">{{item.label}}</text>
+            <text class="indicator-status">{{item.status}}</text>
+          </view>
+          <view class="indicator-value-row">
+            <text class="indicator-value">{{item.value}}</text>
+            <text class="indicator-unit">{{item.unit}}</text>
+          </view>
+          <text class="indicator-meta">{{item.meta}}</text>
         </view>
       </view>
     </view>
-    <view class="hero-note">约 3 分钟完成，重点判断糖尿病、慢阻肺、睡眠呼吸障碍相关风险。</view>
-    <view class="screening-grid">
-      <view><text>病史</text><text>确诊/家族史</text></view>
-      <view><text>症状</text><text>血糖/咳喘/睡眠</text></view>
-      <view><text>方案</text><text>任务/用药/随访</text></view>
-    </view>
-    <button class="primary-btn" bindtap="handlePrimaryAction">开始健康筛查</button>
-  </view>
 
-  <view wx:elif="{{userStage === 'assessed'}}" class="hero">
-    <view class="hero-top">
-      <view class="greeting">
-        <text class="hero-title">{{assessmentResult.homeTitle}}</text>
-        <text class="hero-desc">{{assessmentResult.primaryAdvice}}</text>
+    <view class="section-head compact">
+      <text>快捷记录</text>
+    </view>
+    <view class="quick-grid">
+      <view wx:for="{{quickRecords}}" wx:key="label" class="quick" data-path="{{item.path}}" bindtap="goPath">
+        <view class="quick-icon">
+          <view wx:if="{{item.type === 'glucose'}}" class="css-icon glucose-icon"></view>
+          <view wx:elif="{{item.type === 'pressure'}}" class="css-icon pressure-mini"></view>
+          <view wx:elif="{{item.type === 'medicine'}}" class="css-icon pill-icon"><view></view></view>
+          <view wx:elif="{{item.type === 'symptom'}}" class="css-icon symptom-icon"></view>
+          <view wx:else class="css-icon more-icon"></view>
+        </view>
+        <text>{{item.label}}</text>
       </view>
-      <view class="risk-badge">
-        <view class="risk-inner">
-          <text class="risk-title">{{assessmentResult.riskName}}</text>
-          <text class="risk-label">{{assessmentResult.score}}健康分</text>
+    </view>
+
+    <view wx:if="{{riskAlert}}" class="module-card risk-card">
+      <view class="module-title tight">
+        <view>
+          <text class="module-kicker">风险预警</text>
+          <text class="module-heading">{{riskAlert.title}}</text>
+        </view>
+        <text class="risk-tag">{{riskAlert.level}}</text>
+      </view>
+      <text class="module-desc">{{riskAlert.desc}}</text>
+      <view class="card-actions">
+        <button class="primary-action" data-path="{{riskAlert.path}}" bindtap="goPath">{{riskAlert.action}}</button>
+        <button class="ghost-action" data-path="/pages/alerts/index" bindtap="goPath">查看全部风险</button>
+      </view>
+    </view>
+
+    <view class="module-card">
+      <view class="module-title">
+        <view>
+          <text class="module-kicker">今日待办</text>
+          <text class="module-heading">{{taskSummary.done}}/{{taskSummary.total}} 已完成</text>
+        </view>
+        <button class="link-btn" data-path="/pages/me/tasks/index" bindtap="goPath">查看全部</button>
+      </view>
+      <view class="todo-list">
+        <view wx:for="{{todayTasks}}" wx:key="id" class="todo-row {{item.status}}">
+          <view class="todo-dot">{{item.status === 'done' ? '✓' : ''}}</view>
+          <view class="todo-info">
+            <text class="todo-title">{{item.title}}</text>
+            <text class="todo-meta">{{item.time}}｜{{item.source}}</text>
+          </view>
+          <button wx:if="{{item.status !== 'done'}}" class="todo-action" data-path="{{item.path}}" bindtap="goPath">{{item.action}}</button>
+          <text wx:else class="done-label">已完成</text>
         </view>
       </view>
     </view>
-    <view class="hero-note">健康状况评估已完成，可基于本次结果建立 7 天初始管理计划。</view>
-    <view class="hero-metrics">
-      <view wx:for="{{assessmentMetrics}}" wx:key="label" class="metric"><text>{{item.label}}</text><text class="value">{{item.value}}</text></view>
+
+    <view wx:if="{{doctorArrangement}}" class="module-card doctor-card">
+      <view class="module-title tight">
+        <view>
+          <text class="module-kicker">医生新安排</text>
+          <text class="module-heading">{{doctorArrangement.title}}</text>
+        </view>
+        <text class="doctor-name">{{doctorArrangement.doctorName}}</text>
+      </view>
+      <text class="module-desc two-line">{{doctorArrangement.desc}}</text>
+      <view class="card-actions">
+        <button class="primary-action" bindtap="onAdviceTap">查看</button>
+      </view>
     </view>
-    <view class="assessed-actions">
-      <button class="secondary-btn" bindtap="restartAssessment">重新测评</button>
-      <button class="primary-btn inline" bindtap="handlePrimaryAction">生成管理方案</button>
+
+    <view wx:if="{{nearestFollowup}}" class="module-card follow-card">
+      <view class="module-title tight">
+        <view>
+          <text class="module-kicker">下次随访</text>
+          <text class="module-heading">{{nearestFollowup.title}}</text>
+        </view>
+        <text class="method-tag">{{nearestFollowup.method}}</text>
+      </view>
+      <view class="follow-detail">
+        <text class="follow-time">{{nearestFollowup.dueAt}}</text>
+        <text class="module-desc">{{nearestFollowup.patientInstruction}}</text>
+      </view>
+      <view class="card-actions">
+        <button class="ghost-action" data-path="/pages/followup/records/index" bindtap="goPath">查看准备事项</button>
+      </view>
+    </view>
+
+    <view wx:if="{{planSummary}}" class="module-card plan-lite">
+      <view class="module-title tight">
+        <view>
+          <text class="module-kicker">当前方案</text>
+          <text class="module-heading">{{planSummary.title}}｜{{planSummary.stage}}</text>
+        </view>
+        <text class="plan-status">{{planSummary.status}}</text>
+      </view>
+      <text class="module-desc">{{planSummary.objective}}</text>
+      <view class="plan-meta-row">
+        <text>主责医生：{{planSummary.doctor}}</text>
+      </view>
+      <view class="card-actions">
+        <button class="ghost-action" data-path="/pages/plan/index" data-switchtab="true" bindtap="goPath">查看方案</button>
+      </view>
+    </view>
+
+    <view wx:if="{{deviceStatus}}" class="module-card device-lite">
+      <view class="module-title tight">
+        <view>
+          <text class="module-kicker">我的设备</text>
+          <text class="module-heading">已绑定 {{deviceStatus.count}} 台</text>
+        </view>
+        <text class="device-state {{deviceStatus.abnormal ? 'warn' : ''}}">{{deviceStatus.abnormal ? '需处理' : '正常'}}</text>
+      </view>
+      <text class="module-desc">{{deviceStatus.abnormal ? deviceStatus.desc : '设备同步正常'}}｜最近同步：{{deviceStatus.latestSync}}</text>
+      <view class="card-actions">
+        <button class="ghost-action" data-path="/pages/device/index/index" bindtap="goPath">查看设备</button>
+      </view>
     </view>
   </view>
 
-  <view wx:else class="hero">
-    <view class="hero-top">
-      <view class="greeting">
-        <text class="hero-title">陈女士，需关注</text>
-        <text class="hero-desc">夜间低氧叠加晨起血糖偏高，建议先完成复测和用药确认。</text>
+  <view wx:elif="{{userStage === 'new' || userStage === 'screening_draft'}}" class="new-home">
+    <view class="screening-card">
+      <view class="screening-main">
+        <view>
+          <text class="screening-status">{{newUserGuide.screening.status}}</text>
+          <text class="screening-title">{{newUserGuide.screening.title}}</text>
+          <text class="screening-desc">{{newUserGuide.screening.desc}}</text>
+        </view>
+        <view class="screening-badge">评</view>
       </view>
-      <view class="risk-badge">
-        <view class="risk-inner">
-          <text class="risk-title">中风险</text>
-          <text class="risk-label">今日状态</text>
+      <view class="screening-note">{{newUserGuide.screening.note}}</view>
+      <button class="screening-btn" bindtap="handlePrimaryAction">{{newUserGuide.screening.action}}</button>
+    </view>
+
+    <view class="new-module">
+      <view class="new-module-copy">
+        <text class="new-module-title">{{newUserGuide.doctor.title}}</text>
+        <text class="new-module-desc">{{newUserGuide.doctor.desc}}</text>
+        <text class="new-module-note">{{newUserGuide.doctor.note}}</text>
+      </view>
+      <button class="new-module-action" bindtap="onDoctorBindTap">{{newUserGuide.doctor.action}}</button>
+    </view>
+
+    <view class="new-module profile-guide" data-path="/pages/profile/index" bindtap="goPath">
+      <view class="new-module-copy">
+        <text class="new-module-title">完善健康档案</text>
+        <text class="new-module-desc">补充基础信息、既往病史、当前用药和设备情况。</text>
+        <text class="new-module-note">待补充：{{newUserGuide.profile.items}}</text>
+      </view>
+      <view class="profile-progress">
+        <text>{{newUserGuide.profile.percent}}%</text>
+        <view><view style="width: {{newUserGuide.profile.percent}}%;"></view></view>
+      </view>
+    </view>
+
+    <view class="section-head compact">
+      <text>有近期数据？先记一笔</text>
+    </view>
+    <view class="quick-grid">
+      <view wx:for="{{newUserQuickRecords}}" wx:key="label" class="quick" data-path="{{item.path}}" bindtap="goPath">
+        <view class="quick-icon">
+          <view wx:if="{{item.type === 'glucose'}}" class="css-icon glucose-icon"></view>
+          <view wx:elif="{{item.type === 'pressure'}}" class="css-icon pressure-mini"></view>
+          <view wx:elif="{{item.type === 'oxygen'}}" class="css-icon oxygen-icon"></view>
+          <view wx:elif="{{item.type === 'medicine'}}" class="css-icon pill-icon"><view></view></view>
+          <view wx:else class="css-icon more-icon"></view>
+        </view>
+        <text>{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="new-module device-guide">
+      <view class="new-module-copy">
+        <text class="new-module-title">已有设备？先完成绑定</text>
+        <text class="new-module-desc">{{newUserGuide.device.title}}</text>
+        <text class="new-module-note">设备数据可作为筛查和后续管理参考。</text>
+      </view>
+      <button class="new-module-action" data-path="/pages/device/index/index" bindtap="goPath">{{newUserGuide.device.action}}</button>
+    </view>
+
+    <view class="bottom-note">筛查结果仅用于健康风险提示，正式诊断和治疗建议以医生判断为准。</view>
+  </view>
+
+  <view wx:elif="{{userStage === 'assessed'}}" class="assessed-home">
+    <view class="result-card">
+      <text class="screening-status">{{assessedGuide.result.status}}</text>
+      <text class="screening-title">{{assessedGuide.result.title}}</text>
+      <text class="screening-desc">{{assessedGuide.result.desc}}</text>
+      <view class="risk-grid">
+        <view wx:for="{{assessedGuide.result.risks}}" wx:key="label" class="risk-chip">
+          <text>{{item.label}}</text>
+          <text>{{item.value}}</text>
         </view>
       </view>
+      <view class="result-actions">
+        <button class="screening-btn" bindtap="handlePrimaryAction">查看筛查结果</button>
+        <button class="outline-btn" bindtap="onDoctorBindTap">绑定医生</button>
+      </view>
     </view>
-    <view class="hero-note">首页只展示今天最需要你处理的信息；当前方案明细、最近医生安排和随访准备请到方案页查看。</view>
-    <view class="hero-metrics">
-      <view wx:for="{{managedSummary}}" wx:key="label" class="metric"><text>{{item.label}}</text><text class="value">{{item.value}}</text></view>
-    </view>
-  </view>
-  </view>
 
-  <view class="section-head">
-    <text>快速记录</text>
-    <button>添加指标</button>
-  </view>
-  <view class="quick-grid">
-    <view wx:for="{{quickRecords}}" wx:key="label" class="quick">
-      <view class="quick-icon">
-        <view wx:if="{{item.type === 'glucose'}}" class="css-icon glucose-icon"></view>
-        <view wx:elif="{{item.type === 'oxygen'}}" class="css-icon heart-icon">
-          <view class="pulse-line"></view>
+    <view class="new-module">
+      <view class="new-module-copy">
+        <text class="new-module-title">{{assessedGuide.doctor.title}}</text>
+        <text class="new-module-desc">{{assessedGuide.doctor.desc}}</text>
+      </view>
+      <button class="new-module-action" bindtap="onDoctorBindTap">{{assessedGuide.doctor.action}}</button>
+    </view>
+
+    <view class="new-module profile-guide" data-path="/pages/profile/index" bindtap="goPath">
+      <view class="new-module-copy">
+        <text class="new-module-title">完善健康档案</text>
+        <text class="new-module-desc">完善基础信息、既往病史、当前用药和设备情况，帮助医生更准确判断风险。</text>
+        <text class="new-module-note">待补充：{{assessedGuide.profile.items}}</text>
+      </view>
+      <view class="profile-progress">
+        <text>{{assessedGuide.profile.percent}}%</text>
+        <view><view style="width: {{assessedGuide.profile.percent}}%;"></view></view>
+      </view>
+    </view>
+
+    <view class="section-head compact">
+      <text>补充近期记录</text>
+    </view>
+    <view class="quick-grid">
+      <view wx:for="{{newUserQuickRecords}}" wx:key="label" class="quick" data-path="{{item.path}}" bindtap="goPath">
+        <view class="quick-icon">
+          <view wx:if="{{item.type === 'glucose'}}" class="css-icon glucose-icon"></view>
+          <view wx:elif="{{item.type === 'pressure'}}" class="css-icon pressure-mini"></view>
+          <view wx:elif="{{item.type === 'oxygen'}}" class="css-icon oxygen-icon"></view>
+          <view wx:elif="{{item.type === 'medicine'}}" class="css-icon pill-icon"><view></view></view>
+          <view wx:else class="css-icon more-icon"></view>
         </view>
-        <view wx:elif="{{item.type === 'pressure'}}" class="css-icon heart-icon">
-          <view class="pulse-line"></view>
-          <view class="pressure-dot"></view>
-        </view>
-        <view wx:elif="{{item.type === 'sleep'}}" class="css-icon moon-icon"></view>
-        <view wx:else class="css-icon pill-icon">
-          <view></view>
-        </view>
-      </view>
-      <text>{{item.label}}</text>
-    </view>
-  </view>
-
-  <!-- 今日待办 -->
-  <view class="module-card todo-module">
-    <view class="module-title">
-      <view class="title-left">
-        <view class="title-symbol calendar-symbol"></view>
-        <text>今日待办</text>
+        <text>{{item.label}}</text>
       </view>
     </view>
 
-    <!-- 复测任务组卡片 -->
-    <view wx:if="{{recheckPlans.length}}" class="recheck-cards">
-      <view wx:for="{{recheckPlans}}" wx:key="id" class="home-recheck-card">
-        <view class="home-recheck-header">
-          <view class="home-recheck-icon">测</view>
-          <text class="home-recheck-title">复测指标</text>
-          <view class="home-recheck-tag">临时安排</view>
-        </view>
-        <text class="home-recheck-summary">{{recheckProgress[item.id].summary}}</text>
-        <text class="home-recheck-instruction">{{item.patientInstruction}}</text>
-        <view class="home-recheck-progress">
-          <text class="home-recheck-status">{{recheckProgress[item.id].taskStatus}}</text>
-          <text wx:if="{{recheckProgress[item.id].daysRemaining > 0}}" class="home-recheck-remaining">还需完成 {{recheckProgress[item.id].daysRemaining}} 天</text>
-        </view>
-        <view class="home-recheck-btn" bindtap="onRecheckAction" data-id="{{item.id}}">去记录</view>
+    <view class="new-module device-guide">
+      <view class="new-module-copy">
+        <text class="new-module-title">我的设备</text>
+        <text class="new-module-desc">{{assessedGuide.device.title}}</text>
+        <text class="new-module-note">设备数据可作为医生后续判断风险的参考。</text>
       </view>
+      <button class="new-module-action" data-path="/pages/device/index/index" bindtap="goPath">{{assessedGuide.device.action}}</button>
     </view>
+
+    <view class="bottom-note">筛查结果仅为健康风险提示，不作为诊断结论；是否进入正式管理需结合医生判断。</view>
   </view>
 
-  <!-- 随访提醒 -->
-  <view wx:if="{{nearestFollowup}}" class="module-card follow-module">
-    <view class="module-title">
-      <view class="title-left">
-        <view class="title-symbol calendar-symbol"></view>
-        <text>随访安排</text>
-      </view>
-    </view>
-    <view class="home-followup-item">
-      <view class="home-fu-header">
-        <view class="home-fu-icon">随</view>
-        <text class="home-fu-title">{{nearestFollowup.title}}</text>
-      </view>
-      <view class="home-fu-info">
-        <text class="home-fu-time">{{nearestFollowup.dueAt}}</text>
-        <view class="home-fu-method">{{nearestFollowup.method}}</view>
-      </view>
-      <text wx:if="{{nearestFollowup.patientInstruction}}" class="home-fu-instruction">{{nearestFollowup.patientInstruction}}</text>
-      <view class="home-fu-prepare-row">
-        <view class="home-fu-btn" bindtap="onFollowupRecords">去查看</view>
-      </view>
-    </view>
+  <view wx:else class="placeholder-card">
+    <text class="placeholder-title">先完成健康筛查</text>
+    <text class="placeholder-desc">约 3 分钟完成，帮助医生了解你的慢病风险。</text>
+    <button class="primary-action" bindtap="handlePrimaryAction">开始健康筛查</button>
   </view>
 
-  <view class="section-head">
-    <text>健康档案</text>
-    <button>管理</button>
-  </view>
-  <view class="profile-card">
-    <text wx:for="{{healthTags}}" wx:key="*this">{{item}}</text>
-  </view>
-
-  <view class="section-head">
-    <text>健康服务</text>
-    <button>更多</button>
-  </view>
-  <view class="service-row">
-    <view wx:for="{{services}}" wx:key="label" class="service" data-path="{{item.path}}" bindtap="handleService">
-      <view style="background-color: {{item.color}};">
-        <text class="service-mark">{{item.mark}}</text>
-      </view>
-      <text>{{item.label}}</text>
-    </view>
-  </view>
-
-  <!-- ───────── 建议详情抽屉 ───────── -->
   <view wx:if="{{showAdviceDrawer}}" class="modal-mask" bindtap="onAdviceClose">
     <view class="modal-box advice-drawer-box" catchtap="noop">
       <view class="advice-drawer-header">
@@ -178,9 +289,6 @@
       </view>
       <text class="advice-drawer-title">{{currentAdvice.title}}</text>
       <text class="advice-drawer-content">{{currentAdvice.content}}</text>
-      <view class="advice-drawer-status {{currentAdvice.status === 'read' ? 'is-read' : 'is-unread'}}">
-        {{currentAdvice.status === 'read' ? '已读' : '未读'}}
-      </view>
       <view class="modal-actions">
         <button class="action-btn ghost sm" bindtap="onAdviceClose">关闭</button>
       </view>

@@ -1,46 +1,68 @@
 <view class="page">
   <view class="profile-card">
-    <view class="avatar">陈</view>
+    <view class="avatar">{{currentPatient.avatarText}}</view>
     <view class="profile-info">
-      <text class="profile-name">陈女士</text>
-      <text class="profile-desc">2型糖尿病 · 慢阻肺稳定期 · 睡眠呼吸障碍风险</text>
-    </view>
-    <text class="risk-tag">中风险</text>
-  </view>
-
-  <view class="section-head">
-    <text>健康档案</text>
-    <button bindtap="goProfile">维护</button>
-  </view>
-  <view class="info-grid" bindtap="goProfile">
-    <view wx:for="{{profileItems}}" wx:key="label" class="info-card">
-      <text>{{item.label}}</text>
-      <text>{{item.value}}</text>
-    </view>
-  </view>
-
-  <view class="section-head">
-    <text>设备管理</text>
-    <button bindtap="goDevice">绑定</button>
-  </view>
-  <view class="device-list">
-    <view wx:for="{{devices}}" wx:key="name" class="device-card">
-      <view class="device-icon">{{item.mark}}</view>
-      <view>
-        <text class="device-name">{{item.name}}</text>
-        <text class="device-desc">{{item.desc}}</text>
+      <text class="profile-name">{{currentPatient.name}}</text>
+      <text class="profile-meta">{{currentPatient.sex}} · {{currentPatient.age}}岁</text>
+      <view class="tag-row">
+        <text wx:for="{{healthTags}}" wx:key="*this" class="tag">{{item}}</text>
       </view>
-      <text class="device-status">{{item.status}}</text>
     </view>
   </view>
 
-  <view class="section-head">
-    <text>服务与设置</text>
+  <view class="doctor-card" bindtap="handleDoctorTap">
+    <view class="doctor-main">
+      <text class="card-title">我的医生</text>
+      <text wx:if="{{hasDoctor}}" class="doctor-name">{{doctor.name}}｜{{doctor.role}}</text>
+      <text wx:else class="doctor-name">尚未绑定医生</text>
+    </view>
+    <text wx:if="{{hasDoctor}}" class="chevron">›</text>
+    <text wx:else class="link-text">扫码绑定</text>
   </view>
-  <view class="menu-list">
-    <view wx:for="{{menus}}" wx:key="label" class="menu-item" bindtap="onMenuTap" data-path="{{item.path}}">
+
+  <view class="quick-grid">
+    <view wx:for="{{quickEntries}}" wx:key="label" class="quick-item" data-path="{{item.path}}" bindtap="goPath">
+      <view class="quick-icon">{{item.icon}}</view>
       <text>{{item.label}}</text>
-      <text>›</text>
+    </view>
+  </view>
+
+  <view class="simple-card" bindtap="goProfile">
+    <view>
+      <text class="card-title">健康档案</text>
+      <text class="card-value">完整度 {{profileCompletion}}%</text>
+    </view>
+    <text class="link-text">维护健康档案</text>
+  </view>
+
+  <view class="simple-card" bindtap="goDevice">
+    <view>
+      <text class="card-title">我的设备</text>
+      <text class="card-value">{{deviceSummary.label}}</text>
+    </view>
+    <text class="link-text">{{deviceSummary.actionText}}</text>
+  </view>
+
+  <view class="section">
+    <text class="section-title">管理服务</text>
+    <view class="menu-list">
+      <view wx:for="{{serviceMenus}}" wx:key="label" class="menu-item" data-path="{{item.path}}" bindtap="goPath">
+        <view>
+          <text class="menu-label">{{item.label}}</text>
+          <text class="menu-desc">{{item.desc}}</text>
+        </view>
+        <text class="chevron">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">设置与支持</text>
+    <view class="menu-list">
+      <view wx:for="{{settingMenus}}" wx:key="label" class="menu-item compact" data-action="{{item.action}}" bindtap="onSettingTap">
+        <text class="menu-label">{{item.label}}</text>
+        <text class="chevron">›</text>
+      </view>
     </view>
   </view>
 </view>

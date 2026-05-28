@@ -109,7 +109,7 @@
   <view id="section-symptom" class="anchor-section">
     <view class="section-head">
       <text>症状记录</text>
-      <button bindtap="showToast" data-title="添加症状">＋ 添加</button>
+      <button catchtap="goRecordForm" data-type="symptom" data-title="症状">＋ 添加</button>
     </view>
     <view wx:for="{{symptomRecords}}" wx:key="time" class="record-card symptom-card" bindtap="goSymptomDetail">
       <view class="record-top">

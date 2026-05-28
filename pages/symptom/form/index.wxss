@@ -1,0 +1,185 @@
+@import "../../record/common.wxss";
+
+.discomfort-toggle {
+  margin-bottom: 20rpx;
+  padding: 8rpx;
+  border-radius: 22rpx;
+  background: #e9eef5;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8rpx;
+}
+
+.toggle-option {
+  height: 64rpx;
+  border-radius: 16rpx;
+  color: #647386;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.toggle-option.active {
+  color: #237be8;
+  background: #ffffff;
+}
+
+.symptom-group {
+  margin-bottom: 18rpx;
+}
+
+.symptom-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #8a96a8;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.tag-wrap.compact {
+  gap: 10rpx;
+}
+
+.tag-option {
+  height: 54rpx;
+  padding: 0 20rpx;
+  border-radius: 27rpx;
+  color: #647386;
+  background: #edf1f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23rpx;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.tag-option.selected {
+  color: #ffffff;
+  background: #237be8;
+}
+
+.tag-option.exclusive.selected {
+  background: #647386;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 14rpx;
+  color: #1f2937;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.severity-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+}
+
+.severity-option {
+  height: 64rpx;
+  border-radius: 16rpx;
+  color: #647386;
+  background: #edf1f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.severity-option.active {
+  color: #237be8;
+  background: #e9f3ff;
+}
+
+.severity-option.active.severe-active {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.duration-option {
+  height: 54rpx;
+  padding: 0 16rpx;
+  border-radius: 27rpx;
+  color: #647386;
+  background: #edf1f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.duration-option.active {
+  color: #237be8;
+  background: #e9f3ff;
+}
+
+.risk-warning-card {
+  margin-bottom: 20rpx;
+  padding: 24rpx;
+  border-radius: 18rpx;
+  background: #fff7ed;
+  border: 2rpx solid #fdba74;
+}
+
+.risk-warning-icon {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 32rpx;
+}
+
+.risk-warning-text {
+  display: block;
+  color: #9a3412;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.risk-warning-note {
+  display: block;
+  margin-top: 8rpx;
+  color: #c2410c;
+  font-size: 21rpx;
+  opacity: .7;
+}
+
+.submit-btn {
+  margin-top: 36rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  color: #ffffff;
+  background: #237be8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.submit-btn.disabled {
+  background: #b1b6bf;
+  color: #ffffff;
+}
