@@ -4,7 +4,6 @@ Component({
     list: [
       { pagePath: '/pages/index/index', text: '首页', iconClass: 'icon-home' },
       { pagePath: '/pages/record/index', text: '记录', iconClass: 'icon-record' },
-      { pagePath: '/pages/plan/index', text: '方案', iconClass: 'icon-plan' },
       { pagePath: '/pages/me/index', text: '我的', iconClass: 'icon-user' }
     ]
   },

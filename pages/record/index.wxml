@@ -125,21 +125,4 @@
     </view>
   </view>
 
-  <view id="section-medicine" class="anchor-section">
-    <view class="section-head">
-      <text>用药记录</text>
-      <button bindtap="showToast" data-title="添加用药">＋ 添加</button>
-    </view>
-    <view wx:for="{{medicineRecords}}" wx:key="name" class="record-card medicine-card" bindtap="goMedicationDetail">
-      <view class="record-top">
-        <text class="record-time">{{item.time}}</text>
-        <text class="medicine-status {{item.done ? 'done' : 'pending'}}">{{item.status}}</text>
-      </view>
-      <view class="medicine-main">
-        <text class="record-title">{{item.name}}</text>
-        <text class="dose">{{item.dose}}</text>
-      </view>
-      <text class="record-desc">{{item.desc}}</text>
-    </view>
   </view>
-</view>

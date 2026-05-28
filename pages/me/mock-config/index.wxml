@@ -27,27 +27,6 @@
 
   <view class="section">
     <view class="section-head">
-      <text>方案状态</text>
-    </view>
-    <view class="option-list">
-      <view
-        wx:for="{{planStatuses}}"
-        wx:key="value"
-        class="option {{config.planStatus === item.value ? 'active' : ''}}"
-        data-value="{{item.value}}"
-        bindtap="setPlanStatus"
-      >
-        <view>
-          <text class="option-title">{{item.label}}</text>
-          <text class="option-desc">{{item.desc}}</text>
-        </view>
-        <text class="option-check">{{config.planStatus === item.value ? '✓' : ''}}</text>
-      </view>
-    </view>
-  </view>
-
-  <view class="section">
-    <view class="section-head">
       <text>首页演示项</text>
     </view>
     <view class="switch-list">

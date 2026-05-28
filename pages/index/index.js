@@ -1,6 +1,5 @@
 const interventionStore = require('../../utils/intervention-store');
 const mockSession = require('../../utils/mock-session');
-const planStore = require('../../utils/plan-store');
 const recordStore = require('../../utils/record-store');
 const symptomConfig = require('../../utils/symptom-config');
 
@@ -24,7 +23,6 @@ function isTabPage(path) {
   return [
     '/pages/index/index',
     '/pages/record/index',
-    '/pages/plan/index',
     '/pages/me/index',
   ].includes(path);
 }
@@ -56,7 +54,6 @@ Page({
     taskSummary: { done: 0, total: 0 },
     doctorArrangement: null,
     nearestFollowup: null,
-    planSummary: null,
     deviceStatus: null,
     showAdviceDrawer: false,
     currentAdvice: null,
@@ -86,11 +83,10 @@ Page({
       .filter(item => item.patientId === currentPatient.id);
     const adviceList = interventionStore.getCurrentAdviceList(3)
       .filter(item => item.patientId === currentPatient.id);
-    const plan = planStore.getPlan();
     const firstRecheck = recheckPlans[0] || null;
     const firstAdvice = adviceList[0] || null;
     const nearestFollowup = activeFollowups[0] || null;
-    const todayTasks = this.buildTodayTasks(firstRecheck, plan, nearestFollowup);
+    const todayTasks = this.buildTodayTasks(firstRecheck, nearestFollowup);
     const completedCount = todayTasks.filter(item => item.status === 'done').length;
 
     const symptomStatus = recordStore.getTodaySymptomStatus();
@@ -139,13 +135,6 @@ Page({
         status: firstAdvice.status,
       } : null,
       nearestFollowup,
-      planSummary: {
-        title: plan.title,
-        stage: plan.disease === '糖尿病' ? '控糖巩固期' : '执行中',
-        objective: plan.objective,
-        doctor: plan.doctor,
-        status: plan.patientStatus === 'pending_confirm' ? '待确认' : '执行中',
-      },
       deviceStatus: {
         count: currentPatient.devices.length,
         latestSync: '今天 08:30',
@@ -219,27 +208,8 @@ Page({
     };
   },
 
-  buildTodayTasks(recheckPlan, plan, followup) {
-    const tasks = [
-      {
-        id: 'task_glucose_fasting',
-        title: '空腹血糖记录',
-        time: '07:00-09:00',
-        source: '管理方案',
-        status: 'pending',
-        action: '去记录',
-        path: '/pages/record/form/index?type=glucose',
-      },
-      {
-        id: 'task_bp_morning',
-        title: '晨间血压记录',
-        time: '晨起后',
-        source: '管理方案',
-        status: 'done',
-        action: '已完成',
-        path: '/pages/record/form/index?type=blood_pressure',
-      },
-    ];
+  buildTodayTasks(recheckPlan, followup) {
+    const tasks = [];
 
     if (recheckPlan) {
       tasks.splice(1, 0, {
@@ -250,18 +220,6 @@ Page({
         status: 'pending',
         action: '去复测',
         path: '/pages/record/form/index?type=oxygen&scene=recheck',
-      });
-    }
-
-    if (plan && plan.patientStatus === 'pending_confirm') {
-      tasks.push({
-        id: 'plan_confirm',
-        title: '新方案确认知晓',
-        time: '今天完成',
-        source: '医生方案',
-        status: 'pending',
-        action: '去确认',
-        path: '/pages/plan/index',
       });
     }
 
@@ -303,7 +261,6 @@ Page({
       wx.navigateTo({ url: '/pages/screening/index?mode=result' });
       return;
     }
-    wx.switchTab({ url: '/pages/plan/index' });
   },
 
   onDoctorBindTap() {

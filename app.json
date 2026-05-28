@@ -13,13 +13,10 @@
     "pages/sleep/history/index",
     "pages/symptom/detail/index",
     "pages/symptom/form/index",
-    "pages/medication/detail/index",
     "pages/device/index/index",
     "pages/device/huawei-auth/index",
     "pages/device/bluetooth/index",
     "pages/device/connecting/index",
-    "pages/plan/index",
-    "pages/plan/history/index",
     "pages/me/index",
     "pages/profile/index",
     "pages/me/advice/index",
@@ -60,10 +57,6 @@
       {
         "pagePath": "pages/record/index",
         "text": "记录"
-      },
-      {
-        "pagePath": "pages/plan/index",
-        "text": "方案"
       },
       {
         "pagePath": "pages/me/index",

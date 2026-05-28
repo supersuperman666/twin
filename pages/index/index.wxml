@@ -114,23 +114,6 @@
       </view>
     </view>
 
-    <view wx:if="{{planSummary}}" class="module-card plan-lite">
-      <view class="module-title tight">
-        <view>
-          <text class="module-kicker">当前方案</text>
-          <text class="module-heading">{{planSummary.title}}｜{{planSummary.stage}}</text>
-        </view>
-        <text class="plan-status">{{planSummary.status}}</text>
-      </view>
-      <text class="module-desc">{{planSummary.objective}}</text>
-      <view class="plan-meta-row">
-        <text>主责医生：{{planSummary.doctor}}</text>
-      </view>
-      <view class="card-actions">
-        <button class="ghost-action" data-path="/pages/plan/index" data-switchtab="true" bindtap="goPath">查看方案</button>
-      </view>
-    </view>
-
     <view wx:if="{{deviceStatus}}" class="module-card device-lite">
       <view class="module-title tight">
         <view>

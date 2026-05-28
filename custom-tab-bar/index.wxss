@@ -7,7 +7,7 @@
   height: 112rpx;
   padding-bottom: env(safe-area-inset-bottom);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   border-top: 1rpx solid rgba(20, 37, 32, 0.08);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 -8rpx 24rpx rgba(31, 41, 55, 0.04);
@@ -92,41 +92,6 @@
   border-top: 4rpx solid currentColor;
 }
 
-.icon-plan .icon-mark {
-  left: 9rpx;
-  top: 9rpx;
-  width: 28rpx;
-  height: 30rpx;
-  border: 5rpx solid currentColor;
-  border-radius: 6rpx;
-}
-
-.icon-plan::before,
-.icon-plan::after {
-  top: 5rpx;
-  width: 5rpx;
-  height: 10rpx;
-  border-radius: 4rpx;
-  background: currentColor;
-}
-
-.icon-plan::before {
-  left: 16rpx;
-}
-
-.icon-plan::after {
-  right: 16rpx;
-}
-
-.icon-plan .icon-mark::before {
-  left: 6rpx;
-  right: 6rpx;
-  top: 10rpx;
-  height: 4rpx;
-  border-radius: 4rpx;
-  background: currentColor;
-}
-
 .icon-user::before {
   left: 15rpx;
   top: 6rpx;
@@ -147,7 +112,6 @@
 }
 
 .tabbar-item.active .icon-home .icon-mark,
-.tabbar-item.active .icon-record .icon-mark,
-.tabbar-item.active .icon-plan .icon-mark {
+.tabbar-item.active .icon-record .icon-mark {
   background: #eaf3ff;
 }

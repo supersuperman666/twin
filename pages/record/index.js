@@ -11,8 +11,7 @@ Page({
       { key: 'basic', name: '基础指标' },
       { key: 'oxygen', name: '血氧呼吸' },
       { key: 'sleep', name: '睡眠' },
-      { key: 'symptom', name: '症状' },
-      { key: 'medicine', name: '用药' }
+      { key: 'symptom', name: '症状' }
     ],
     basicMetrics: [
       {
@@ -113,24 +112,6 @@ Page({
         desc: '持续约2小时，休息后缓解',
         level: '轻度'
       }
-    ],
-    medicineRecords: [
-      {
-        time: '05.16 08:00',
-        name: '阿司匹林肠溶片',
-        dose: '100mg',
-        desc: '早餐前服用',
-        status: '已服用',
-        done: true
-      },
-      {
-        time: '05.16 20:00',
-        name: '辛伐他汀片',
-        dose: '20mg',
-        desc: '晚餐后服用',
-        status: '待服用',
-        done: false
-      }
     ]
   },
 
@@ -146,7 +127,6 @@ Page({
     const pulse = recordStore.getLatestRecord('pulse')
     const respiration = recordStore.getLatestRecord('respiration')
     const symptoms = recordStore.listRecords({ metric: 'symptom' }).slice(0, 2)
-    const medications = recordStore.listRecords({ metric: 'medication' }).slice(0, 4)
 
     const basicMetrics = this.data.basicMetrics.map((item) => {
       if (item.detail === 'glucose' && glucose) {
@@ -191,15 +171,7 @@ Page({
         title: item.title || symptomConfig.generateTitle(item.symptom_items || []) || '已记录',
         desc: item.desc || symptomConfig.generateDesc(item.duration, item.measures_taken) || item.remark || '已记录',
         level: item.level || item.severity || '已记录'
-      })) : this.data.symptomRecords,
-      medicineRecords: medications.length ? medications.map((item) => ({
-        time: recordStore.formatShortTime(item),
-        name: item.name || item.metric_name,
-        dose: item.dose || '',
-        desc: item.desc || item.remark || '',
-        status: item.status_text || '已记录',
-        done: item.status === 'done'
-      })) : this.data.medicineRecords
+      })) : this.data.symptomRecords
     })
   },
 
@@ -286,10 +258,6 @@ Page({
 
   goSymptomDetail() {
     wx.navigateTo({ url: '/pages/symptom/detail/index' })
-  },
-
-  goMedicationDetail() {
-    wx.navigateTo({ url: '/pages/medication/detail/index' })
   },
 
   goBack() {
